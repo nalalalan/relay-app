@@ -216,21 +216,22 @@
     .hero-proofline strong { color: var(--text); }
 
 
-    .founder-card {
-<<<<<<< HEAD
-      margin-top: 22px;
-      padding: 22px;
+    .hero-side {
       display: grid;
-      grid-template-columns: 148px minmax(0, 1fr);
-      gap: 18px;
+      gap: 22px;
       align-items: start;
-=======
+    }
+
+    .hero-bottom {
+      margin-top: 22px;
+    }
+
+    .founder-card {
       display: grid;
-      grid-template-columns: 104px minmax(0, 1fr);
+      grid-template-columns: 112px minmax(0, 1fr);
       gap: 18px;
       align-items: start;
       padding: 20px;
->>>>>>> 5145a0f (fix founder photo crop and hero layout balance)
       background: var(--card);
       border: 1px solid var(--line);
       border-radius: var(--radius-lg);
@@ -238,69 +239,26 @@
     }
 
     .founder-photo {
-<<<<<<< HEAD
-      border-radius: 22px;
-      overflow: hidden;
-      background: #e7e1d7;
-      aspect-ratio: 1 / 1;
-      border: 1px solid var(--line);
-    }
-
-    .founder-photo img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      object-position: center 18%;
-=======
-      width: 104px;
-      height: 104px;
+      width: 112px;
+      height: 112px;
       border-radius: 20px;
       object-fit: cover;
       object-position: center 18%;
       border: 1px solid rgba(191, 134, 81, 0.22);
       background: #efe7dd;
->>>>>>> 5145a0f (fix founder photo crop and hero layout balance)
     }
 
     .founder-kicker {
       color: var(--accent-dark);
       font-size: 13px;
       font-weight: 900;
-<<<<<<< HEAD
-      letter-spacing: 0.02em;
-      text-transform: uppercase;
-    }
-
-    .founder-name {
-      margin-top: 6px;
-      font-size: 28px;
-      line-height: 1.02;
-      letter-spacing: -0.04em;
-      font-weight: 900;
-    }
-
-    .founder-role {
-      margin-top: 6px;
-      color: var(--muted);
-      font-size: 16px;
-      line-height: 1.4;
-      letter-spacing: -0.02em;
-    }
-
-    .founder-copy {
-      margin-top: 14px;
-      color: var(--muted);
-      font-size: 17px;
-      line-height: 1.45;
-      letter-spacing: -0.02em;
-=======
       letter-spacing: 0.04em;
       text-transform: uppercase;
       margin-bottom: 6px;
     }
 
     .founder-title {
-      font-size: clamp(28px, 2.8vw, 34px);
+      font-size: clamp(30px, 2.8vw, 36px);
       line-height: 1;
       letter-spacing: -0.05em;
       font-weight: 950;
@@ -313,7 +271,6 @@
       line-height: 1.42;
       letter-spacing: -0.02em;
       max-width: none;
->>>>>>> 5145a0f (fix founder photo crop and hero layout balance)
     }
 
     .founder-copy strong {
@@ -321,25 +278,6 @@
       font-weight: 850;
     }
 
-<<<<<<< HEAD
-    .founder-points {
-      margin-top: 16px;
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .founder-point {
-      padding: 14px 15px;
-      background: var(--card-2);
-      border: 1px solid rgba(191, 134, 81, 0.16);
-      border-radius: 16px;
-      color: var(--text);
-      font-size: 15px;
-      line-height: 1.35;
-      letter-spacing: -0.02em;
-      font-weight: 760;
-=======
     .founder-pills {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -360,7 +298,6 @@
       line-height: 1.32;
       font-weight: 800;
       letter-spacing: -0.02em;
->>>>>>> 5145a0f (fix founder photo crop and hero layout balance)
     }
 
     .chip-row,
@@ -693,8 +630,8 @@
       }
 
       .founder-card { grid-template-columns: 1fr; }
-      .founder-photo { max-width: 220px; }
-      .founder-points { grid-template-columns: 1fr; }
+      .founder-photo { width: 120px; height: 120px; }
+      .founder-pills { grid-template-columns: 1fr; }
 
       .chip-card,
       .info-card,
@@ -738,39 +675,6 @@
             </div>
             <p class="hero-proofline"><strong>Built by Alan Pham / AO Labs.</strong> No demo call. No software setup. Buy first, get intake access automatically, paste notes, get the packet back.</p>
           </div>
-<<<<<<< HEAD
-          <p class="hero-proofline"><strong>Built by Alan Pham / AO Labs.</strong> No demo call. No software setup. Buy first, get intake access automatically, paste notes, get the packet back.</p>
-          <article class="founder-card" aria-label="Founder note">
-            <div class="founder-photo">
-              <img src="16512.jpg" alt="Alan Pham, founder of AO Labs" />
-            </div>
-            <div>
-              <div class="founder-kicker">Built by a real person</div>
-              <h3 class="founder-name">Alan Pham</h3>
-              <p class="founder-role">Founder, AO Labs · built for founder-led paid media agencies where good client calls keep dying in recap, follow-up, and CRM cleanup.</p>
-              <p class="founder-copy"><strong>You are not buying AI access.</strong> You are buying the ugly post-call work getting finished the same day: recap written, next steps clear, follow-up drafted, CRM update ready.</p>
-              <div class="founder-points">
-                <div class="founder-point">Real sample packet on the page — not a fake mockup-only offer.</div>
-                <div class="founder-point">No software rollout. Buy one call, unlock intake, send rough notes, get the packet back.</div>
-                <div class="founder-point">Best for agencies where proposals and follow-up slow down after strong discovery or sales calls.</div>
-                <div class="founder-point">If the pain is already obvious, skip the one-off and go straight to sprint / week / month.</div>
-              </div>
-            </div>
-          </article>
-          <div class="chip-row">
-            <article class="chip-card">
-              <h3>Same-day motion</h3>
-              <p>Get follow-up out while the lead is still warm.</p>
-            </article>
-            <article class="chip-card">
-              <h3>Less founder/admin drag</h3>
-              <p>Stop turning rough notes into manual cleanup work.</p>
-            </article>
-            <article class="chip-card">
-              <h3>Not “AI access”</h3>
-              <p>The value is that the recap, next steps, follow-up, and CRM text actually get finished without someone on your team doing manual cleanup.</p>
-            </article>
-=======
 
           <div class="hero-side">
             <div class="preview-shell">
@@ -780,12 +684,12 @@
               </div>
               <div class="preview-frame">
                 <a class="preview-link" href="sample.pdf" target="_blank" rel="noopener" aria-label="Open sample PDF">
-                  <img src="renders/page-1.png" onerror="this.onerror=null;this.src='sample-preview.png';" alt="Preview of the Alan Operator sample packet" />
+                  <img src="sample-preview.png" alt="Preview of the Alan Operator sample packet" />
                 </a>
               </div>
             </div>
 
-            <div class="founder-card">
+            <div class="founder-card" aria-label="Founder note">
               <img class="founder-photo" src="founder-headshot.jpg" alt="Alan Pham, founder of AO Labs" />
               <div>
                 <div class="founder-kicker">Built by a real person</div>
@@ -799,7 +703,6 @@
                 </div>
               </div>
             </div>
->>>>>>> 5145a0f (fix founder photo crop and hero layout balance)
           </div>
         </div>
 
