@@ -214,6 +214,91 @@
     }
     .hero-proofline strong { color: var(--text); }
 
+
+    .founder-card {
+      margin-top: 22px;
+      padding: 22px;
+      display: grid;
+      grid-template-columns: 148px minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+    }
+
+    .founder-photo {
+      border-radius: 22px;
+      overflow: hidden;
+      background: #e7e1d7;
+      aspect-ratio: 1 / 1;
+      border: 1px solid var(--line);
+    }
+
+    .founder-photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center 18%;
+    }
+
+    .founder-kicker {
+      color: var(--accent-dark);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .founder-name {
+      margin-top: 6px;
+      font-size: 28px;
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+      font-weight: 900;
+    }
+
+    .founder-role {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.4;
+      letter-spacing: -0.02em;
+    }
+
+    .founder-copy {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.45;
+      letter-spacing: -0.02em;
+    }
+
+    .founder-copy strong {
+      color: var(--text);
+      font-weight: 850;
+    }
+
+    .founder-points {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .founder-point {
+      padding: 14px 15px;
+      background: var(--card-2);
+      border: 1px solid rgba(191, 134, 81, 0.16);
+      border-radius: 16px;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.35;
+      letter-spacing: -0.02em;
+      font-weight: 760;
+    }
+
     .chip-row,
     .section-grid-3,
     .facts-grid,
@@ -523,6 +608,10 @@
         width: 100%;
       }
 
+      .founder-card { grid-template-columns: 1fr; }
+      .founder-photo { max-width: 220px; }
+      .founder-points { grid-template-columns: 1fr; }
+
       .chip-card,
       .info-card,
       .step-card,
@@ -563,6 +652,23 @@
             <a class="btn btn-secondary" href="sample.pdf" target="_blank" rel="noopener">Open sample PDF</a>
           </div>
           <p class="hero-proofline"><strong>Built by Alan Pham / AO Labs.</strong> No demo call. No software setup. Buy first, get intake access automatically, paste notes, get the packet back.</p>
+          <article class="founder-card" aria-label="Founder note">
+            <div class="founder-photo">
+              <img src="16512.jpg" alt="Alan Pham, founder of AO Labs" />
+            </div>
+            <div>
+              <div class="founder-kicker">Built by a real person</div>
+              <h3 class="founder-name">Alan Pham</h3>
+              <p class="founder-role">Founder, AO Labs · built for founder-led paid media agencies where good client calls keep dying in recap, follow-up, and CRM cleanup.</p>
+              <p class="founder-copy"><strong>You are not buying AI access.</strong> You are buying the ugly post-call work getting finished the same day: recap written, next steps clear, follow-up drafted, CRM update ready.</p>
+              <div class="founder-points">
+                <div class="founder-point">Real sample packet on the page — not a fake mockup-only offer.</div>
+                <div class="founder-point">No software rollout. Buy one call, unlock intake, send rough notes, get the packet back.</div>
+                <div class="founder-point">Best for agencies where proposals and follow-up slow down after strong discovery or sales calls.</div>
+                <div class="founder-point">If the pain is already obvious, skip the one-off and go straight to sprint / week / month.</div>
+              </div>
+            </div>
+          </article>
           <div class="chip-row">
             <article class="chip-card">
               <h3>Same-day motion</h3>
@@ -728,7 +834,7 @@
   </main>
 
   <footer class="wrap footer">
-    Built by Alan Pham / AO Labs - done-for-you post-call execution for founder-led paid media agencies.
+    Built by Alan Pham / AO Labs — done-for-you post-call execution for founder-led paid media agencies.
   </footer>
 
   <script src="site-config.js"></script>
