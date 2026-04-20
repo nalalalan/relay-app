@@ -154,8 +154,8 @@
 
     .hero-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(430px, 0.95fr);
-      gap: 40px;
+      grid-template-columns: minmax(0, 1fr) minmax(400px, 0.92fr);
+      gap: 36px;
       align-items: start;
     }
 
@@ -216,34 +216,32 @@
     .hero-proofline strong { color: var(--text); }
 
 
-    
-    .hero-side {
-      display: grid;
-      gap: 18px;
-      align-items: start;
-    }
-
     .founder-card {
-      display: grid;
-      grid-template-columns: 160px minmax(0, 1fr);
-      gap: 24px;
-      align-items: start;
-      padding: 24px;
       background: var(--card);
       border: 1px solid var(--line);
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow);
+      padding: 24px;
+      display: grid;
+      gap: 18px;
     }
 
-    .founder-photo {
-      width: 160px;
-      height: 160px;
-      border-radius: 24px;
+    .founder-header {
+      display: grid;
+      grid-template-columns: 132px minmax(0, 1fr);
+      gap: 18px;
+      align-items: center;
+    }
+
+    .founder-avatar {
+      width: 132px;
+      height: 132px;
+      border-radius: 22px;
       object-fit: cover;
-      object-position: center 18%;
+      object-position: center 36%;
       border: 1px solid rgba(191, 134, 81, 0.22);
       background: #efe7dd;
-      display: block;
+      box-shadow: 0 10px 18px rgba(20,20,20,0.08);
     }
 
     .founder-kicker {
@@ -256,7 +254,7 @@
     }
 
     .founder-title {
-      font-size: clamp(34px, 3vw, 42px);
+      font-size: clamp(32px, 2.8vw, 42px);
       line-height: 0.98;
       letter-spacing: -0.05em;
       font-weight: 950;
@@ -265,29 +263,20 @@
 
     .founder-role {
       color: var(--muted);
-      font-size: 17px;
-      line-height: 1.4;
+      font-size: 18px;
+      line-height: 1.36;
       letter-spacing: -0.02em;
     }
 
     .founder-bio {
-      margin-top: 14px;
       color: var(--muted);
-      font-size: 16px;
+      font-size: 17px;
       line-height: 1.5;
       letter-spacing: -0.02em;
+      margin: 0;
     }
 
-    .founder-copy {
-      margin-top: 14px;
-      color: var(--muted);
-      font-size: 16px;
-      line-height: 1.46;
-      letter-spacing: -0.02em;
-      max-width: none;
-    }
-
-    .founder-copy strong {
+    .founder-bio strong {
       color: var(--text);
       font-weight: 850;
     }
@@ -296,7 +285,6 @@
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
-      margin-top: 16px;
     }
 
     .founder-pill {
@@ -309,11 +297,16 @@
       border: 1px solid rgba(191, 134, 81, 0.18);
       color: var(--text);
       font-size: 14px;
-      line-height: 1.32;
+      line-height: 1.34;
       font-weight: 800;
       letter-spacing: -0.02em;
     }
 
+    .hero-side {
+      display: grid;
+      gap: 20px;
+      align-items: start;
+    }
 
     .chip-row,
     .section-grid-3,
@@ -560,15 +553,15 @@
         font-size: 22px;
       }
 
-      .founder-card {
-        grid-template-columns: 120px minmax(0, 1fr);
-        gap: 18px;
-        padding: 22px;
+      .founder-header {
+        grid-template-columns: 96px minmax(0, 1fr);
+        gap: 14px;
       }
 
-      .founder-photo {
-        width: 120px;
-        height: 120px;
+      .founder-avatar {
+        width: 96px;
+        height: 96px;
+        border-radius: 18px;
       }
 
       .founder-pills {
@@ -576,7 +569,7 @@
       }
 
       .founder-title {
-        font-size: clamp(30px, 9vw, 38px);
+        font-size: clamp(28px, 9vw, 36px);
       }
 
     }
@@ -645,8 +638,9 @@
         width: 100%;
       }
 
-      .founder-card { grid-template-columns: 1fr; }
-      .founder-photo { width: min(220px, 58vw); height: min(220px, 58vw); }
+      .founder-card { padding: 20px; }
+      .founder-header { grid-template-columns: 1fr; }
+      .founder-avatar { width: 164px; height: 164px; }
       .founder-pills { grid-template-columns: 1fr; }
 
       .chip-card,
@@ -706,23 +700,24 @@
             </div>
 
             <article class="founder-card" aria-label="Founder note">
-              <img class="founder-photo" src="founder-headshot.jpg" alt="Alan Pham, founder of AO Labs" />
-              <div>
-                <div class="founder-kicker">Built by a real person</div>
-                <h2 class="founder-title">Alan Pham</h2>
-                <p class="founder-role">Founder, AO Labs</p>
-                <p class="founder-bio">Alan built AO Labs after seeing how many strong client calls lose momentum once recap, next steps, follow-up, and CRM cleanup get pushed off. Alan Operator is built for founder-led paid media agencies that still win or lose based on same-day follow-through after discovery and sales calls.</p>
-                <p class="founder-copy"><strong>You are not buying AI access.</strong> You are buying the post-call work getting finished fast: recap written, next steps clarified, follow-up drafted, and CRM update ready.</p>
-                <div class="founder-pills">
-                  <span class="founder-pill">Real sample packet on the page</span>
-                  <span class="founder-pill">Done-for-you, not software setup</span>
-                  <span class="founder-pill">Built for founder-led agencies with call cleanup pain</span>
-                  <span class="founder-pill">Buy first, then intake unlocks automatically</span>
+              <div class="founder-header">
+                <img class="founder-avatar" src="founder-headshot.jpg" alt="Alan Pham, founder of AO Labs" />
+                <div class="founder-meta">
+                  <div class="founder-kicker">Built by a real person</div>
+                  <h2 class="founder-title">Alan Pham</h2>
+                  <p class="founder-role">Mechanical engineer, robotics PhD researcher, and founder of AO Labs.</p>
                 </div>
+              </div>
+              <p class="founder-bio">Alan built AO Labs after repeatedly seeing strong client calls lose momentum once recap, next steps, follow-up, and CRM cleanup got pushed off. This is built for founder-led paid media agencies where fast follow-through still changes whether deals close.</p>
+              <p class="founder-bio"><strong>You are not buying AI access.</strong> You are buying the post-call work getting finished fast: recap written, next steps clarified, follow-up drafted, and CRM update ready.</p>
+              <div class="founder-pills">
+                <span class="founder-pill">Real sample packet on the page — not a fake mockup-only offer.</span>
+                <span class="founder-pill">Done-for-you delivery, not software setup or a long rollout.</span>
+                <span class="founder-pill">Built for agencies where proposals and follow-up slow down after strong discovery or sales calls.</span>
+                <span class="founder-pill">Buy one call, unlock intake, send rough notes, get the packet back the same day.</span>
               </div>
             </article>
           </div>
-
         </div>
 
         <div class="chip-row hero-bottom">
