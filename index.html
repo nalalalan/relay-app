@@ -60,36 +60,53 @@
       gap: 24px;
     }
 
-    .brand {
-      display: inline-flex;
-      align-items: center;
-      gap: 14px;
-      min-width: 0;
-      flex: 0 1 auto;
-    }
+ .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
 
-    .brand-mark {
-      width: 42px;
-      height: 42px;
-      border-radius: 13px;
-      border: 2px solid var(--accent);
-      background: #f6efe7;
-      display: grid;
-      place-items: center;
-      color: var(--accent);
-      font-weight: 900;
-      font-size: 22px;
-      line-height: 1;
-      flex: 0 0 auto;
-      box-shadow: inset 0 0 0 2px rgba(255,255,255,0.55);
-    }
+.brand-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  border: 2px solid var(--accent);
+  background: #f6efe7;
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+  font-weight: 900;
+  font-size: 22px;
+  line-height: 1;
+  flex: 0 0 auto;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.55);
+}
 
-    .brand-name {
-      font-size: 24px;
-      font-weight: 900;
-      letter-spacing: -0.04em;
-      white-space: nowrap;
-    }
+.brand-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.brand-name {
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.brand-sub {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  line-height: 1.1;
+  white-space: nowrap;
+}
 
     .nav {
       display: flex;
@@ -658,10 +675,13 @@
 <body>
   <header class="topbar">
     <div class="wrap topbar-inner">
-      <a class="brand" href="#top" aria-label="Alan Operator home">
-        <span class="brand-mark">AO</span>
-        <span class="brand-name">Alan Operator</span>
-      </a>
+	<a class="brand" href="#top" aria-label="AO Labs">
+	  <span class="brand-mark">AO</span>
+	  <span class="brand-text">
+ 	   <span class="brand-name">AO Labs</span>
+ 	   <span class="brand-sub">AO stands for Alan Operator</span>
+	  </span>
+	</a>
       <nav class="nav" aria-label="Primary">
         <div class="nav-links">
           <a href="#sample">Sample</a>
