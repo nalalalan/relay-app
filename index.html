@@ -193,7 +193,7 @@
     }
 
     .hero-title {
-      max-width: 700px;
+      max-width: 720px;
       font-size: clamp(42px, 5vw, 72px);
       line-height: 0.96;
       letter-spacing: -0.055em;
@@ -202,10 +202,10 @@
     }
 
     .hero-copy {
-      max-width: 700px;
+      max-width: 720px;
       margin-top: 18px;
       font-size: clamp(19px, 1.55vw, 24px);
-      line-height: 1.4;
+      line-height: 1.42;
       color: var(--muted);
       letter-spacing: -0.025em;
     }
@@ -227,7 +227,7 @@
       font-size: 17px;
       color: var(--muted);
       letter-spacing: -0.02em;
-      max-width: 720px;
+      max-width: 760px;
     }
 
     .hero-proofline strong { color: var(--text); }
@@ -389,6 +389,7 @@
     }
 
     .why-wrap,
+    .research-wrap,
     .sample-wrap {
       display: grid;
       grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
@@ -397,6 +398,7 @@
     }
 
     .why-card,
+    .research-card,
     .proof-card,
     .step-card,
     .cta-card {
@@ -407,11 +409,13 @@
     }
 
     .why-card,
+    .research-card,
     .proof-card {
       padding: 24px;
     }
 
     .why-grid,
+    .research-grid,
     .proof-grid,
     .steps-grid {
       display: grid;
@@ -423,7 +427,12 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .research-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .why-block h3,
+    .research-block h3,
     .proof-block h3,
     .step-card h3 {
       font-size: 18px;
@@ -434,6 +443,8 @@
     }
 
     .why-block p,
+    .research-block p,
+    .research-source,
     .proof-block li,
     .proof-note,
     .step-card p,
@@ -451,6 +462,16 @@
       padding-left: 24px;
       display: grid;
       gap: 10px;
+    }
+
+    .research-source {
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    .research-source a {
+      color: var(--accent-dark);
+      text-decoration: underline;
     }
 
     .proof-note {
@@ -522,6 +543,7 @@
     @media (max-width: 1160px) {
       .hero-grid,
       .why-wrap,
+      .research-wrap,
       .sample-wrap {
         grid-template-columns: 1fr;
       }
@@ -532,6 +554,7 @@
     @media (max-width: 920px) {
       .why-grid,
       .proof-grid,
+      .research-grid,
       .steps-grid,
       .founder-pills {
         grid-template-columns: 1fr;
@@ -599,6 +622,7 @@
       }
       .founder-card,
       .why-card,
+      .research-card,
       .proof-card,
       .step-card,
       .cta-card { padding: 22px; }
@@ -639,13 +663,13 @@
         <div class="hero-grid">
           <div class="hero-main">
             <div class="eyebrow">For teams that do not want to do this in ChatGPT themselves</div>
-            <h1 class="hero-title">Your team can use ChatGPT for free. That does not mean anyone wants to do the after-call cleanup.</h1>
-            <p class="hero-copy">If your team is happy pasting rough call notes into ChatGPT, cleaning up the output themselves, turning it into something client-safe themselves, writing the follow-up themselves, and updating the CRM themselves, do not buy this. <strong>AO Labs is for teams that want to send rough notes and get the finished recap, next steps, follow-up draft, and CRM-ready update back the same day.</strong></p>
+            <h1 class="hero-title">ChatGPT can generate text. It does not make the annoying after-call cleanup disappear.</h1>
+            <p class="hero-copy">If your team is happy pasting rough call notes into ChatGPT, deciding what matters, cleaning up the output, drafting the follow-up, and updating the CRM themselves, do not buy this. <strong>AO Labs is for teams that want to hand off that annoying after-call work and get the finished recap, next steps, follow-up draft, and CRM-ready update back the same day.</strong></p>
             <div class="hero-actions">
               <a class="btn btn-primary checkout-link" href="#buy">Buy the $40 packet</a>
               <a class="btn btn-secondary" href="sample.pdf" target="_blank" rel="noopener">Open sample PDF</a>
             </div>
-            <p class="hero-proofline"><strong>Not access to ChatGPT.</strong> Completed after-call work, back the same day.</p>
+            <p class="hero-proofline"><strong>Not access to ChatGPT.</strong> The ugly after-call work, finished and returned the same day.</p>
           </div>
 
           <div class="hero-side">
@@ -677,7 +701,7 @@
             </div>
           </div>
 
-          <p class="founder-copy">Before my PhD, I spent about three years working as a design/mechanical engineer in industry, where a big part of the job was not just designing things but pushing real work across the line with customers, managers, vendors, and follow-through. I built AO Labs because I got tired of seeing good conversations create momentum and then quietly die because nobody wanted to own the ugly work after the call — recap, next steps, follow-up, and CRM cleanup. That always felt stupid and avoidable to me. AO Labs is my way of making sure the work after a strong call actually gets finished.</p>
+          <p class="founder-copy">Before my PhD, I spent about three years working as a design and mechanical engineer in industry, where a big part of the job was not just designing things but pushing real work across the line with customers, managers, vendors, and follow-through. I built AO Labs because I got tired of seeing good conversations create momentum and then quietly die because nobody wanted to own the ugly work after the call — recap, next steps, follow-up, and CRM cleanup. That always felt stupid and avoidable to me. AO Labs is my way of making sure the work after a strong call actually gets finished.</p>
 
           <div class="founder-pills">
             <div class="founder-pill">Real sample packet on the page</div>
@@ -693,7 +717,7 @@
         <div>
           <div class="section-kicker">Why pay if ChatGPT is free?</div>
           <h2 class="section-title">Because “we have ChatGPT” and “the work got done” are not the same thing.</h2>
-          <p class="section-subtitle">The expensive part is not opening a model. The expensive part is having a founder, closer, or account manager spend more time cleaning up rough notes, deciding what matters, rewriting weak output, making it client-safe, drafting the follow-up, fixing the CRM, and making sure anything actually moves.</p>
+          <p class="section-subtitle">A model can generate text. It does not decide, by itself, what matters from messy notes, clean the output into something client-safe, draft the follow-up, update the CRM, and make sure any of it actually gets sent. That still lands on someone at your company.</p>
         </div>
 
         <div class="why-card">
@@ -701,25 +725,57 @@
             <div class="why-block">
               <h3>Doing it yourself in ChatGPT</h3>
               <ul>
-                <li>Someone on your team still owns the work</li>
-                <li>Rough notes still need judgment and cleanup</li>
-                <li>Output still needs rewriting</li>
-                <li>CRM still needs updating</li>
-                <li>Follow-up can still slip</li>
+                <li>Someone still has to own the work</li>
+                <li>Someone still has to decide what matters</li>
+                <li>Someone still has to clean rough notes into something usable</li>
+                <li>Someone still has to turn it into recap + next steps + follow-up + CRM update</li>
+                <li>Someone still has to make sure it actually gets done</li>
               </ul>
             </div>
             <div class="why-block">
               <h3>Using AO Labs</h3>
               <ul>
-                <li>The work comes back finished</li>
-                <li>Recap is clean and client-safe</li>
-                <li>Next steps are already clear</li>
-                <li>Follow-up draft is ready</li>
-                <li>CRM-ready update is ready</li>
+                <li>You send rough notes from one real call</li>
+                <li>The recap comes back finished</li>
+                <li>The next steps come back clear</li>
+                <li>The follow-up draft comes back ready</li>
+                <li>The CRM-ready update comes back ready</li>
+                <li>The ugly after-call work is off your team’s plate</li>
               </ul>
             </div>
           </div>
-          <div class="proof-note"><strong>The value is not the tool.</strong> The value is that the ugly after-call work is owned, finished, and returned the same day.</div>
+          <div class="proof-note"><strong>The value is not that text gets generated.</strong> The value is that someone actually owns the messy after-call work and finishes it the same day.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="research">
+      <div class="wrap research-wrap">
+        <div>
+          <div class="section-kicker">Proof that DIY still costs time</div>
+          <h2 class="section-title">If your team does this manually in ChatGPT, the hidden cost is still internal time.</h2>
+          <p class="section-subtitle">You do not need another tool if you genuinely want to own the cleanup yourself. You need this if you want that work off your plate.</p>
+        </div>
+
+        <div class="research-card">
+          <div class="research-grid">
+            <div class="research-block">
+              <h3>Sales teams already lose time to non-selling work</h3>
+              <p>Salesforce reports that reps spend only 28% of their week actually selling, which means most of their time is already going to admin and other non-selling work.</p>
+              <div class="research-source"><a href="https://www.salesforce.com/eu/sales/state-of-sales/sales-trends/" target="_blank" rel="noopener">Source: Salesforce</a></div>
+            </div>
+
+            <div class="research-block">
+              <h3>Work is already fragmented</h3>
+              <p>Microsoft reports that employees are interrupted every two minutes by meetings, email, or notifications. Adding more manual recap and follow-up work only makes that worse.</p>
+              <div class="research-source"><a href="https://www.microsoft.com/en-us/worklab/work-trend-index/breaking-down-infinite-workday" target="_blank" rel="noopener">Source: Microsoft Work Trend Index</a></div>
+            </div>
+
+            <div class="research-block">
+              <h3>The cost is the labor, not the prompt</h3>
+              <p>Even if ChatGPT is free, somebody still has to do the cleanup, review the output, and move the work forward. That labor cost is the real cost this product is trying to remove.</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
