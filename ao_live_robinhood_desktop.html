@@ -26,194 +26,54 @@
     html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
     a{text-decoration:none;color:inherit}
     button{font:inherit}
-    .page{
-      min-height:100vh;
-      padding:22px;
-      display:grid;
-      grid-template-columns:260px minmax(0,1fr);
-      gap:20px;
-    }
-    .sidebar,.panel,.hero,.card{
-      background:linear-gradient(180deg,var(--panel) 0%, var(--panel-2) 100%);
-      border:1px solid var(--line);
-      box-shadow:var(--shadow);
-    }
-    .sidebar{
-      border-radius:28px;
-      padding:18px;
-      display:grid;
-      grid-template-rows:auto auto 1fr auto;
-      gap:18px;
-      position:sticky;
-      top:22px;
-      height:calc(100vh - 44px);
-    }
-    .brand{
-      display:flex;align-items:center;gap:12px;
-    }
-    .logo{
-      width:44px;height:44px;border-radius:14px;
-      display:grid;place-items:center;
-      background:rgba(0,200,5,.12);
-      border:1px solid rgba(0,200,5,.18);
-      color:var(--green-2);
-      font-weight:900;
-      letter-spacing:-.04em;
-    }
-    .brand h1{
-      margin:0;font-size:18px;line-height:1;font-weight:850;letter-spacing:-.04em;
-    }
-    .brand p{
-      margin:4px 0 0;font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;
-    }
-    .status-pill{
-      display:inline-flex;align-items:center;gap:9px;
-      padding:10px 12px;border-radius:999px;
-      background:rgba(255,255,255,.02);
-      border:1px solid var(--line);
-      font-size:12px;color:var(--muted);
-      width:max-content;
-    }
-    .dot{
-      width:8px;height:8px;border-radius:999px;background:var(--green);
-      box-shadow:0 0 0 4px rgba(0,200,5,.12);
-    }
-    .nav{
-      display:grid;gap:10px;
-    }
-    .navbtn{
-      border:none;background:transparent;color:var(--muted);
-      text-align:left;padding:12px 12px;border-radius:14px;cursor:pointer;
-      font-size:14px;font-weight:700;
-    }
-    .navbtn.active,.navbtn:hover{
-      background:rgba(0,200,5,.10);color:var(--green-2);
-    }
-    .sidebar-meta{
-      display:grid;gap:12px;align-content:end;
-    }
-    .small-kicker{
-      font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;
-    }
-    .small-value{
-      font-size:20px;font-weight:800;letter-spacing:-.04em;
-    }
-    .main{
-      display:grid;
-      gap:20px;
-      align-content:start;
-    }
-    .topbar{
-      display:flex;align-items:center;justify-content:space-between;gap:14px;
-    }
-    .topbar h2{
-      margin:0;font-size:30px;font-weight:850;letter-spacing:-.05em;
-    }
-    .topbar p{
-      margin:6px 0 0;color:var(--muted);font-size:14px;
-    }
+    .page{min-height:100vh;padding:22px;display:grid;grid-template-columns:260px minmax(0,1fr);gap:20px}
+    .sidebar,.panel,.hero,.card{background:linear-gradient(180deg,var(--panel) 0%, var(--panel-2) 100%);border:1px solid var(--line);box-shadow:var(--shadow)}
+    .sidebar{border-radius:28px;padding:18px;display:grid;grid-template-rows:auto auto 1fr auto;gap:18px;position:sticky;top:22px;height:calc(100vh - 44px)}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:rgba(0,200,5,.12);border:1px solid rgba(0,200,5,.18);color:var(--green-2);font-weight:900;letter-spacing:-.04em}
+    .brand h1{margin:0;font-size:18px;line-height:1;font-weight:850;letter-spacing:-.04em}
+    .brand p{margin:4px 0 0;font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+    .status-pill{display:inline-flex;align-items:center;gap:9px;padding:10px 12px;border-radius:999px;background:rgba(255,255,255,.02);border:1px solid var(--line);font-size:12px;color:var(--muted);width:max-content}
+    .dot{width:8px;height:8px;border-radius:999px;background:var(--green);box-shadow:0 0 0 4px rgba(0,200,5,.12)}
+    .nav{display:grid;gap:10px}
+    .navbtn{border:none;background:transparent;color:var(--muted);text-align:left;padding:12px 12px;border-radius:14px;cursor:pointer;font-size:14px;font-weight:700}
+    .navbtn.active,.navbtn:hover{background:rgba(0,200,5,.10);color:var(--green-2)}
+    .sidebar-meta{display:grid;gap:12px;align-content:end}
+    .small-kicker{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+    .small-value{font-size:20px;font-weight:800;letter-spacing:-.04em}
+    .main{display:grid;gap:20px;align-content:start}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px}
+    .topbar h2{margin:0;font-size:30px;font-weight:850;letter-spacing:-.05em}
+    .topbar p{margin:6px 0 0;color:var(--muted);font-size:14px}
     .top-actions{display:flex;gap:10px;flex-wrap:wrap}
-    .btn{
-      border:none;border-radius:16px;padding:12px 14px;font-size:13px;font-weight:800;cursor:pointer;
-    }
-    .btn-primary{
-      background:rgba(0,200,5,.14);color:var(--green-2);border:1px solid rgba(0,200,5,.18);
-    }
-    .btn-ghost{
-      background:rgba(255,255,255,.02);color:var(--text);border:1px solid var(--line);
-    }
-    .hero{
-      border-radius:28px;
-      padding:22px 22px 18px;
-      display:grid;
-      grid-template-columns:minmax(0,1fr) 280px;
-      gap:20px;
-      align-items:start;
-    }
-    .hero .label{
-      color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;
-    }
-    .hero .value{
-      font-size:64px;line-height:.92;font-weight:900;letter-spacing:-.07em;margin:0 0 10px;
-      font-variant-numeric:tabular-nums;
-    }
-    .hero .sub{
-      display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:14px;
-    }
-    .hero-side{
-      display:grid;gap:12px;
-    }
-    .mini-stat{
-      border:1px solid var(--line);
-      border-radius:20px;
-      padding:14px;
-      background:rgba(255,255,255,.02);
-    }
-    .mini-stat .k{
-      font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;
-    }
-    .mini-stat .v{
-      font-size:28px;line-height:1;font-weight:850;letter-spacing:-.05em;
-      font-variant-numeric:tabular-nums;
-    }
-    .mini-stat .s{
-      margin-top:8px;color:var(--muted);font-size:13px;line-height:1.35;
-    }
-    .chart-wrap{
-      margin-top:16px;
-      padding:14px;
-      border-radius:22px;
-      border:1px solid rgba(255,255,255,.05);
-      background:rgba(255,255,255,.02);
-    }
-    .chart-head{
-      display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;
-    }
-    .chart-title{
-      font-size:13px;color:var(--muted);
-    }
+    .btn{border:none;border-radius:16px;padding:12px 14px;font-size:13px;font-weight:800;cursor:pointer}
+    .btn-primary{background:rgba(0,200,5,.14);color:var(--green-2);border:1px solid rgba(0,200,5,.18)}
+    .btn-ghost{background:rgba(255,255,255,.02);color:var(--text);border:1px solid var(--line)}
+    .hero{border-radius:28px;padding:22px 22px 18px;display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:20px;align-items:start}
+    .hero .label{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+    .hero .value{font-size:64px;line-height:.92;font-weight:900;letter-spacing:-.07em;margin:0 0 10px;font-variant-numeric:tabular-nums}
+    .hero .sub{display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:14px}
+    .hero-side{display:grid;gap:12px}
+    .mini-stat{border:1px solid var(--line);border-radius:20px;padding:14px;background:rgba(255,255,255,.02)}
+    .mini-stat .k{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+    .mini-stat .v{font-size:24px;line-height:1.05;font-weight:850;letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+    .mini-stat .s{margin-top:8px;color:var(--muted);font-size:13px;line-height:1.35}
+    .chart-wrap{margin-top:16px;padding:14px;border-radius:22px;border:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.02)}
+    .chart-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+    .chart-title{font-size:13px;color:var(--muted)}
     .tabs{display:flex;gap:8px;flex-wrap:wrap}
-    .tab{
-      border:none;border-radius:999px;padding:8px 12px;
-      background:#171d27;color:var(--muted);font-size:12px;font-weight:800;cursor:pointer;
-    }
-    .tab.active{
-      background:rgba(0,200,5,.14);color:var(--green-2);
-    }
+    .tab{border:none;border-radius:999px;padding:8px 12px;background:#171d27;color:var(--muted);font-size:12px;font-weight:800;cursor:pointer}
+    .tab.active{background:rgba(0,200,5,.14);color:var(--green-2)}
     svg{display:block;width:100%;height:240px}
-    .axis{
-      display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-top:6px;
-    }
-    .grid{
-      display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
-      gap:16px;
-    }
-    .card{
-      border-radius:22px;
-      padding:16px;
-    }
-    .card .k{
-      font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;
-    }
-    .card .v{
-      font-size:32px;line-height:1;font-weight:850;letter-spacing:-.05em;font-variant-numeric:tabular-nums;
-    }
-    .card .s{
-      margin-top:8px;color:var(--muted);font-size:13px;line-height:1.35;
-    }
-    .double{
-      display:grid;
-      grid-template-columns:1.15fr .85fr;
-      gap:20px;
-    }
-    .panel{
-      border-radius:26px;
-      padding:18px;
-    }
-    .panel h3{
-      margin:0 0 14px;font-size:16px;letter-spacing:-.03em;
-    }
+    .axis{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-top:6px}
+    .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+    .card{border-radius:22px;padding:16px}
+    .card .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+    .card .v{font-size:32px;line-height:1;font-weight:850;letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+    .card .s{margin-top:8px;color:var(--muted);font-size:13px;line-height:1.35}
+    .double{display:grid;grid-template-columns:1.15fr .85fr;gap:20px}
+    .panel{border-radius:26px;padding:18px}
+    .panel h3{margin:0 0 14px;font-size:16px;letter-spacing:-.03em}
     .bars{display:grid;gap:12px}
     .barrow{display:grid;gap:6px}
     .barname{display:flex;justify-content:space-between;gap:10px;font-size:13px}
@@ -223,13 +83,7 @@
     .rows{display:grid;gap:12px}
     .row{display:flex;justify-content:space-between;gap:12px;font-size:14px}
     .row .left{color:var(--muted)}
-    .statusline{
-      margin-top:14px;
-      color:var(--muted);
-      font-size:12px;
-      line-height:1.45;
-      min-height:38px;
-    }
+    .statusline{margin-top:14px;color:var(--muted);font-size:12px;line-height:1.45;min-height:40px}
     .good{color:var(--green-2)}
     .bad{color:var(--red)}
     .warn{color:var(--yellow)}
@@ -273,7 +127,7 @@
       <div class="sidebar-meta">
         <div>
           <div class="small-kicker">Market status</div>
-          <div class="small-value" id="marketStatus">OPEN</div>
+          <div class="small-value" id="marketStatus">CLOSED</div>
         </div>
         <div>
           <div class="small-kicker">Next likely tick</div>
@@ -286,7 +140,7 @@
       <div class="topbar">
         <div>
           <h2>AO Live Market</h2>
-          <p>Watch sends, money, and send windows move like a trading dashboard.</p>
+          <p>Watch sends, money, and the real cold-email session window.</p>
         </div>
         <div class="top-actions">
           <button class="btn btn-ghost" id="refreshBtn">Refresh now</button>
@@ -320,9 +174,14 @@
 
         <div class="hero-side">
           <div class="mini-stat">
-            <div class="k">Market open</div>
+            <div class="k">Session hours</div>
+            <div class="v mono" id="sessionHours">09:30–11:30</div>
+            <div class="s" id="sessionTz">America/New_York</div>
+          </div>
+          <div class="mini-stat">
+            <div class="k">Next open</div>
             <div class="v mono" id="marketOpen">--:--</div>
-            <div class="s">first 5-minute tick after the daily reset</div>
+            <div class="s" id="openReason">cold sends only during session</div>
           </div>
           <div class="mini-stat">
             <div class="k">Next likely tick</div>
@@ -330,9 +189,9 @@
             <div class="s" id="nextOps">ops --:--</div>
           </div>
           <div class="mini-stat">
-            <div class="k">Market close</div>
-            <div class="v mono" id="marketClose">cap hit</div>
-            <div class="s" id="marketCloseReason">or no due leads</div>
+            <div class="k">Next close</div>
+            <div class="v mono" id="marketClose">--:--</div>
+            <div class="s" id="marketCloseReason">window end</div>
           </div>
         </div>
       </section>
@@ -382,29 +241,28 @@
   <script>
     const STATUS_URL = "https://alan-operator-backend-production.up.railway.app/custom-outreach/status";
     const MONEY_URL  = "https://alan-operator-backend-production.up.railway.app/ops/money-summary";
-    const STORAGE_KEY = "ao_live_desktop_history_v1";
+    const STORAGE_KEY = "ao_live_desktop_history_v2";
     let metric = "sent";
     let lastPayload = null;
 
     function $(id){ return document.getElementById(id); }
 
-    function timeFmt(d){
-      return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    function fmtTime(date){
+      return date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
     }
 
-    function nextBoundary(minutes){
-      const d = new Date();
-      const next = new Date(d);
-      next.setSeconds(0);
-      next.setMilliseconds(0);
-      let add = minutes - (d.getMinutes() % minutes);
-      if (add === minutes && d.getSeconds() === 0) add = 0;
-      next.setMinutes(d.getMinutes() + add);
-      return next;
+    function fmtTimeShort(date){
+      return date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     }
 
-    function nextUtcResetDate(now = new Date()){
-      return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+    function nextBoundary(minutes, fromDate = new Date()){
+      const d = new Date(fromDate);
+      d.setSeconds(0);
+      d.setMilliseconds(0);
+      let add = minutes - (fromDate.getMinutes() % minutes);
+      if (add === minutes && fromDate.getSeconds() === 0) add = 0;
+      d.setMinutes(fromDate.getMinutes() + add);
+      return d;
     }
 
     function loadHistory(){
@@ -499,31 +357,90 @@
       }).join("");
     }
 
-    function marketStatusText(status){
+    function getWindowFromStatus(status){
+      if (status.send_window_start_local && status.send_window_end_local) {
+        const start = new Date(status.send_window_start_local);
+        const end = new Date(status.send_window_end_local);
+        const tz = status.send_window_timezone || "America/New_York";
+        const isOpen = Boolean(status.send_window_is_open);
+        return { start, end, tz, isOpen, source: "backend" };
+      }
+
+      const now = new Date();
+      const start = new Date(now);
+      start.setHours(9, 30, 0, 0);
+      const end = new Date(now);
+      end.setHours(11, 30, 0, 0);
+      const isOpen = now >= start && now < end;
+      return { start, end, tz: "America/New_York", isOpen, source: "fallback" };
+    }
+
+    function addDays(date, days){
+      const d = new Date(date);
+      d.setDate(d.getDate() + days);
+      return d;
+    }
+
+    function sessionState(status){
+      const now = new Date();
       const sent = Number(status.sent_today || 0);
       const cap = Number(status.daily_send_cap || 0);
       const due = Number(status.due_now_count || 0);
-      if(cap > 0 && sent >= cap) return ["CLOSED", "daily cap hit"];
-      if(due > 0) return ["OPEN", "emails are eligible on the next 5-minute tick"];
-      return ["IDLE", "no leads are due right now"];
+      const win = getWindowFromStatus(status);
+
+      let nextOpen = win.start;
+      let nextClose = win.end;
+
+      if (now >= win.end) {
+        nextOpen = addDays(win.start, 1);
+        nextClose = addDays(win.end, 1);
+      }
+
+      if (now < win.start) {
+        nextOpen = win.start;
+        nextClose = win.end;
+      }
+
+      let label = "CLOSED";
+      let reason = "outside send window";
+
+      if (sent >= cap && cap > 0) {
+        label = "CLOSED";
+        reason = "daily cap hit";
+      } else if (!win.isOpen) {
+        label = "CLOSED";
+        reason = "outside send window";
+      } else if (due <= 0) {
+        label = "IDLE";
+        reason = "no leads are due right now";
+      } else {
+        label = "OPEN";
+        reason = "eligible to send on the next 5-minute tick";
+      }
+
+      let nextTick = nextOpen;
+      if (label === "OPEN") {
+        nextTick = nextBoundary(5, now);
+      }
+
+      return { label, reason, nextOpen, nextClose, nextTick, win };
     }
 
     function render(status, money){
       lastPayload = {status, money};
+
+      const session = sessionState(status);
       $("liveState").textContent = "live";
-
-      const [marketLabel, marketReason] = marketStatusText(status);
-      const nextOpen = nextUtcResetDate();
-
-      $("marketStatus").textContent = marketLabel;
-      $("marketOpen").textContent = timeFmt(nextOpen);
-      $("nextSend").textContent = timeFmt(nextBoundary(5));
-      $("nextSendSide").textContent = timeFmt(nextBoundary(5));
-      $("nextOps").textContent = `ops ${timeFmt(nextBoundary(15))}`;
-      $("marketClose").textContent = (Number(status.sent_today || 0) >= Number(status.daily_send_cap || 0)) ? "closed" : "cap hit";
-      $("marketCloseReason").textContent = (Number(status.sent_today || 0) >= Number(status.daily_send_cap || 0))
-        ? `reopens ${timeFmt(nextOpen)}`
-        : "or when due now goes to 0";
+      $("marketStatus").textContent = session.label;
+      $("marketOpen").textContent = fmtTimeShort(session.nextOpen);
+      $("openReason").textContent = `next session open · ${session.win.tz}`;
+      $("nextSend").textContent = fmtTime(session.nextTick);
+      $("nextSendSide").textContent = fmtTime(session.nextTick);
+      $("nextOps").textContent = `ops ${fmtTime(nextBoundary(15))}`;
+      $("marketClose").textContent = fmtTimeShort(session.nextClose);
+      $("marketCloseReason").textContent = session.reason;
+      $("sessionHours").textContent = `${fmtTimeShort(session.win.start)}–${fmtTimeShort(session.win.end)}`;
+      $("sessionTz").textContent = `${session.win.tz} · ${session.win.source === "backend" ? "live backend window" : "fallback window"}`;
 
       $("heroValue").textContent = `$${Number(money.week?.gross_usd || 0).toFixed(2)}`;
       $("heroSubA").textContent = `today $${Number(money.today?.gross_usd || 0).toFixed(2)}`;
@@ -547,8 +464,7 @@
       pushHistory(status, money);
       drawChart();
 
-      const explanation = `market open = next 5-minute sender tick after the UTC daily reset. market stays open while due_now > 0 until your daily cap is hit. currently: ${marketReason}.`;
-      $("statusLine").innerHTML = `<span class="good">Last update ${timeFmt(new Date())}</span><br>${explanation}`;
+      $("statusLine").innerHTML = `<span class="good">Last update ${fmtTime(new Date())}</span><br>Cold outreach only sends inside the real session window. Outside that window, the cron may wake up but it should send 0. Current state: ${session.reason}.`;
     }
 
     async function fetchAll(){
@@ -557,11 +473,9 @@
           fetch(STATUS_URL, {cache:"no-store"}),
           fetch(MONEY_URL, {cache:"no-store"})
         ]);
-
         if(!statusRes.ok || !moneyRes.ok){
           throw new Error(`status ${statusRes.status} / money ${moneyRes.status}`);
         }
-
         const status = await statusRes.json();
         const money = await moneyRes.json();
         render(status, money);
@@ -591,7 +505,7 @@
         `money_today=${m.today?.gross_usd || 0}`,
         `money_week=${m.week?.gross_usd || 0}`,
         `money_month=${m.month?.gross_usd || 0}`
-      ].join("\n");
+      ].join("\\n");
       await navigator.clipboard.writeText(text);
       $("statusLine").innerHTML = `<span class="good">Status copied.</span>`;
     });
@@ -608,10 +522,14 @@
     fetchAll();
     setInterval(fetchAll, 5000);
     setInterval(() => {
-      $("nextSend").textContent = timeFmt(nextBoundary(5));
-      $("nextSendSide").textContent = timeFmt(nextBoundary(5));
-      $("nextOps").textContent = `ops ${timeFmt(nextBoundary(15))}`;
-      $("marketOpen").textContent = timeFmt(nextUtcResetDate());
+      if(lastPayload){
+        const session = sessionState(lastPayload.status);
+        $("nextSend").textContent = fmtTime(session.nextTick);
+        $("nextSendSide").textContent = fmtTime(session.nextTick);
+        $("nextOps").textContent = `ops ${fmtTime(nextBoundary(15))}`;
+        $("marketOpen").textContent = fmtTimeShort(session.nextOpen);
+        $("marketClose").textContent = fmtTimeShort(session.nextClose);
+      }
     }, 1000);
   </script>
 </body>
