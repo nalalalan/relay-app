@@ -77,6 +77,14 @@
     .card .v{font-size:32px;line-height:1;font-weight:850;letter-spacing:-.05em;font-variant-numeric:tabular-nums}
     .card .s{margin-top:8px;color:var(--muted);font-size:13px;line-height:1.35}
     .double{display:grid;grid-template-columns:1.15fr .85fr;gap:20px}
+    .triple{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+    .activity-list{display:grid;gap:10px}
+    .activity-item{padding:12px 14px;border-radius:16px;border:1px solid var(--line);background:rgba(255,255,255,.02)}
+    .activity-top{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:var(--muted);margin-bottom:6px}
+    .activity-title{font-size:14px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px}
+    .activity-sub{font-size:12px;color:var(--muted);line-height:1.35;margin-bottom:6px;word-break:break-word}
+    .activity-preview{font-size:13px;line-height:1.45;color:var(--text)}
+    .routing-grid{display:grid;gap:10px}
     .panel{border-radius:26px;padding:18px}
     .panel h3{margin:0 0 14px;font-size:16px;letter-spacing:-.03em}
     .bars{display:grid;gap:12px}
@@ -98,6 +106,7 @@
       .hero{grid-template-columns:1fr}
       .grid{grid-template-columns:1fr 1fr}
       .double{grid-template-columns:1fr}
+      .triple{grid-template-columns:1fr}
     }
     @media (max-width:720px){
       .page{padding:14px}
@@ -238,6 +247,28 @@
             <div class="row mono"><div class="left">Month</div><div id="moneyMonth">$0 · 0 payments</div></div>
           </div>
           <div class="statusline" id="statusLine">Booting…</div>
+        </section>
+      </div>
+
+      <div class="triple">
+        <section class="panel">
+          <h3>Email routing</h3>
+          <div class="routing-grid">
+            <div class="row mono"><div class="left">Reply-To</div><div id="replyToEmail">--</div></div>
+            <div class="row mono"><div class="left">IMAP mailbox</div><div id="replyMailbox">--</div></div>
+            <div class="row mono"><div class="left">Provider</div><div id="outboundProvider">--</div></div>
+            <div class="row mono"><div class="left">Last senders</div><div id="senderSummary">--</div></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h3>Recent sent emails</h3>
+          <div class="activity-list" id="recentSentList"></div>
+        </section>
+
+        <section class="panel">
+          <h3>Recent replies</h3>
+          <div class="activity-list" id="recentReplyList"></div>
         </section>
       </div>
     </main>
@@ -431,6 +462,52 @@
       return { label, reason, nextOpen, nextClose, nextTick, win };
     }
 
+    function escapeHtml(value){
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function humanAgo(iso){
+      if(!iso) return "";
+      const then = new Date(iso);
+      const diffMs = Date.now() - then.getTime();
+      const diffMin = Math.max(0, Math.round(diffMs / 60000));
+      if(diffMin < 1) return "just now";
+      if(diffMin < 60) return `${diffMin}m ago`;
+      const diffHr = Math.round(diffMin / 60);
+      if(diffHr < 24) return `${diffHr}h ago`;
+      const diffDay = Math.round(diffHr / 24);
+      return `${diffDay}d ago`;
+    }
+
+    function renderActivityList(elId, items, {incoming=false} = {}){
+      const el = $(elId);
+      if(!items || !items.length){
+        el.innerHTML = `<div class="activity-item"><div class="activity-title">none yet</div><div class="activity-sub">No events logged.</div></div>`;
+        return;
+      }
+      el.innerHTML = items.slice(0, 6).map(item => {
+        const when = humanAgo(item.created_at);
+        const company = item.company_name || item.from_name || item.from_email || item.to_email || "unknown";
+        const address = incoming ? (item.from_email || "") : (item.to_email || "");
+        const secondary = incoming ? (item.status || "") : (item.sender_address || "");
+        const preview = item.body_preview || "no preview stored yet";
+        const subject = item.subject || "(no subject)";
+        return `
+          <div class="activity-item">
+            <div class="activity-top"><span>${escapeHtml(when)}</span><span>${escapeHtml(subject)}</span></div>
+            <div class="activity-title">${escapeHtml(company)}</div>
+            <div class="activity-sub">${escapeHtml(address)}${secondary ? ` · ${escapeHtml(secondary)}` : ""}</div>
+            <div class="activity-preview">${escapeHtml(preview)}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
     function render(status, money){
       lastPayload = {status, money};
 
@@ -465,7 +542,14 @@
       $("moneyWeek").textContent = `$${Number(money.week?.gross_usd || 0).toFixed(2)} · ${money.week?.payments_count || 0} payments`;
       $("moneyMonth").textContent = `$${Number(money.month?.gross_usd || 0).toFixed(2)} · ${money.month?.payments_count || 0} payments`;
 
+      $("replyToEmail").textContent = status.reply_to_email || "--";
+      $("replyMailbox").textContent = status.reply_mailbox_address || "--";
+      $("outboundProvider").textContent = status.provider || "--";
+      $("senderSummary").textContent = Object.entries(status.sender_counts_today || {}).map(([k,v]) => `${k}:${v}`).join(" · ") || "none yet";
+
       renderSenderBars(status.sender_counts_today || {});
+      renderActivityList("recentSentList", status.recent_sent || []);
+      renderActivityList("recentReplyList", status.recent_replies || [], {incoming:true});
       pushHistory(status, money);
       drawChart();
 
@@ -507,6 +591,10 @@
         `in_sequence_count=${s.in_sequence_count}`,
         `daily_send_cap=${s.daily_send_cap}`,
         `sender_counts_today=${JSON.stringify(s.sender_counts_today || {})}`,
+        `reply_to_email=${s.reply_to_email || ''}`,
+        `reply_mailbox_address=${s.reply_mailbox_address || ''}`,
+        `recent_sent=${JSON.stringify((s.recent_sent || []).slice(0,3))}`,
+        `recent_replies=${JSON.stringify((s.recent_replies || []).slice(0,3))}`,
         `money_today=${m.today?.gross_usd || 0}`,
         `money_week=${m.week?.gross_usd || 0}`,
         `money_month=${m.month?.gross_usd || 0}`
