@@ -1,52 +1,876 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Relay by AO Labs</title>
-  <meta name="description" content="Relay turns rough call notes into client-ready follow-through.">
+  <meta name="description" content="Relay turns rough call notes into polished handoff packets, follow-up drafts, and CRM-ready next steps." />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <style>
-    :root{
-      --bg:#efebe2; --card:#fffaf4; --ink:#151313; --muted:#6f625b;
-      --line:#ded3c6; --accent:#c1844f; --soft:#f7efe8;
-      --shadow:0 28px 80px rgba(70,48,30,.14);
+    :root {
+      --bg: #ece8df;
+      --card: #f7f4ef;
+      --card-2: #efe9df;
+      --text: #141414;
+      --muted: #5f5a54;
+      --line: #d6cec2;
+      --accent: #bf8651;
+      --accent-dark: #a86f3a;
+      --shadow: 0 18px 44px rgba(20, 20, 20, 0.08);
+      --radius-xl: 32px;
+      --radius-lg: 24px;
+      --max: 1240px;
     }
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-    header{position:sticky;top:0;z-index:10;background:rgba(239,235,226,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
-    .nav{max-width:1180px;margin:auto;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px}
-    .brand{display:flex;align-items:center;gap:12px}
-    .mark{width:48px;height:48px;border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(120,80,40,.14)}
-    .mark svg{width:100%;height:100%;display:block}
-    .brand strong{font-size:24px;letter-spacing:-.04em}.brand span{display:block;font-size:11px;font-weight:900;letter-spacing:.16em;color:#6f625b}
-    .links{display:flex;align-items:center;gap:28px}.links a{color:#5d554f;text-decoration:none;font-size:16px}.btn{background:var(--accent);color:white!important;padding:16px 26px;border-radius:18px;font-weight:900;text-decoration:none;box-shadow:0 18px 50px rgba(193,132,79,.25)}
-    main{max-width:1180px;margin:auto;padding:42px 24px 56px}
-    .hero{display:grid;grid-template-columns:1.05fr .95fr;gap:42px;align-items:center}
-    .pill{display:inline-block;border:1px solid #dec7b2;background:#f7efe8;color:#a66c3f;border-radius:999px;padding:10px 18px;font-size:13px;font-weight:950;letter-spacing:.02em;margin-bottom:24px}
-    h1{font-size:clamp(52px,7vw,88px);line-height:.92;letter-spacing:-.075em;margin:0 0 22px}
-    .lead{font-size:22px;line-height:1.35;color:#5f554f;max-width:700px;margin:0 0 28px}
-    .actions{display:flex;gap:14px;flex-wrap:wrap}.secondary{background:#fffaf4;color:#151313!important;border:1px solid var(--line);padding:16px 26px;border-radius:18px;font-weight:900;text-decoration:none}
-    .sample{background:var(--card);border:1px solid var(--line);border-radius:32px;padding:22px;box-shadow:var(--shadow)}
-    .sample-head{display:flex;justify-content:space-between;color:#a66c3f;font-weight:950;text-transform:uppercase;letter-spacing:.06em;margin-bottom:18px}
-    .packet{background:#f2ede4;border:1px solid #d8cbbb;border-radius:24px;padding:34px}
-    .packet h3{font-size:30px;letter-spacing:-.04em;margin:0 0 8px}.packet h4{font-size:24px;color:#a66c3f;margin:18px 0 4px}
-    .mini{font-size:14px;color:#5f554f;line-height:1.45}.chips{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.chip{border:1px solid #d8cbbb;border-radius:999px;padding:7px 12px;background:#fffaf4;font-size:12px}
-    section{margin-top:56px}.card{background:var(--card);border:1px solid var(--line);border-radius:30px;padding:34px;box-shadow:var(--shadow)}
-    .split{display:grid;grid-template-columns:1fr 1fr;gap:24px}
-    h2{font-size:clamp(38px,5vw,68px);line-height:.95;letter-spacing:-.07em;margin:0 0 18px}
-    .compare{display:grid;grid-template-columns:1fr 1fr;gap:24px}.compare h3{font-size:22px;margin:0 0 12px}.compare li{margin:0 0 12px;color:#3f3833;font-size:17px;line-height:1.35}
-    .person{display:grid;grid-template-columns:220px 1fr;gap:34px;align-items:start}.person img{width:220px;border-radius:24px;box-shadow:0 20px 60px rgba(60,40,30,.12)}
-    .person h2{font-size:56px}.person p{font-size:20px;color:#5f554f;line-height:1.5}
-    footer{padding:32px 24px;color:#756b64;max-width:1180px;margin:auto}
-    @media(max-width:900px){.hero,.split,.compare,.person{grid-template-columns:1fr}.links{display:none}main{padding-top:28px}h1{font-size:58px}.person img{width:160px}}
-  </style>
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.32;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { display: block; max-width: 100%; }
+    h1, h2, h3, p { margin: 0; }
+
+    .wrap {
+      width: min(calc(100% - 40px), var(--max));
+      margin: 0 auto;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: rgba(236, 232, 223, 0.95);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(214, 206, 194, 0.9);
+    }
+
+    .topbar-inner {
+      min-height: 92px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+      flex: 0 1 auto;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 13px;
+      background: #f6efe7;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      box-shadow: inset 0 0 0 1px rgba(191,134,81,0.25), 0 8px 16px rgba(20,20,20,0.05);
+      overflow: hidden;
+    }
+
+    .brand-mark svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .brand-text {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .brand-name {
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 26px;
+      color: var(--muted);
+      font-size: 16px;
+      flex: 0 0 auto;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 26px;
+    }
+
+    .nav a:hover { color: var(--text); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 58px;
+      padding: 0 26px;
+      border-radius: 18px;
+      border: 1.5px solid transparent;
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(20, 20, 20, 0.08);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 12px 22px rgba(191, 134, 81, 0.22);
+    }
+    .btn-primary:hover { background: var(--accent-dark); }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.5);
+      color: var(--text);
+      border-color: var(--line);
+    }
+
+    .section {
+      padding: 44px 0;
+      border-top: 1px solid rgba(214, 206, 194, 0.92);
+    }
+
+    .hero {
+      border-top: none;
+      padding: 48px 0 34px;
+    }
+
+    .eyebrow,
+    .section-kicker {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0 18px;
+      border-radius: 999px;
+      background: rgba(191, 134, 81, 0.08);
+      border: 1px solid rgba(191, 134, 81, 0.24);
+      color: var(--accent-dark);
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 18px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(420px, 0.92fr);
+      gap: 36px;
+      align-items: start;
+    }
+
+    .hero-title {
+      max-width: 720px;
+      font-size: clamp(42px, 5vw, 72px);
+      line-height: 0.96;
+      letter-spacing: -0.055em;
+      font-weight: 950;
+      text-wrap: balance;
+    }
+
+    .hero-copy {
+      max-width: 720px;
+      margin-top: 18px;
+      font-size: clamp(19px, 1.55vw, 24px);
+      line-height: 1.42;
+      color: var(--muted);
+      letter-spacing: -0.025em;
+    }
+
+    .hero-copy strong {
+      color: var(--text);
+      font-weight: 850;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 28px;
+    }
+
+    .hero-proofline {
+      margin-top: 18px;
+      font-size: 17px;
+      color: var(--muted);
+      letter-spacing: -0.02em;
+      max-width: 760px;
+    }
+
+    .hero-proofline strong { color: var(--text); }
+
+    .hero-side {
+      display: grid;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .preview-shell {
+      background: linear-gradient(180deg, #f6f3ed 0%, #f2ede5 100%);
+      border-radius: 34px;
+      border: 1px solid var(--line);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .preview-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+      font-size: 15px;
+      font-weight: 900;
+      color: var(--accent-dark);
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+    }
+
+    .preview-frame {
+      border-radius: 26px;
+      background: #fffefc;
+      border: 1px solid var(--line);
+      padding: 14px;
+      box-shadow: 0 18px 38px rgba(20,20,20,0.06);
+    }
+
+    .preview-link {
+      display: block;
+      border-radius: 20px;
+      overflow: hidden;
+      background: #f5f0e8;
+      border: 1px solid var(--line);
+    }
+
+    .preview-link img {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1.04 / 1;
+      object-fit: cover;
+      object-position: top center;
+    }
+
+    .founder-section { padding-top: 8px; }
+
+    .founder-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+      padding: 30px;
+      display: grid;
+      gap: 22px;
+    }
+
+    .founder-header {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 28px;
+      align-items: center;
+    }
+
+    .founder-photo {
+      width: 220px;
+      height: 220px;
+      border-radius: 32px;
+      object-fit: cover;
+      object-position: center 22%;
+      border: 1px solid rgba(191, 134, 81, 0.22);
+      background: #efe7dd;
+      box-shadow: 0 10px 18px rgba(20,20,20,0.08);
+      display: block;
+    }
+
+    .founder-kicker {
+      color: var(--accent-dark);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .founder-title {
+      font-size: clamp(48px, 4vw, 62px);
+      line-height: 0.95;
+      letter-spacing: -0.06em;
+      font-weight: 950;
+      margin-bottom: 12px;
+    }
+
+    .founder-role {
+      color: var(--muted);
+      font-size: 21px;
+      line-height: 1.42;
+      letter-spacing: -0.02em;
+      max-width: 860px;
+    }
+
+    .founder-copy {
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1.6;
+      letter-spacing: -0.02em;
+      margin: 0;
+    }
+
+    .founder-pills {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .founder-pill {
+      display: flex;
+      align-items: flex-start;
+      min-height: 0;
+      padding: 15px 16px;
+      border-radius: 18px;
+      background: rgba(191, 134, 81, 0.08);
+      border: 1px solid rgba(191, 134, 81, 0.18);
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.34;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .section-heading { margin-bottom: 22px; }
+
+    .section-title {
+      font-size: clamp(44px, 5.2vw, 72px);
+      line-height: 0.96;
+      letter-spacing: -0.06em;
+      font-weight: 950;
+      text-wrap: balance;
+      max-width: 900px;
+    }
+
+    .section-subtitle {
+      margin-top: 10px;
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.48;
+      letter-spacing: -0.02em;
+    }
+
+    .why-wrap,
+    .research-wrap,
+    .sample-wrap {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+      gap: 22px;
+      align-items: center;
+    }
+
+    .why-card,
+    .research-card,
+    .proof-card,
+    .step-card,
+    .cta-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+    }
+
+    .why-card,
+    .research-card,
+    .proof-card {
+      padding: 24px;
+    }
+
+    .why-grid,
+    .research-grid,
+    .proof-grid,
+    .steps-grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .why-grid,
+    .proof-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .research-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .why-block h3,
+    .research-block h3,
+    .proof-block h3,
+    .step-card h3 {
+      font-size: 18px;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      font-weight: 900;
+      margin-bottom: 12px;
+    }
+
+    .why-block p,
+    .research-block p,
+    .research-source,
+    .proof-block li,
+    .proof-note,
+    .step-card p,
+    .cta-subcopy,
+    .footer {
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.42;
+      letter-spacing: -0.02em;
+    }
+
+    .why-block ul,
+    .proof-block ul {
+      margin: 0;
+      padding-left: 24px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .research-source {
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    .research-source a {
+      color: var(--accent-dark);
+      text-decoration: underline;
+    }
+
+    .proof-note {
+      padding: 15px 16px;
+      border-radius: 18px;
+      background: var(--card-2);
+      border: 1px solid rgba(191, 134, 81, 0.16);
+      margin-top: 14px;
+    }
+
+    .proof-note strong { color: var(--text); }
+
+    .steps-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .step-card {
+      padding: 26px;
+      min-height: 182px;
+    }
+
+    .step-num {
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      background: #0f0f0f;
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      font-weight: 900;
+      margin-bottom: 20px;
+    }
+
+    .cta-card {
+      padding: 34px;
+      display: grid;
+      gap: 20px;
+      justify-items: center;
+      text-align: center;
+    }
+
+    .cta-title {
+      font-size: clamp(42px, 5vw, 72px);
+      line-height: 0.96;
+      letter-spacing: -0.06em;
+      font-weight: 950;
+      max-width: 820px;
+    }
+
+    .cta-subcopy {
+      margin-top: 14px;
+      max-width: 700px;
+    }
+
+    .cta-actions {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .footer {
+      padding: 18px 0 34px;
+    }
+
+    .disabled { opacity: 0.6; pointer-events: none; }
+
+    @media (max-width: 1160px) {
+      .hero-grid,
+      .why-wrap,
+      .research-wrap,
+      .sample-wrap {
+        grid-template-columns: 1fr;
+      }
+      .preview-link img { aspect-ratio: 1.08 / 1; }
+      .hero-side { order: 2; }
+    }
+
+    @media (max-width: 920px) {
+      .why-grid,
+      .proof-grid,
+      .research-grid,
+      .steps-grid,
+      .founder-pills {
+        grid-template-columns: 1fr;
+      }
+      .founder-header {
+        grid-template-columns: 160px minmax(0, 1fr);
+        gap: 18px;
+        align-items: start;
+      }
+      .founder-photo {
+        width: 160px;
+        height: 160px;
+        border-radius: 22px;
+      }
+      .hero-title { font-size: clamp(46px, 15vw, 68px); }
+      .section-title,
+      .cta-title { font-size: clamp(38px, 12vw, 56px); }
+    }
+
+    @media (max-width: 760px) {
+      .wrap { width: min(calc(100% - 24px), var(--max)); }
+      .topbar-inner {
+        min-height: auto;
+        align-items: stretch;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 0;
+      }
+      .brand { width: 100%; gap: 12px; }
+      .brand-name { font-size: 18px; }
+      .nav {
+        width: 100%;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px 12px;
+      }
+      .nav-links {
+        flex: 0 1 auto;
+        gap: 18px;
+        font-size: 15px;
+      }
+      .nav .btn {
+        flex: 0 0 auto;
+        width: auto;
+        min-height: 46px;
+        padding: 0 18px;
+        border-radius: 16px;
+        font-size: 15px;
+        margin-left: auto;
+      }
+      .hero-actions,
+      .cta-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .btn {
+        min-height: 54px;
+        width: 100%;
+      }
+      .hero-actions .btn,
+      .cta-actions .btn {
+        width: 100%;
+      }
+      .founder-card,
+      .why-card,
+      .research-card,
+      .proof-card,
+      .step-card,
+      .cta-card { padding: 22px; }
+      .founder-header { grid-template-columns: 1fr; }
+      .founder-photo {
+        width: 190px;
+        height: 190px;
+        border-radius: 26px;
+      }
+      .preview-shell { padding: 16px; border-radius: 28px; }
+      .preview-frame { padding: 12px; border-radius: 20px; }
+    }
+
+/* AO_RELAY_MOBILE_PATCH_V1 */
+@media (max-width: 760px) {
+  html, body {
+    overflow-x: hidden !important;
+  }
+
+  body {
+    font-size: 16px !important;
+  }
+
+  .site-header,
+  header,
+  .header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 50 !important;
+    min-height: unset !important;
+    padding: 10px 14px !important;
+    backdrop-filter: blur(14px) !important;
+  }
+
+  .nav,
+  nav {
+    gap: 14px !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+  }
+
+  .brand,
+  .logo-wrap {
+    gap: 9px !important;
+  }
+
+  .brand-mark,
+  .logo,
+  .mark {
+    width: 46px !important;
+    height: 46px !important;
+    min-width: 46px !important;
+    border-radius: 14px !important;
+  }
+
+  .brand-name {
+    font-size: 21px !important;
+    line-height: 1 !important;
+  }
+
+  .brand-sub {
+    font-size: 11px !important;
+    letter-spacing: .12em !important;
+  }
+
+  .nav-links,
+  .desktop-nav {
+    display: flex !important;
+    gap: 16px !important;
+    order: 3 !important;
+    width: 100% !important;
+    font-size: 15px !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    padding: 2px 0 0 !important;
+  }
+
+  .nav-links a,
+  .desktop-nav a {
+    font-size: 15px !important;
+  }
+
+  .nav-cta,
+  .header-cta,
+  .top-cta {
+    margin-left: auto !important;
+    padding: 11px 14px !important;
+    border-radius: 18px !important;
+    font-size: 14px !important;
+    white-space: nowrap !important;
+    max-width: 46vw !important;
+  }
+
+  main,
+  .main,
+  .page {
+    padding-top: 22px !important;
+  }
+
+  .hero,
+  .hero-section {
+    padding: 28px 20px 22px !important;
+    gap: 20px !important;
+  }
+
+  .eyebrow,
+  .pill,
+  .hero-eyebrow {
+    font-size: 13px !important;
+    line-height: 1.25 !important;
+    padding: 10px 14px !important;
+    border-radius: 999px !important;
+    text-align: center !important;
+  }
+
+  .hero-title,
+  h1 {
+    font-size: clamp(46px, 15vw, 70px) !important;
+    line-height: .91 !important;
+    letter-spacing: -0.065em !important;
+    max-width: 100% !important;
+    overflow-wrap: normal !important;
+  }
+
+  .hero-copy,
+  .hero p,
+  .lead {
+    font-size: 21px !important;
+    line-height: 1.35 !important;
+    max-width: 100% !important;
+  }
+
+  .hero-actions,
+  .cta-row,
+  .actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .hero-actions a,
+  .cta-row a,
+  .actions a,
+  .button,
+  .btn,
+  .primary-button {
+    width: 100% !important;
+    min-height: 58px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 22px !important;
+    font-size: 18px !important;
+    text-align: center !important;
+  }
+
+  .sample,
+  .sample-card,
+  .packet-preview,
+  .preview-card {
+    margin-top: 18px !important;
+    padding: 18px !important;
+    border-radius: 28px !important;
+  }
+
+  .sample img,
+  .packet-preview img,
+  .preview-card img,
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  .section,
+  section {
+    padding: 34px 20px !important;
+  }
+
+  .section-title,
+  h2 {
+    font-size: clamp(34px, 11vw, 52px) !important;
+    line-height: .98 !important;
+    letter-spacing: -0.045em !important;
+  }
+
+  .section-copy,
+  section p {
+    font-size: 19px !important;
+    line-height: 1.42 !important;
+  }
+
+  .founder,
+  .person-card,
+  .bio-card {
+    padding: 22px !important;
+    border-radius: 28px !important;
+  }
+
+  .founder img,
+  .person-card img,
+  .bio-card img {
+    width: 100% !important;
+    max-height: 360px !important;
+    object-fit: cover !important;
+    border-radius: 24px !important;
+  }
+
+  .cards,
+  .grid,
+  .features,
+  .steps {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .hero-title,
+  h1 {
+    font-size: clamp(42px, 14vw, 58px) !important;
+  }
+
+  .hero-copy,
+  .hero p,
+  .lead {
+    font-size: 19px !important;
+  }
+
+  .nav-cta,
+  .header-cta,
+  .top-cta {
+    max-width: 44vw !important;
+    font-size: 13px !important;
+    padding: 10px 12px !important;
+  }
+}
+/* AO_RELAY_MOBILE_PATCH_V1_END */
+
+</style>
 </head>
 <body>
-  <header>
-    <div class="nav">
-      <a class="brand" href="/">
-        <div class="mark">
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="#top" aria-label="Relay">
+        <span class="brand-mark">
           <svg viewBox="0 0 64 64" aria-label="Relay logo">
             <rect width="64" height="64" rx="18" fill="#c88452"/>
             <rect x="15" y="15" width="34" height="34" rx="9" fill="#fff8f2"/>
@@ -54,88 +878,273 @@
             <path d="M36 24 H42 V30" fill="none" stroke="#c88452" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
             <circle cx="23" cy="39" r="4" fill="#c88452"/>
           </svg>
-        </div>
-        <div><strong>Relay</strong><span>BY AO LABS</span></div>
+        </span>
+        <span class="brand-text">
+          <span class="brand-name">Relay</span>
+          <span class="brand-sub">by AO Labs</span>
+        </span>
       </a>
-      <nav class="links">
-        <a href="#sample">Sample</a>
-        <a href="#why">Why not just ChatGPT?</a>
-        <a class="btn" href="https://buy.stripe.com/bJeaEZb4mf6de64dSi2Nq02">Start the $40 relay</a>
+      <nav class="nav" aria-label="Primary">
+        <div class="nav-links">
+          <a href="#sample">Sample</a>
+          <a href="#why-not-ai">Why not just ChatGPT?</a>
+        </div>
+        <a class="btn btn-primary checkout-link" href="#buy">Start the $40 relay</a>
       </nav>
     </div>
   </header>
 
-  <main>
-    <section class="hero">
-      <div>
-        <div class="pill">Post-call handoff relay for founder-led agencies</div>
-        <h1>You open ChatGPT. You paste notes. You never finish it. Relay finishes it.</h1>
-        <p class="lead">Drop rough call notes. Get the recap, next steps, follow-up draft, and CRM-ready update done for you.</p>
-        <div class="actions">
-          <a class="btn" href="https://buy.stripe.com/bJeaEZb4mf6de64dSi2Nq02">Start the $40 relay</a>
-          <a class="secondary" href="#sample">Open sample PDF</a>
-        </div>
-      </div>
-
-      <div class="sample" id="sample">
-        <div class="sample-head"><span>What comes back after a call</span><span>Same day</span></div>
-        <div class="packet">
-          <h3>Relay</h3>
-          <div class="chip">Sample packet</div>
-          <h4>Post-Call Follow-Up Packet</h4>
-          <p class="mini">Northline Growth x Riverstone Dental Group</p>
-          <div class="chips">
-            <div class="chip">Call type: discovery</div>
-            <div class="chip">Lead source: paid search</div>
-            <div class="chip">Status: warm</div>
+  <main id="top">
+    <section class="section hero">
+      <div class="wrap">
+        <div class="hero-grid">
+          <div class="hero-main">
+            <div class="eyebrow">Post-call handoff relay for founder-led agencies</div>
+            <h1 class="hero-title">You open ChatGPT. You paste notes. You never finish it. Relay finishes it.</h1>
+            <p class="hero-copy">Drop rough call notes. Get the recap, next steps, follow-up draft, and CRM-ready update done for you.</p>
+            <div class="hero-actions">
+              <a class="btn btn-primary checkout-link" href="#buy">Start the $40 relay</a>
+              <a class="btn btn-secondary" href="sample.pdf" target="_blank" rel="noopener">Open sample PDF</a>
+            </div>
+            <p class="hero-proofline"><strong>Not another ChatGPT tab.</strong> The ugly after-call work, finished and returned the same day.</p>
           </div>
-          <h4>Client-ready recap email</h4>
-          <p class="mini">Thanks again for today's call. The immediate priority is tightening lead quality and getting same-day follow-up out after inbound consult requests.</p>
-          <h4>Next steps</h4>
-          <p class="mini">Audit scope, campaign breakdown, follow-up draft, CRM-ready update, and open questions returned in one clean packet.</p>
+
+          <div class="hero-side">
+            <div class="preview-shell">
+              <div class="preview-top">
+                <span>What comes back after a call</span>
+                <span>Same day</span>
+              </div>
+              <div class="preview-frame">
+                <a class="preview-link" href="sample.pdf" target="_blank" rel="noopener" aria-label="Open sample PDF">
+                  <img src="renders/page-1.png" onerror="this.onerror=null;this.src='sample-preview.png';" alt="Preview of the Relay sample relay" />
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-    <section id="why" class="split">
-      <div>
-        <div class="pill">Why not just ChatGPT?</div>
-        <h2>Because having ChatGPT and getting the work done are not the same thing.</h2>
-        <p class="lead">A model can generate text. Relay owns the messy after-call work and gets the usable follow-through finished.</p>
+    <section class="section founder-section">
+      <div class="wrap">
+        <article class="founder-card" aria-label="Founder note">
+          <div class="founder-header">
+            <img class="founder-photo" src="founder-headshot.jpg" alt="Alan Pham, founder of AO Labs" />
+            <div>
+              <div class="founder-kicker">Built by a real person</div>
+              <h2 class="founder-title">Alan Pham</h2>
+              <p class="founder-role">Mechanical engineer, robotics PhD researcher at WPI, NASA L'SPACE soft robotics researcher, and violinist.</p>
+            </div>
+          </div>
+
+          <p class="founder-copy">Before my PhD, I spent about three years working as a design and mechanical engineer in industry, where a big part of the job was not just designing things but pushing real work across the line with customers, managers, vendors, and follow-through. I built Relay because I got tired of seeing good conversations create momentum and then quietly die because nobody wanted to own the ugly work after the call — recap, next steps, follow-up, and CRM cleanup. That always felt stupid and avoidable to me. Relay is my way of making sure the work after a strong call actually gets finished.</p>
+
+          <div class="founder-pills">
+            <div class="founder-pill">Real sample relay on the page</div>
+            <div class="founder-pill">WPI robotics PhD + NASA L'SPACE</div>
+            <div class="founder-pill">Same-day post-call execution</div>
+          </div>
+        </article>
       </div>
-      <div class="card compare">
+    </section>
+
+    <section class="section" id="why-not-ai">
+      <div class="wrap why-wrap">
         <div>
-          <h3>Doing it yourself</h3>
-          <ul>
-            <li>You still decide what matters.</li>
-            <li>You still clean messy notes.</li>
-            <li>You still turn it into follow-up and CRM updates.</li>
-            <li>You still make sure it gets sent.</li>
-          </ul>
+          <div class="section-kicker">Why not just ChatGPT?</div>
+          <h2 class="section-title">Because having ChatGPT and getting the work done are not the same thing.</h2>
+          <p class="section-subtitle">A model can generate text. It does not decide, by itself, what matters from messy notes, clean the output into something client-safe, draft the follow-up, update the CRM, and make sure any of it actually gets sent. That still lands on someone at your company.</p>
         </div>
-        <div>
-          <h3>Using Relay</h3>
-          <ul>
-            <li>You send rough notes from one real call.</li>
-            <li>The recap comes back finished.</li>
-            <li>The follow-up draft comes back ready.</li>
-            <li>The ugly work is off your team's plate.</li>
-          </ul>
+
+        <div class="why-card">
+          <div class="why-grid">
+            <div class="why-block">
+              <h3>Doing it yourself in ChatGPT</h3>
+              <ul>
+                <li>Someone still has to own the work</li>
+                <li>Someone still has to decide what matters</li>
+                <li>Someone still has to clean rough notes into something usable</li>
+                <li>Someone still has to turn it into recap + next steps + follow-up + CRM update</li>
+                <li>Someone still has to make sure it actually gets done</li>
+              </ul>
+            </div>
+            <div class="why-block">
+              <h3>Using Relay</h3>
+              <ul>
+                <li>You send rough notes from one real call</li>
+                <li>The recap comes back finished</li>
+                <li>The next steps come back clear</li>
+                <li>The follow-up draft comes back ready</li>
+                <li>The CRM-ready update comes back ready</li>
+                <li>The ugly after-call work is off your team's plate</li>
+              </ul>
+            </div>
+          </div>
+          <div class="proof-note"><strong>The value is not that text gets generated.</strong> The value is that someone actually owns the messy after-call work and finishes it the same day.</div>
         </div>
       </div>
     </section>
 
-    <section class="card person">
-      <img src="alan.jpg" alt="Alan Pham">
-      <div>
-        <div class="pill">Built by a real person</div>
-        <h2>Alan Pham</h2>
-        <p>Mechanical engineer, robotics PhD researcher at WPI, NASA L'SPACE soft robotics researcher, and violinist.</p>
-        <p>I built Relay because good calls should not quietly die in messy notes. Relay makes sure the work after a strong call actually gets finished.</p>
+    <section class="section" id="research">
+      <div class="wrap research-wrap">
+        <div>
+          <div class="section-kicker">Proof that DIY still costs time</div>
+          <h2 class="section-title">If your team does this manually in ChatGPT, the hidden cost is still internal time.</h2>
+          <p class="section-subtitle">You do not need another tool if you genuinely want to own the cleanup yourself. You need this if you want that work off your plate.</p>
+        </div>
+
+        <div class="research-card">
+          <div class="research-grid">
+            <div class="research-block">
+              <h3>Sales teams already lose time to non-selling work</h3>
+              <p>Salesforce reports that reps spend only 28% of their week actually selling, which means most of their time is already going to admin and other non-selling work.</p>
+              <div class="research-source"><a href="https://www.salesforce.com/eu/sales/state-of-sales/sales-trends/" target="_blank" rel="noopener">Source: Salesforce</a></div>
+            </div>
+
+            <div class="research-block">
+              <h3>Work is already fragmented</h3>
+              <p>Microsoft reports that employees are interrupted every two minutes by meetings, email, or notifications. Adding more manual recap and follow-up work only makes that worse.</p>
+              <div class="research-source"><a href="https://www.microsoft.com/en-us/worklab/work-trend-index/breaking-down-infinite-workday" target="_blank" rel="noopener">Source: Microsoft Work Trend Index</a></div>
+            </div>
+
+            <div class="research-block">
+              <h3>The cost is the labor, not the prompt</h3>
+              <p>Even if ChatGPT is free, somebody still has to do the cleanup, review the output, and move the work forward. That labor cost is the real cost this product is trying to remove.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap">
+        <div class="section-heading">
+          <div class="section-kicker">How it works</div>
+          <h2 class="section-title">Three moves. That's it.</h2>
+          <p class="section-subtitle">This is a single paid delivery path. Buy first, then the intake link unlocks automatically.</p>
+        </div>
+        <div class="steps-grid">
+          <article class="step-card">
+            <div class="step-num">1</div>
+            <h3>Start the relay</h3>
+            <p>Pay once for one real call. This is the low-friction proof step.</p>
+          </article>
+          <article class="step-card">
+            <div class="step-num">2</div>
+            <h3>Get intake access</h3>
+            <p>Checkout unlocks the paid intake page so you can send rough notes from one real call.</p>
+          </article>
+          <article class="step-card">
+            <div class="step-num">3</div>
+            <h3>Get the relay back</h3>
+            <p>Use the output immediately for follow-up, CRM, and proposal motion the same day.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="sample">
+      <div class="wrap sample-wrap">
+        <div class="sample-copy">
+          <div class="section-kicker">Proof</div>
+          <h2 class="section-title">Open the actual sample relay.</h2>
+          <p class="section-subtitle">The sample shows the buyer-facing packet only. It leaves out operator-side notes so the buyer sees a clean deliverable instead of internal process text.</p>
+          <a class="btn btn-secondary" href="sample.pdf" target="_blank" rel="noopener">Open sample PDF</a>
+        </div>
+
+        <div class="proof-card">
+          <div class="proof-grid">
+            <div class="proof-block">
+              <h3>What the buyer sees</h3>
+              <ul>
+                <li>Client-ready recap email</li>
+                <li>Clear next steps</li>
+                <li>Open questions</li>
+                <li>Immediate execution plan</li>
+              </ul>
+            </div>
+            <div class="proof-block">
+              <h3>What live delivery also includes</h3>
+              <ul>
+                <li>CRM-ready update text</li>
+                <li>Proposal-starting direction</li>
+                <li>Internal operator-side handoff note</li>
+              </ul>
+            </div>
+          </div>
+          <div class="proof-note"><strong>Important:</strong> the sample PDF is the buyer-facing packet only. Internal operator-side material is delivered to your team, not shown to the buyer.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="buy">
+      <div class="wrap">
+        <div class="cta-card">
+          <div>
+            <div class="section-kicker">Final CTA</div>
+            <h2 class="cta-title">Don't buy this if you're happy doing it yourself in ChatGPT.</h2>
+            <p class="cta-subcopy">Buy this if you want to send rough notes and get the finished recap, next steps, follow-up draft, and CRM update back without touching the cleanup yourself.</p>
+          </div>
+          <div class="cta-actions">
+            <a class="btn btn-primary checkout-link" href="#buy">Start the $40 relay</a>
+            <a class="btn btn-secondary packet-5-link" href="#buy">5-call sprint</a>
+            <a class="btn btn-secondary weekly-link" href="#buy">Done-for-you week</a>
+            <a class="btn btn-secondary monthly-link" href="#buy">Done-for-you month</a>
+          </div>
+        </div>
       </div>
     </section>
   </main>
 
-  <footer>Relay by AO Labs — done-for-you post-call execution.</footer>
+  <footer class="wrap footer">
+    Relay by AO Labs — done-for-you post-call execution for founder-led paid media agencies.
+  </footer>
+
+  <script src="site-config.js"></script>
+  <script>
+    (function () {
+      function firstNonEmpty() {
+        for (var i = 0; i < arguments.length; i++) {
+          var value = arguments[i];
+          if (typeof value === 'string' && value.trim()) return value.trim();
+        }
+        return '';
+      }
+
+      function getConfigValue(key, fallback) {
+        return firstNonEmpty(
+          window.AO_CONFIG && window.AO_CONFIG[key],
+          typeof window[key] === 'string' ? window[key] : '',
+          window.SiteConfig && window.SiteConfig[key],
+          window.SITE_CONFIG && window.SITE_CONFIG[key],
+          fallback || ''
+        );
+      }
+
+      var checkoutUrl = getConfigValue('PACKET_CHECKOUT_URL', 'https://buy.stripe.com/bJeaEZb4mf6de64dSi2Nq02');
+      var packet5Url = getConfigValue('PACKET_5_PACK_URL', checkoutUrl);
+      var weeklyUrl = getConfigValue('WEEKLY_SPRINT_URL', packet5Url);
+      var monthlyUrl = getConfigValue('MONTHLY_AUTOPILOT_URL', weeklyUrl);
+
+      [
+        ['.checkout-link', checkoutUrl],
+        ['.packet-5-link', packet5Url],
+        ['.weekly-link', weeklyUrl],
+        ['.monthly-link', monthlyUrl]
+      ].forEach(function (entry) {
+        var selector = entry[0];
+        var href = entry[1];
+        document.querySelectorAll(selector).forEach(function (link) {
+          link.href = href;
+          link.target = '_blank';
+          link.rel = 'noopener';
+          link.classList.remove('disabled');
+          link.removeAttribute('aria-disabled');
+          link.removeAttribute('title');
+        });
+      });
+    })();
+  </script>
 </body>
 </html>
