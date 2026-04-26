@@ -1,58 +1,15 @@
-<!DOCTYPE html>
+﻿<!doctype html>
 <html lang="en">
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Relay by AO Labs</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="shortcut icon" href="/favicon.svg" type="image/svg+xml">
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Relay by AO Labs — done-for-you post-call execution for founder-led paid media agencies.
-  </footer>
-
-  <script src="site-config.js"></script>
-  <script>
-    (function () {
-      function firstNonEmpty() {
-        for (var i = 0; i < arguments.length; i++) {
-          var value = arguments[i];
-          if (typeof value === 'string' && value.trim()) return value.trim();
-        }
-        return '';
-      }
-
-      function getConfigValue(key, fallback) {
-        return firstNonEmpty(
-          window.AO_CONFIG && window.AO_CONFIG[key],
-          typeof window[key] === 'string' ? window[key] : '',
-          window.SiteConfig && window.SiteConfig[key],
-          window.SITE_CONFIG && window.SITE_CONFIG[key],
-          fallback || ''
-        );
-      }
-
-      var checkoutUrl = getConfigValue('PACKET_CHECKOUT_URL', 'https://buy.stripe.com/bJeaEZb4mf6de64dSi2Nq02');
-      var packet5Url = getConfigValue('PACKET_5_PACK_URL', checkoutUrl);
-      var weeklyUrl = getConfigValue('WEEKLY_SPRINT_URL', packet5Url);
-      var monthlyUrl = getConfigValue('MONTHLY_AUTOPILOT_URL', weeklyUrl);
-
-      [
-        ['.checkout-link', checkoutUrl],
-        ['.packet-5-link', packet5Url],
-        ['.weekly-link', weeklyUrl],
-        ['.monthly-link', monthlyUrl]
-      ].forEach(function (entry) {
-        var selector = entry[0];
-        var href = entry[1];
-        document.querySelectorAll(selector).forEach(function (link) {
-          link.href = href;
-          link.target = '_blank';
-          link.rel = 'noopener';
-          link.classList.remove('disabled');
-          link.removeAttribute('aria-disabled');
-          link.removeAttribute('title');
-        });
-      });
-    })();
-  </script>
+</head>
+<body>
+  <h1>Relay</h1>
+  <p>Done-for-you post-call execution.</p>
+  <p>You send rough notes. Relay returns the recap, next steps, follow-up draft, and CRM-ready update.</p>
+  <a href="https://buy.stripe.com/bJeaEZb4mf6de64dSi2Nq02">Start the $40 relay</a>
 </body>
 </html>
-
