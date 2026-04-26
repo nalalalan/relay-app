@@ -18,6 +18,7 @@ from app.db.base import Base, engine
 from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect  # noqa: F401
 from app.models.buyer_acquisition_v1 import BuyerAcquisitionMessage, BuyerAcquisitionProspect  # noqa: F401
 from app.models.funnel import Lead  # noqa: F401
+from app.models.relay_intent import RelayIntentEvent, RelayIntentLead  # noqa: F401
 from app.models.production_wiring import (  # noqa: F401
     ProductionAction,
     ProductionException,
@@ -27,6 +28,7 @@ from app.models.production_wiring import (  # noqa: F401
 )
 from app.api.routes.autonomous_ops import router as autonomous_ops_router
 from app.api.routes.custom_outreach import router as custom_outreach_router
+from app.api.routes.relay_intent import router as relay_intent_router
 
 
 
@@ -80,6 +82,7 @@ app.include_router(daily_lead_drop_runner_router, prefix="/daily-lead-drop-runne
 app.include_router(acquisition_supervisor_router, prefix="/acquisition-supervisor", tags=["acquisition-supervisor"])
 app.include_router(autonomous_ops_router, prefix="/ops", tags=["ops"])
 app.include_router(custom_outreach_router, prefix="/custom-outreach", tags=["custom-outreach"])
+app.include_router(relay_intent_router, prefix="/api/relay", tags=["relay-intent"])
 
 
 

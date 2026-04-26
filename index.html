@@ -864,6 +864,74 @@
 }
 /* AO_RELAY_MOBILE_PATCH_V1_END */
 
+
+/* RELAY_INTENT_TRACKER_STYLE_START */
+.relay-intent-card {
+  background: linear-gradient(180deg, rgba(247,244,239,.96), rgba(239,233,223,.92));
+  border: 1px solid rgba(191, 134, 81, 0.22);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow);
+  padding: 28px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, .9fr);
+  gap: 22px;
+  align-items: center;
+}
+
+.relay-intent-title {
+  font-size: clamp(30px, 3.2vw, 48px);
+  line-height: .98;
+  letter-spacing: -0.055em;
+  font-weight: 950;
+  margin-bottom: 10px;
+}
+
+.relay-intent-copy {
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.42;
+  letter-spacing: -0.02em;
+  max-width: 720px;
+}
+
+.relay-intent-form {
+  display: grid;
+  gap: 10px;
+}
+
+.relay-intent-form input {
+  width: 100%;
+  min-height: 56px;
+  border-radius: 18px;
+  border: 1.5px solid var(--line);
+  background: rgba(255,255,255,.66);
+  padding: 0 16px;
+  font: inherit;
+  font-size: 16px;
+  outline: none;
+}
+
+.relay-intent-form input:focus {
+  border-color: rgba(191, 134, 81, .65);
+  box-shadow: 0 0 0 4px rgba(191, 134, 81, .12);
+}
+
+.relay-intent-status {
+  min-height: 22px;
+  color: var(--accent-dark);
+  font-weight: 800;
+  font-size: 14px;
+}
+
+@media (max-width: 760px) {
+  .relay-intent-card {
+    grid-template-columns: 1fr;
+    padding: 22px !important;
+    border-radius: 28px;
+  }
+}
+/* RELAY_INTENT_TRACKER_STYLE_END */
+
 </style>
 </head>
 <body>
@@ -1078,6 +1146,27 @@
       </div>
     </section>
 
+    
+<!-- RELAY_INTENT_CAPTURE_START -->
+<section class="section relay-intent-section" id="relay-sample-request">
+  <div class="wrap">
+    <div class="relay-intent-card">
+      <div>
+        <div class="section-kicker">Not ready to buy yet?</div>
+        <h2 class="relay-intent-title">Get the sample in your inbox first.</h2>
+        <p class="relay-intent-copy">If you are even slightly curious, leave a work email. Relay will log the request so Alan can follow up with the sample and a one-call test path.</p>
+      </div>
+      <form class="relay-intent-form" data-relay-lead-source="sample_request">
+        <input name="email" type="email" autocomplete="email" inputmode="email" placeholder="work email" required />
+        <button class="btn btn-primary" type="submit">Send me the sample</button>
+        <div class="relay-intent-status" aria-live="polite"></div>
+      </form>
+    </div>
+  </div>
+</section>
+<!-- RELAY_INTENT_CAPTURE_END -->
+
+
     <section class="section" id="buy">
       <div class="wrap">
         <div class="cta-card">
@@ -1146,5 +1235,154 @@
       });
     })();
   </script>
+
+<!-- RELAY_INTENT_SCRIPT_START -->
+<script>
+  (function () {
+    var storageKey = 'relay_intent_session_id';
+    var fallbackKey = 'relay_intent_offline_events';
+
+    function uuid() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      return 'relay-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+    }
+
+    function sessionId() {
+      try {
+        var existing = localStorage.getItem(storageKey);
+        if (existing) return existing;
+        var created = uuid();
+        localStorage.setItem(storageKey, created);
+        return created;
+      } catch (e) {
+        return uuid();
+      }
+    }
+
+    function cfg(key, fallback) {
+      return (window.AO_CONFIG && window.AO_CONFIG[key]) || fallback || '';
+    }
+
+    function apiBase() {
+      return (cfg('API_BASE', '') || '').replace(/\/$/, '');
+    }
+
+    function eventUrl() {
+      return cfg('RELAY_INTENT_EVENT_URL', apiBase() ? apiBase() + '/api/relay/event' : '');
+    }
+
+    function leadUrl() {
+      return cfg('RELAY_INTENT_LEAD_URL', apiBase() ? apiBase() + '/api/relay/lead' : '');
+    }
+
+    function stashOffline(kind, payload) {
+      try {
+        var prior = JSON.parse(localStorage.getItem(fallbackKey) || '[]');
+        prior.push({ kind: kind, payload: payload, ts: new Date().toISOString() });
+        localStorage.setItem(fallbackKey, JSON.stringify(prior.slice(-80)));
+      } catch (e) {}
+    }
+
+    function postJSON(url, payload, kind) {
+      if (!url) {
+        stashOffline(kind, payload);
+        return Promise.resolve({ ok: false, offline: true });
+      }
+
+      return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        keepalive: true
+      }).then(function (res) {
+        if (!res.ok) throw new Error('bad status ' + res.status);
+        return res.json().catch(function () { return { ok: true }; });
+      }).catch(function () {
+        stashOffline(kind, payload);
+        return { ok: false, offline: true };
+      });
+    }
+
+    function track(eventType, meta) {
+      var payload = {
+        session_id: sessionId(),
+        event_type: eventType,
+        path: location.pathname,
+        page_url: location.href,
+        referrer: document.referrer || '',
+        target_text: meta && meta.text || '',
+        target_href: meta && meta.href || '',
+        metadata: meta || {}
+      };
+      return postJSON(eventUrl(), payload, 'event');
+    }
+
+    function classifyLink(link) {
+      var href = link.getAttribute('href') || '';
+      var text = (link.textContent || '').trim();
+
+      if (link.classList.contains('checkout-link')) return 'checkout_click';
+      if (link.classList.contains('packet-5-link') || link.classList.contains('weekly-link') || link.classList.contains('monthly-link')) return 'pricing_click';
+      if (href.indexOf('sample.pdf') >= 0) return 'sample_click';
+      if (href.indexOf('client-intake') >= 0) return 'client_gate_click';
+      if (href.indexOf('stripe.com') >= 0 || href.indexOf('buy.stripe.com') >= 0) return 'checkout_click';
+      if (href.indexOf('#buy') >= 0) return 'buy_section_click';
+      if (href.indexOf('#why') >= 0) return 'why_chatgpt_click';
+      return 'link_click';
+    }
+
+    window.relayIntentTrack = track;
+
+    track('page_view', {
+      title: document.title,
+      viewport: window.innerWidth + 'x' + window.innerHeight
+    });
+
+    document.addEventListener('click', function (event) {
+      var link = event.target.closest && event.target.closest('a');
+      if (!link) return;
+
+      track(classifyLink(link), {
+        text: (link.textContent || '').trim().slice(0, 240),
+        href: link.href || '',
+        className: link.className || ''
+      });
+    }, true);
+
+    document.querySelectorAll('.relay-intent-form').forEach(function (form) {
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        var input = form.querySelector('input[name="email"]');
+        var status = form.querySelector('.relay-intent-status');
+        var email = input && input.value ? input.value.trim() : '';
+
+        if (!email) return;
+
+        if (status) status.textContent = 'logging sample request...';
+
+        var payload = {
+          session_id: sessionId(),
+          email: email,
+          source: form.getAttribute('data-relay-lead-source') || 'sample_request',
+          page_url: location.href,
+          referrer: document.referrer || '',
+          metadata: {
+            path: location.pathname,
+            title: document.title
+          }
+        };
+
+        postJSON(leadUrl(), payload, 'lead').then(function () {
+          track('lead_capture_submit', { email_domain: email.split('@')[1] || '', source: payload.source });
+          if (status) status.textContent = 'sample request received.';
+          form.reset();
+        });
+      });
+    });
+  })();
+</script>
+<!-- RELAY_INTENT_SCRIPT_END -->
+
 </body>
 </html>
