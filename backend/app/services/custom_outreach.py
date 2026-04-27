@@ -484,6 +484,7 @@ def send_due_sequence_messages(limit: int | None = None) -> dict[str, Any]:
                         "company_name": prospect.company_name,
                         "contact_name": prospect.contact_name,
                         "body_preview": _preview_text(plain_text, limit=240),
+                        "plain_text": plain_text,
                         **result,
                     },
                 )
@@ -671,6 +672,27 @@ def _preview_text(value: str | None, limit: int = 180) -> str:
     return text[: max(limit - 1, 0)].rstrip() + "…"
 
 
+def _full_sent_body(payload: dict[str, Any], prospect: AcquisitionProspect | None) -> str:
+    for key in ("plain_text", "body_text", "body"):
+        value = str(payload.get(key) or "").strip()
+        if value:
+            return value
+
+    step_number = payload.get("step_number")
+    if prospect is not None and step_number is not None:
+        try:
+            step_index = int(step_number) - 1
+        except Exception:
+            step_index = -1
+        if 0 <= step_index < len(STEP_TEMPLATES):
+            try:
+                return _render_body(STEP_TEMPLATES[step_index], prospect)
+            except Exception:
+                pass
+
+    return str(payload.get("body_preview") or "").strip()
+
+
 def _recent_sent_events(session: Session, limit: int = 8) -> list[dict[str, Any]]:
     rows = list(
         session.execute(
@@ -694,6 +716,7 @@ def _recent_sent_events(session: Session, limit: int = 8) -> list[dict[str, Any]
     for row in rows:
         payload = _safe_json_loads(row.payload_json)
         prospect = prospect_map.get(row.prospect_external_id)
+        body = _full_sent_body(payload, prospect)
         items.append(
             {
                 "created_at": row.created_at.isoformat() if row.created_at else "",
@@ -707,8 +730,9 @@ def _recent_sent_events(session: Session, limit: int = 8) -> list[dict[str, Any]
                 "sender_address": str(payload.get("sender_address") or "").strip(),
                 "provider": str(payload.get("provider") or "").strip(),
                 "body_preview": _preview_text(
-                    str(payload.get("body_preview") or payload.get("plain_text") or payload.get("body") or "")
+                    str(payload.get("body_preview") or body or "")
                 ),
+                "body_text": body,
             }
         )
     return items
@@ -737,6 +761,7 @@ def _recent_reply_events(session: Session, limit: int = 8) -> list[dict[str, Any
     for row in rows:
         payload = _safe_json_loads(row.payload_json)
         prospect = prospect_map.get(row.prospect_external_id)
+        body = str(payload.get("body") or "").strip()
         items.append(
             {
                 "created_at": row.created_at.isoformat() if row.created_at else "",
@@ -747,7 +772,8 @@ def _recent_reply_events(session: Session, limit: int = 8) -> list[dict[str, Any
                 "from_email": str(payload.get("from_email") or "").strip(),
                 "from_name": str(payload.get("from_name") or "").strip(),
                 "subject": str(payload.get("subject") or "").strip(),
-                "body_preview": _preview_text(str(payload.get("body") or "")),
+                "body_preview": _preview_text(body),
+                "body_text": body,
                 "status": str(getattr(prospect, "status", "") or "").strip(),
             }
         )
@@ -777,6 +803,7 @@ def _recent_auto_reply_events(session: Session, limit: int = 8) -> list[dict[str
     for row in rows:
         payload = _safe_json_loads(row.payload_json)
         prospect = prospect_map.get(row.prospect_external_id)
+        body = str(payload.get("reply_text") or "").strip()
         items.append(
             {
                 "created_at": row.created_at.isoformat() if row.created_at else "",
@@ -787,7 +814,8 @@ def _recent_auto_reply_events(session: Session, limit: int = 8) -> list[dict[str
                 "to_email": str(payload.get("to_email") or getattr(prospect, "contact_email", "") or "").strip(),
                 "subject": str(payload.get("subject") or "").strip(),
                 "intent": str(payload.get("intent") or "").strip(),
-                "body_preview": _preview_text(str(payload.get("reply_text") or "")),
+                "body_preview": _preview_text(body),
+                "body_text": body,
             }
         )
     return items
