@@ -1,4 +1,5 @@
-﻿import json
+import json
+import os
 import re
 import uuid
 from datetime import datetime, timedelta
@@ -8,7 +9,16 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 
+from app.core.config import settings
 from app.db.base import SessionLocal
+from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect
+from app.models.production_wiring import (
+    ProductionAction,
+    ProductionException,
+    ProductionLead,
+    ProductionOpportunity,
+    ProductionTransition,
+)
 from app.models.relay_intent import RelayIntentEvent, RelayIntentLead
 
 
@@ -75,6 +85,99 @@ def _lead_score(session_id: str, source: str | None) -> int:
         return min(score, 100)
     finally:
         db.close()
+
+
+def _latest_acquisition_event(db, *event_terms: str) -> dict[str, Any] | None:
+    query = db.query(AcquisitionEvent)
+    for term in event_terms:
+        query = query.filter(AcquisitionEvent.event_type.ilike(f"%{term}%"))
+    event = query.order_by(AcquisitionEvent.created_at.desc()).first()
+    if not event:
+        return None
+    return {
+        "event_type": event.event_type,
+        "summary": event.summary,
+        "prospect_external_id": event.prospect_external_id,
+        "created_at": event.created_at.isoformat(),
+    }
+
+
+def _latest_production_transition(db, *event_terms: str) -> dict[str, Any] | None:
+    query = db.query(ProductionTransition)
+    for term in event_terms:
+        query = query.filter(ProductionTransition.event_type.ilike(f"%{term}%"))
+    event = query.order_by(ProductionTransition.created_at.desc()).first()
+    if not event:
+        return None
+    return {
+        "event_type": event.event_type,
+        "summary": event.summary,
+        "entity_external_id": event.entity_external_id,
+        "old_state": event.old_state,
+        "new_state": event.new_state,
+        "created_at": event.created_at.isoformat(),
+    }
+
+
+def _latest_action(db, *action_terms: str) -> dict[str, Any] | None:
+    query = db.query(ProductionAction)
+    for term in action_terms:
+        query = query.filter(ProductionAction.action_type.ilike(f"%{term}%"))
+    action = query.order_by(ProductionAction.created_at.desc()).first()
+    if not action:
+        return None
+    return {
+        "action_type": action.action_type,
+        "status": action.status,
+        "to_email": action.to_email,
+        "subject": action.subject,
+        "created_at": action.created_at.isoformat(),
+        "updated_at": action.updated_at.isoformat() if action.updated_at else None,
+    }
+
+
+def _latest_lead(db) -> dict[str, Any] | None:
+    lead = db.query(RelayIntentLead).order_by(RelayIntentLead.created_at.desc()).first()
+    if not lead:
+        return None
+    return {
+        "email": lead.email,
+        "source": lead.source,
+        "score": lead.score,
+        "session_id": lead.session_id,
+        "created_at": lead.created_at.isoformat(),
+    }
+
+
+def _env_present(name: str) -> bool:
+    return bool(str(os.getenv(name, "")).strip())
+
+
+def _ready_label(checks: dict[str, Any]) -> str:
+    missing = []
+    env = checks.get("env", {})
+    if not env.get("DATABASE_URL"):
+        missing.append("DATABASE_URL")
+    if not env.get("RESEND_API_KEY"):
+        missing.append("RESEND_API_KEY")
+    if not env.get("STRIPE_WEBHOOK_SECRET"):
+        missing.append("STRIPE_WEBHOOK_SECRET")
+    if not env.get("TALLY_WEBHOOK_SECRET"):
+        missing.append("TALLY_WEBHOOK_SECRET")
+    if not env.get("PACKET_CHECKOUT_URL"):
+        missing.append("PACKET_CHECKOUT_URL")
+
+    if missing:
+        return "needs_env: " + ", ".join(missing)
+
+    recent = checks.get("recent", {})
+    if not recent.get("last_stripe_event"):
+        return "needs_stripe_live_test"
+    if not recent.get("last_tally_event"):
+        return "needs_intake_live_test"
+    if not recent.get("last_delivery_or_sent_action"):
+        return "needs_delivery_live_test"
+    return "ready_or_nearly_ready"
 
 
 @router.post("/event")
@@ -207,5 +310,98 @@ def relay_intent_summary(days: int = 7, limit: int = 20) -> dict[str, Any]:
                 for session_id, count in hot_sessions
             ],
         }
+    finally:
+        db.close()
+
+
+@router.get("/ops-check")
+def relay_ops_check(days: int = 14) -> dict[str, Any]:
+    days = max(1, min(days, 90))
+    since = datetime.utcnow() - timedelta(days=days)
+
+    db = SessionLocal()
+    try:
+        env = {
+            "DATABASE_URL": _env_present("DATABASE_URL"),
+            "RESEND_API_KEY": _env_present("RESEND_API_KEY"),
+            "STRIPE_SECRET_KEY": _env_present("STRIPE_SECRET_KEY"),
+            "STRIPE_WEBHOOK_SECRET": _env_present("STRIPE_WEBHOOK_SECRET"),
+            "TALLY_WEBHOOK_SECRET": _env_present("TALLY_WEBHOOK_SECRET"),
+            "PACKET_CHECKOUT_URL": bool(getattr(settings, "packet_checkout_url", "") or os.getenv("PACKET_CHECKOUT_URL", "")),
+            "CLIENT_INTAKE_DESTINATION": bool(getattr(settings, "client_intake_destination", "") or os.getenv("CLIENT_INTAKE_DESTINATION", "")),
+            "FROM_EMAIL_FULFILLMENT": bool(getattr(settings, "from_email_fulfillment", "") or os.getenv("FROM_EMAIL_FULFILLMENT", "")),
+        }
+
+        route_surface = {
+            "stripe_webhook_route": "/webhooks/stripe",
+            "tally_webhook_route": "/webhooks/tally",
+            "client_gate_route": "/client-gate/redeem",
+            "production_event_route": "/production/event",
+            "production_digest_route": "/production/digest",
+            "autopilot_batch_route": "/autopilot/batch",
+            "autopilot_digest_route": "/autopilot/digest",
+            "intent_summary_route": "/api/relay/intent-summary",
+        }
+
+        event_counts = (
+            db.query(RelayIntentEvent.event_type, func.count(RelayIntentEvent.id))
+            .filter(RelayIntentEvent.created_at >= since)
+            .group_by(RelayIntentEvent.event_type)
+            .all()
+        )
+        intent_counts = {name: int(count) for name, count in event_counts}
+
+        lead_count = db.query(func.count(RelayIntentLead.id)).filter(RelayIntentLead.created_at >= since).scalar() or 0
+        hot_lead_count = db.query(func.count(RelayIntentLead.id)).filter(RelayIntentLead.created_at >= since).filter(RelayIntentLead.score >= 50).scalar() or 0
+
+        prospect_counts = (
+            db.query(AcquisitionProspect.status, func.count(AcquisitionProspect.id))
+            .group_by(AcquisitionProspect.status)
+            .all()
+        )
+        stripe_paid_count = db.query(func.count(AcquisitionProspect.id)).filter(AcquisitionProspect.stripe_status == "paid").scalar() or 0
+        intake_received_count = db.query(func.count(AcquisitionProspect.id)).filter(AcquisitionProspect.intake_status == "received").scalar() or 0
+
+        production_lead_count = db.query(func.count(ProductionLead.id)).scalar() or 0
+        production_opportunity_count = db.query(func.count(ProductionOpportunity.id)).scalar() or 0
+        open_exception_count = db.query(func.count(ProductionException.id)).filter(ProductionException.resolved == False).scalar() or 0  # noqa: E712
+        pending_action_count = db.query(func.count(ProductionAction.id)).filter(ProductionAction.status == "pending").scalar() or 0
+        sent_action_count = db.query(func.count(ProductionAction.id)).filter(ProductionAction.status.in_(["sent", "completed", "done"])).scalar() or 0
+
+        recent = {
+            "last_stripe_event": _latest_acquisition_event(db, "stripe"),
+            "last_tally_event": _latest_acquisition_event(db, "intake"),
+            "last_payment_or_paid_prospect": _latest_acquisition_event(db, "paid"),
+            "last_production_transition": _latest_production_transition(db),
+            "last_delivery_or_sent_action": _latest_action(db, "delivery") or _latest_action(db, "send") or _latest_action(db, "email"),
+            "last_relay_intent_lead": _latest_lead(db),
+        }
+
+        checks = {
+            "ok": True,
+            "days": days,
+            "route_surface": route_surface,
+            "env": env,
+            "intent": {
+                "event_counts": intent_counts,
+                "lead_count": int(lead_count),
+                "hot_lead_count": int(hot_lead_count),
+            },
+            "acquisition": {
+                "status_counts": {status or "unknown": int(count) for status, count in prospect_counts},
+                "stripe_paid_count": int(stripe_paid_count),
+                "intake_received_count": int(intake_received_count),
+            },
+            "production": {
+                "lead_count": int(production_lead_count),
+                "opportunity_count": int(production_opportunity_count),
+                "pending_action_count": int(pending_action_count),
+                "sent_action_count": int(sent_action_count),
+                "open_exception_count": int(open_exception_count),
+            },
+            "recent": recent,
+        }
+        checks["verdict"] = _ready_label(checks)
+        return checks
     finally:
         db.close()
