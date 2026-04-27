@@ -1799,3 +1799,244 @@ def _daily_update_subject(summary: dict[str, Any], outreach_digest: dict[str, An
 
 # --- AO RELAY DUET SECTIONS END ---
 
+
+# --- RELAY MAIL ONLY OVERRIDE START ---
+
+def _relay_mail_live_url() -> str:
+    for key in ("RELAY_LIVE_URL", "AO_LIVE_URL"):
+        value = str(os.getenv(key, "") or "").strip().rstrip("/")
+        if value:
+            return value
+
+    landing = str(os.getenv("LANDING_PAGE_URL", "") or "").strip().rstrip("/")
+    if landing:
+        return f"{landing}/ao_live_robinhood_desktop.html"
+
+    return "https://liverelay.aolabs.io"
+
+
+def _relay_mail_state(summary: dict[str, Any], outreach_digest: dict[str, Any]) -> str:
+    today = summary.get("today", {})
+    week = summary.get("week", {})
+
+    payments_today = _safe_int(today.get("payments_count", 0))
+    payments_week = _safe_int(week.get("payments_count", 0))
+    replies_today = _safe_int(outreach_digest.get("replies_today", 0))
+    sent_today = _safe_int(outreach_digest.get("sent_today", 0))
+    daily_cap = _safe_int(outreach_digest.get("daily_send_cap", 0))
+    due_now = _safe_int(outreach_digest.get("due_now_count", 0))
+    send_window_open = bool(outreach_digest.get("send_window_is_open"))
+
+    if payments_today > 0:
+        return "Money landed today"
+    if payments_week > 0:
+        return "Money landed this week"
+    if replies_today > 0:
+        return "Reply signal"
+    if daily_cap > 0 and sent_today >= daily_cap:
+        return "Daily cap used"
+    if sent_today > 0:
+        return "Running"
+    if due_now > 0 and send_window_open:
+        return "Ready to send"
+    if due_now > 0:
+        return "Queued for next window"
+    return "Off duty"
+
+
+def _relay_mail_reassurance(summary: dict[str, Any], outreach_digest: dict[str, Any]) -> str:
+    today = summary.get("today", {})
+    week = summary.get("week", {})
+
+    payments_today = _safe_int(today.get("payments_count", 0))
+    payments_week = _safe_int(week.get("payments_count", 0))
+    replies_today = _safe_int(outreach_digest.get("replies_today", 0))
+    sent_today = _safe_int(outreach_digest.get("sent_today", 0))
+    daily_cap = _safe_int(outreach_digest.get("daily_send_cap", 0))
+    due_now = _safe_int(outreach_digest.get("due_now_count", 0))
+
+    if payments_today > 0:
+        return "Payment signal exists today. The only high-value interruption is fulfillment."
+    if payments_week > 0:
+        return "Payment signal exists this week. Keep Relay stable and avoid changing the machine mid-signal."
+    if replies_today > 0:
+        return "A real reply exists. That is the closest thing to money before payment."
+    if daily_cap > 0 and sent_today >= daily_cap:
+        return "Today's safe send cap is used. More refreshing will not create replies; the next signal is a reply, payment, or the next run."
+    if sent_today > 0:
+        return "Clean sends happened today. Zero replies is not a verdict yet; judge after several clean send days."
+    if due_now > 0:
+        return "Clean leads are queued. The system has work available when the send window opens."
+    return "No urgent Relay action is visible from these counters. Stay out of the loop unless replies, money, or deploy health changes."
+
+
+def _relay_mail_next_move(summary: dict[str, Any], outreach_digest: dict[str, Any]) -> str:
+    today = summary.get("today", {})
+    week = summary.get("week", {})
+
+    replies_today = _safe_int(outreach_digest.get("replies_today", 0))
+    sent_today = _safe_int(outreach_digest.get("sent_today", 0))
+    due_now = _safe_int(outreach_digest.get("due_now_count", 0))
+    payments_today = _safe_int(today.get("payments_count", 0))
+    payments_week = _safe_int(week.get("payments_count", 0))
+
+    if payments_today > 0 or payments_week > 0:
+        return "Fulfill paid work. Do not tune outreach while money signal is active."
+    if replies_today > 0:
+        return "Answer real replies first. Do not scale until the objections are understood."
+    if sent_today <= 0 and due_now > 0:
+        return "Confirm the runner sends during the next window; leads are queued but no sends are logged today."
+    if sent_today > 0 and due_now > 0:
+        return "Keep volume flat. If replies stay at zero after 2-3 clean send days, improve targeting and opener clarity."
+    if due_now <= 0:
+        return "Add cleaner direct leads before judging the offer."
+    return "Let the next send window run."
+
+
+def _relay_mail_metric_html(label: str, value: str, note: str = "") -> str:
+    note_html = f'<div style="font-size:12px;color:#99a3b3;margin-top:3px;">{escape(note)}</div>' if note else ""
+    return f"""
+      <div style="border:1px solid #2b3240;border-radius:14px;padding:12px 14px;margin:8px 0;background:#0f131a;">
+        <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#99a3b3;font-weight:800;">{escape(label)}</div>
+        <div style="font-size:24px;line-height:1.15;color:#f8fafc;font-weight:900;margin-top:4px;">{escape(value)}</div>
+        {note_html}
+      </div>
+    """.strip()
+
+
+def _relay_mail_metrics_html(summary: dict[str, Any], outreach_digest: dict[str, Any]) -> str:
+    today = summary.get("today", {})
+    week = summary.get("week", {})
+    month = summary.get("month", {})
+
+    rows = [
+        ("Money today", f"${today.get('gross_usd', 0)}", f"{today.get('payments_count', 0)} payments"),
+        ("Money week", f"${week.get('gross_usd', 0)}", f"month ${month.get('gross_usd', 0)}"),
+        ("Replies", str(outreach_digest.get("replies_today", 0)), "today"),
+        ("Sends", f"{outreach_digest.get('sent_today', 0)} / {outreach_digest.get('daily_send_cap', 0)}", "safe daily cap"),
+        ("Queue", str(outreach_digest.get("due_now_count", 0)), f"{outreach_digest.get('in_sequence_count', 0)} in sequence"),
+    ]
+    return "".join(_relay_mail_metric_html(label, value, note) for label, value, note in rows)
+
+
+def _daily_update_html(summary: dict[str, Any], outreach_digest: dict[str, Any], seed_result: dict[str, Any]) -> str:
+    state = _relay_mail_state(summary, outreach_digest)
+    reassurance = _relay_mail_reassurance(summary, outreach_digest)
+    next_move = _relay_mail_next_move(summary, outreach_digest)
+    live_url = _relay_mail_live_url()
+
+    live_button = (
+        f"""
+        <div style="margin:16px 0 0;">
+          <a href="{escape(live_url)}" style="display:inline-block;background:#f8fafc;color:#0f1115;text-decoration:none;padding:11px 15px;border-radius:12px;font-weight:900;">Open LiveRelay</a>
+        </div>
+        """
+        if live_url
+        else ""
+    )
+
+    return f"""
+<div style="margin:0;padding:8px;background:#0f1115;">
+  <div style="max-width:680px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;color:#f8fafc;line-height:1.5;">
+    <div style="background:#181c23;border:1px solid #2b3240;border-radius:18px;padding:16px 14px;">
+      <div style="font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#99a3b3;font-weight:900;">Relay Mail</div>
+      <div style="font-size:30px;line-height:1.05;font-weight:900;letter-spacing:-0.03em;margin:6px 0 8px;">{escape(state)}</div>
+      <div style="font-size:14px;line-height:1.45;color:#d9e0ea;margin:0 0 12px;">{escape(reassurance)}</div>
+
+      {_relay_mail_metrics_html(summary, outreach_digest)}
+
+      <div style="border:1px solid #394150;border-radius:14px;padding:12px 14px;margin:12px 0 0;background:#111722;">
+        <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#99a3b3;font-weight:800;">Next useful move</div>
+        <div style="font-size:15px;line-height:1.45;color:#f8fafc;font-weight:700;margin-top:4px;">{escape(next_move)}</div>
+      </div>
+
+      {live_button}
+    </div>
+  </div>
+</div>
+""".strip()
+
+
+def _daily_update_text(summary: dict[str, Any], outreach_digest: dict[str, Any], seed_result: dict[str, Any]) -> str:
+    today = summary.get("today", {})
+    week = summary.get("week", {})
+    month = summary.get("month", {})
+    live_url = _relay_mail_live_url()
+
+    lines = [
+        "Relay Mail",
+        "",
+        f"State: {_relay_mail_state(summary, outreach_digest)}",
+        f"What this means: {_relay_mail_reassurance(summary, outreach_digest)}",
+        "",
+        _ascii_safe(f"Money today: ${today.get('gross_usd', 0)} from {today.get('payments_count', 0)} payments"),
+        _ascii_safe(f"Money week: ${week.get('gross_usd', 0)} | month: ${month.get('gross_usd', 0)}"),
+        _ascii_safe(f"Replies today: {outreach_digest.get('replies_today', 0)}"),
+        _ascii_safe(f"Sends today: {outreach_digest.get('sent_today', 0)} / {outreach_digest.get('daily_send_cap', 0)}"),
+        _ascii_safe(f"Queue: {outreach_digest.get('due_now_count', 0)} due now | {outreach_digest.get('in_sequence_count', 0)} in sequence"),
+        "",
+        _ascii_safe(f"Next useful move: {_relay_mail_next_move(summary, outreach_digest)}"),
+    ]
+
+    if live_url:
+        lines.extend(["", f"LiveRelay: {live_url}"])
+
+    return "\n".join(lines)
+
+
+def _daily_update_subject(summary: dict[str, Any], outreach_digest: dict[str, Any]) -> str:
+    today = summary.get("today", {})
+    replies_today = _safe_int(outreach_digest.get("replies_today", 0))
+    sent_today = _safe_int(outreach_digest.get("sent_today", 0))
+    due_now = _safe_int(outreach_digest.get("due_now_count", 0))
+    money_today = today.get("gross_usd", 0)
+    state = _relay_mail_state(summary, outreach_digest)
+    return _ascii_safe(f"[Relay Mail] {state} | ${money_today} | replies {replies_today} | sent {sent_today} | queue {due_now}")
+
+
+def send_daily_money_summary() -> dict[str, Any]:
+    summary = money_summary()
+    outreach_digest = outreach_status()
+    seed_result = {"status": "skipped", "reason": "relay_mail_is_the_delivery_check"}
+
+    update_subject = _daily_update_subject(summary, outreach_digest)
+    update_html = _daily_update_html(summary, outreach_digest, seed_result)
+    update_text = _daily_update_text(summary, outreach_digest, seed_result)
+    update_send_result = _send_smtp_email_from_seed_sender(
+        subject=update_subject,
+        text_body=update_text,
+        html_body=update_html,
+    )
+
+    with _session() as session:
+        session.add(
+            AcquisitionEvent(
+                event_type="daily_ops_update_sent",
+                prospect_external_id="ops",
+                summary=update_subject,
+                payload_json=json.dumps(
+                    {
+                        "mail_name": "Relay Mail",
+                        "money": summary,
+                        "outreach_digest": outreach_digest,
+                        "seed_result": seed_result,
+                        "update_send_result": update_send_result,
+                    },
+                    ensure_ascii=False,
+                ),
+            )
+        )
+        session.commit()
+
+    return {
+        "status": "ok",
+        "mail_name": "Relay Mail",
+        "seed_result": seed_result,
+        "update_subject": update_subject,
+        "update_send_result": update_send_result,
+        "summary": summary,
+        "outreach_digest": outreach_digest,
+    }
+
+# --- RELAY MAIL ONLY OVERRIDE END ---
+
