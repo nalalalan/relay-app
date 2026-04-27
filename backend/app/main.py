@@ -32,8 +32,6 @@ from app.api.routes.relay_intent import router as relay_intent_router
 from app.services.relay_recovery_patch import (
     apply_relay_recovery_patch,
     router as relay_recovery_router,
-    start_relay_money_loop,
-    stop_relay_money_loop,
 )
 
 
@@ -66,11 +64,7 @@ def _cors_origins() -> list[str]:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
-    start_relay_money_loop()
-    try:
-        yield
-    finally:
-        await stop_relay_money_loop()
+    yield
 
 
 app = FastAPI(title="ao-relay-backend", lifespan=lifespan)
