@@ -32,6 +32,8 @@ from app.api.routes.relay_intent import router as relay_intent_router
 from app.services.relay_recovery_patch import (
     apply_relay_recovery_patch,
     router as relay_recovery_router,
+    start_relay_money_loop,
+    stop_relay_money_loop,
 )
 from app.services.relay_money_optimizer_patch import apply_relay_money_optimizer_patch
 from app.services.relay_reply_autoclose_patch import apply_relay_reply_autoclose_patch
@@ -48,6 +50,8 @@ def _cors_origins() -> list[str]:
         "https://www.relay.aolabs.io",
         "https://liverelay.aolabs.io",
         "https://www.liverelay.aolabs.io",
+        "https://relaylive.aolabs.io",
+        "https://www.relaylive.aolabs.io",
         "https://nalalalan.github.io",
         "https://nalalalan.github.io/alan-operator-site",
         "http://localhost:3000",
@@ -68,7 +72,11 @@ def _cors_origins() -> list[str]:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
-    yield
+    start_relay_money_loop()
+    try:
+        yield
+    finally:
+        await stop_relay_money_loop()
 
 
 app = FastAPI(title="ao-relay-backend", lifespan=lifespan)

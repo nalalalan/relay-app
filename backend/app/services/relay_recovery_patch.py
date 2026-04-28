@@ -6,12 +6,12 @@ from typing import Any, Dict
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.core.config import settings
 from app.db.base import SessionLocal
 from app.integrations.apollo import ApolloClient
-from app.models.acquisition_supervisor import AcquisitionProspect
+from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect
 from app.services.custom_outreach import StepTemplate
 
 
@@ -93,6 +93,21 @@ def _split_csv(value: str) -> list[str]:
     return [x.strip() for x in str(value or "").split(",") if x.strip()]
 
 
+def _body_bool(body: dict[str, Any], key: str, default: bool = False) -> bool:
+    value = body.get(key, default)
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _body_int(body: dict[str, Any], key: str, default: int, *, minimum: int = 1, maximum: int = 100) -> int:
+    try:
+        value = int(body.get(key, default))
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, min(value, maximum))
+
+
 def _landing_page_url() -> str:
     url = os.getenv("LANDING_PAGE_URL", "").strip() or settings.landing_page_url.strip()
     if not url or "nalalalan.github.io/alan-operator-site" in url:
@@ -163,7 +178,38 @@ def _patched_outreach_status() -> dict[str, Any]:
     status["quality_mode"] = "direct inboxes first; generic inboxes paused unless policy changes"
     status["money_loop"] = dict(_money_loop_state)
     status["next_money_move"] = _next_money_move(status)
+    status["money_target"] = _money_target_snapshot(status)
     return status
+
+
+def _total_send_count(session) -> int:
+    count = session.execute(
+        select(func.count(AcquisitionEvent.id)).where(AcquisitionEvent.event_type.like("custom_outreach_sent_step_%"))
+    ).scalar()
+    return int(count or 0)
+
+
+def _money_target_snapshot(status: dict[str, Any]) -> dict[str, Any]:
+    try:
+        target_weekly_usd = int(os.getenv("RELAY_WEEKLY_TARGET_USD", "100") or 100)
+    except ValueError:
+        target_weekly_usd = 100
+    try:
+        test_price_usd = float(os.getenv("RELAY_PACKET_PRICE_USD", "40") or 40)
+    except ValueError:
+        test_price_usd = 40.0
+
+    paid_tests_needed = max(1, int((target_weekly_usd + test_price_usd - 1) // test_price_usd))
+    daily_cap = int(status.get("daily_send_cap") or settings.buyer_acq_daily_send_cap or 0)
+    weekly_send_capacity = daily_cap * 5
+    return {
+        "weekly_target_usd": target_weekly_usd,
+        "test_price_usd": test_price_usd,
+        "paid_tests_needed_weekly": paid_tests_needed,
+        "current_daily_send_cap": daily_cap,
+        "business_week_send_capacity": weekly_send_capacity,
+        "operating_mode": "direct decision-maker inboxes only; generic inboxes are paused",
+    }
 
 
 def _quality_snapshot(session) -> dict[str, Any]:
@@ -221,6 +267,7 @@ def _quality_snapshot(session) -> dict[str, Any]:
         "sendable_due_count": sendable_due,
         "generic_paused_count": paused_generic,
         "cap_remaining": max(daily_cap - sent_today, 0),
+        "total_sends_all_time": _total_send_count(session),
     }
 
 
@@ -459,7 +506,30 @@ def money_loop_status() -> dict:
     return dict(_money_loop_state)
 
 
-async def _relay_money_loop_tick() -> dict[str, Any]:
+@router.post("/money-kick")
+async def money_kick(body: dict[str, Any] | None = None) -> dict[str, Any]:
+    body = body or {}
+    return await _relay_money_loop_tick(
+        force_refill=_body_bool(body, "force_refill", True),
+        refill_query=str(body.get("q_keywords") or "").strip() or None,
+        refill_per_page=_body_int(
+            body,
+            "per_page",
+            int(os.getenv("AO_RELAY_REFILL_PER_PAGE", "50") or 50),
+            minimum=1,
+            maximum=100,
+        ),
+        send_live=_body_bool(body, "send_live", True),
+    )
+
+
+async def _relay_money_loop_tick(
+    *,
+    force_refill: bool = False,
+    refill_query: str | None = None,
+    refill_per_page: int | None = None,
+    send_live: bool = True,
+) -> dict[str, Any]:
     import app.services.autonomous_ops as ops
     import app.services.custom_outreach as outreach
 
@@ -469,20 +539,32 @@ async def _relay_money_loop_tick() -> dict[str, Any]:
     min_direct_due = int(os.getenv("AO_RELAY_MIN_DIRECT_DUE", str(max(settings.buyer_acq_daily_send_cap, 10))) or 10)
 
     refill_result: dict[str, Any] = {"status": "skipped", "reason": "direct_due_ok"}
-    if settings.apollo_api_key and direct_due < min_direct_due:
-        refill_result = await import_from_apollo_people_search(
+    if not settings.apollo_api_key:
+        refill_result = {"status": "skipped", "reason": "missing_apollo_api_key"}
+    elif force_refill or direct_due < min_direct_due:
+        importer = getattr(ops, "import_from_apollo_people_search", import_from_apollo_people_search)
+        refill_result = await importer(
             {
-                "q_keywords": ops.choose_query(),
-                "per_page": int(os.getenv("AO_RELAY_REFILL_PER_PAGE", "50") or 50),
+                "q_keywords": refill_query or ops.choose_query(),
+                "per_page": refill_per_page or int(os.getenv("AO_RELAY_REFILL_PER_PAGE", "50") or 50),
             }
         )
 
-    outreach_result = await asyncio.to_thread(outreach.run_custom_outreach_cycle)
+    if send_live:
+        outreach_result = await asyncio.to_thread(outreach.run_custom_outreach_cycle)
+    else:
+        outreach_result = {
+            "status": "skipped",
+            "reason": "send_live_false",
+            "status": _patched_outreach_status(),
+        }
     return {
         "refill_result": refill_result,
         "outreach_result": outreach_result,
         "direct_due_before": direct_due,
         "cap_remaining_before": cap_remaining,
+        "force_refill": force_refill,
+        "send_live": send_live,
         "status_after": _patched_outreach_status(),
     }
 
