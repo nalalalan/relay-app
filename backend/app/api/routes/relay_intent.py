@@ -3,6 +3,7 @@ import os
 import re
 import uuid
 from datetime import datetime, timedelta
+from html import escape
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
@@ -25,6 +26,12 @@ from app.models.relay_intent import RelayIntentEvent, RelayIntentLead
 router = APIRouter()
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _relay_url(path: str = "") -> str:
+    base = (settings.landing_page_url or "https://relay.aolabs.io").rstrip("/")
+    clean_path = path if path.startswith("/") else f"/{path}" if path else ""
+    return f"{base}{clean_path}"
 
 
 class RelayIntentEventIn(BaseModel):
@@ -56,6 +63,53 @@ def _json(data: dict[str, Any] | None) -> str | None:
     if not data:
         return None
     return json.dumps(data, ensure_ascii=False, sort_keys=True)[:8000]
+
+
+def _sample_email_html(to_email: str) -> str:
+    sample_url = _relay_url("/sample.pdf")
+    relay_url = _relay_url()
+    checkout_url = settings.packet_checkout_url or "#"
+    safe_email = escape(to_email)
+    return f"""
+    <div style="font-family:Arial,sans-serif;line-height:1.55;color:#221b17;max-width:620px">
+      <p>Here is the Relay sample packet:</p>
+      <p><a href="{sample_url}" style="color:#a05f2f;font-weight:700">Open the Relay sample PDF</a></p>
+      <p>
+        Relay turns rough call notes into client-ready follow-through:
+        recap, next steps, follow-up, and CRM update.
+      </p>
+      <p>
+        If you want the live one-call test, start here:
+        <a href="{checkout_url}" style="color:#a05f2f;font-weight:700">Start the $40 relay</a>
+      </p>
+      <p style="font-size:13px;color:#756961">
+        Sent to {safe_email} from <a href="{relay_url}" style="color:#756961">relay.aolabs.io</a>.
+      </p>
+    </div>
+    """.strip()
+
+
+def _send_sample_email(to_email: str) -> dict[str, Any]:
+    if not settings.resend_api_key:
+        return {"status": "skipped", "reason": "RESEND_API_KEY is not configured"}
+
+    try:
+        from app.integrations.resend_client import ResendClient
+
+        response = ResendClient().send_email(
+            to_email=to_email,
+            subject="Relay sample packet",
+            html=_sample_email_html(to_email),
+            from_email=settings.from_email_fulfillment or settings.from_email_outbound,
+            reply_to=settings.reply_to_email,
+        )
+        return {
+            "status": "sent",
+            "provider": "resend",
+            "provider_id": response.get("id") if isinstance(response, dict) else None,
+        }
+    except Exception as exc:
+        return {"status": "failed", "reason": str(exc)[:500]}
 
 
 def _user_agent(request: Request) -> str | None:
@@ -250,7 +304,36 @@ def record_relay_lead(payload: RelayIntentLeadIn, request: Request) -> dict[str,
 
         db.commit()
         db.refresh(lead)
-        return {"ok": True, "lead_id": lead.id, "session_id": sid, "score": score}
+
+        sample_email = (
+            _send_sample_email(email)
+            if "sample" in source.lower()
+            else {"status": "skipped", "reason": "not a sample request"}
+        )
+        try:
+            db.add(
+                AcquisitionEvent(
+                    event_type=f"relay_sample_email_{sample_email.get('status', 'unknown')}",
+                    prospect_external_id=f"relay-lead:{lead.id}",
+                    summary=f"sample email {sample_email.get('status', 'unknown')} for {email}",
+                    payload_json=json.dumps(
+                        {
+                            "lead_id": lead.id,
+                            "session_id": sid,
+                            "email": email,
+                            "source": source,
+                            "score": score,
+                            "sample_email": sample_email,
+                        },
+                        ensure_ascii=False,
+                    ),
+                )
+            )
+            db.commit()
+        except Exception:
+            db.rollback()
+
+        return {"ok": True, "lead_id": lead.id, "session_id": sid, "score": score, "sample_email": sample_email}
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"could not record relay lead: {exc}") from exc

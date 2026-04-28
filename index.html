@@ -1167,11 +1167,11 @@
       <div>
         <div class="section-kicker">Not ready to buy yet?</div>
         <h2 class="relay-intent-title">Get the sample in your inbox first.</h2>
-        <p class="relay-intent-copy">If you are even slightly curious, leave a work email. Relay will log the request so Alan can follow up with the sample and a one-call test path.</p>
+        <p class="relay-intent-copy">If you are even slightly curious, leave a work email. Relay sends the sample link now and logs the request so Alan can follow up with a one-call test path.</p>
       </div>
       <form class="relay-intent-form" data-relay-lead-source="sample_request">
         <input name="email" type="email" autocomplete="email" inputmode="email" placeholder="work email" required />
-        <button class="btn btn-primary" type="submit">Send me the sample</button>
+        <button class="btn btn-primary" type="submit">Email me the sample</button>
         <div class="relay-intent-status" aria-live="polite"></div>
       </form>
     </div>
@@ -1367,12 +1367,14 @@
         event.preventDefault();
 
         var input = form.querySelector('input[name="email"]');
+        var button = form.querySelector('button[type="submit"]');
         var status = form.querySelector('.relay-intent-status');
         var email = input && input.value ? input.value.trim() : '';
 
         if (!email) return;
 
-        if (status) status.textContent = 'logging sample request...';
+        if (button) button.disabled = true;
+        if (status) status.textContent = 'sending sample...';
 
         var payload = {
           session_id: sessionId(),
@@ -1386,10 +1388,20 @@
           }
         };
 
-        postJSON(leadUrl(), payload, 'lead').then(function () {
+        postJSON(leadUrl(), payload, 'lead').then(function (result) {
           track('lead_capture_submit', { email_domain: email.split('@')[1] || '', source: payload.source });
-          if (status) status.textContent = 'sample request received.';
-          form.reset();
+          var emailResult = result && result.sample_email ? result.sample_email : {};
+          if (result && result.ok && emailResult.status === 'sent') {
+            if (status) status.textContent = 'sample sent. check your inbox.';
+            form.reset();
+          } else if (result && result.ok) {
+            if (status) status.textContent = 'request saved. sample email needs backend attention.';
+            form.reset();
+          } else if (status) {
+            status.textContent = 'could not reach backend. request saved in this browser only.';
+          }
+        }).finally(function () {
+          if (button) button.disabled = false;
         });
       });
     });
