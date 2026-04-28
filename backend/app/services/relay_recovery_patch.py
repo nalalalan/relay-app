@@ -212,6 +212,40 @@ def _money_target_snapshot(status: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _compact_status_for_loop(status: dict[str, Any]) -> dict[str, Any]:
+    keys = [
+        "queued_count",
+        "due_now_count",
+        "in_sequence_count",
+        "sent_today",
+        "replies_today",
+        "daily_send_cap",
+        "send_window_is_open",
+        "direct_inbox_count",
+        "generic_inbox_count",
+        "direct_due_count",
+        "generic_due_count",
+        "sendable_due_count",
+        "generic_paused_count",
+        "cap_remaining",
+        "total_sends_all_time",
+        "next_money_move",
+        "money_target",
+        "blocked_bad_email_count",
+        "reply_autoclose_mode",
+    ]
+    return {key: status.get(key) for key in keys if key in status}
+
+
+def _compact_outreach_result(result: Any) -> Any:
+    if not isinstance(result, dict):
+        return result
+    compact = dict(result)
+    if isinstance(compact.get("status"), dict):
+        compact["status"] = _compact_status_for_loop(compact["status"])
+    return compact
+
+
 def _quality_snapshot(session) -> dict[str, Any]:
     import app.services.custom_outreach as outreach
 
@@ -542,21 +576,30 @@ async def _relay_money_loop_tick(
     if not settings.apollo_api_key:
         refill_result = {"status": "skipped", "reason": "missing_apollo_api_key"}
     elif force_refill or direct_due < min_direct_due:
+        query = refill_query or ops.choose_query()
         importer = getattr(ops, "import_from_apollo_people_search", import_from_apollo_people_search)
-        refill_result = await importer(
-            {
-                "q_keywords": refill_query or ops.choose_query(),
-                "per_page": refill_per_page or int(os.getenv("AO_RELAY_REFILL_PER_PAGE", "50") or 50),
+        try:
+            refill_result = await importer(
+                {
+                    "q_keywords": query,
+                    "per_page": refill_per_page or int(os.getenv("AO_RELAY_REFILL_PER_PAGE", "50") or 50),
+                }
+            )
+        except Exception as exc:
+            refill_result = {
+                "status": "error",
+                "reason": "apollo_refill_failed",
+                "error": str(exc),
+                "q_keywords": query,
             }
-        )
 
     if send_live:
-        outreach_result = await asyncio.to_thread(outreach.run_custom_outreach_cycle)
+        outreach_result = _compact_outreach_result(await asyncio.to_thread(outreach.run_custom_outreach_cycle))
     else:
         outreach_result = {
             "status": "skipped",
             "reason": "send_live_false",
-            "status": _patched_outreach_status(),
+            "snapshot": _compact_status_for_loop(_patched_outreach_status()),
         }
     return {
         "refill_result": refill_result,
@@ -565,7 +608,7 @@ async def _relay_money_loop_tick(
         "cap_remaining_before": cap_remaining,
         "force_refill": force_refill,
         "send_live": send_live,
-        "status_after": _patched_outreach_status(),
+        "status_after": _compact_status_for_loop(_patched_outreach_status()),
     }
 
 
