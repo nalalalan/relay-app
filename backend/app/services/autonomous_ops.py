@@ -2040,3 +2040,436 @@ def send_daily_money_summary() -> dict[str, Any]:
 
 # --- RELAY MAIL ONLY OVERRIDE END ---
 
+
+# --- AO DIGEST OVERRIDE START ---
+
+import urllib.error as _ao_digest_urlerror
+import urllib.request as _ao_digest_urlrequest
+
+
+def _ao_digest_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value or default)
+    except Exception:
+        return default
+
+
+def _ao_digest_money(value: Any) -> str:
+    try:
+        amount = float(value or 0)
+    except Exception:
+        amount = 0.0
+    if amount.is_integer():
+        return f"${int(amount)}"
+    return f"${amount:.2f}"
+
+
+def _ao_digest_relay_live_url() -> str:
+    for key in ("RELAY_LIVE_URL", "AO_LIVE_URL"):
+        value = str(os.getenv(key, "") or "").strip().rstrip("/")
+        if value:
+            return value
+    return "https://relaylive.aolabs.io"
+
+
+def _ao_digest_ocean_url() -> str:
+    return str(os.getenv("OCEAN_URL", "") or "").strip().rstrip("/") or "https://ocean.aolabs.io"
+
+
+def _ao_digest_ocean_api_url() -> str:
+    base = str(os.getenv("OCEAN_API_BASE_URL", "") or "").strip().rstrip("/") or _ao_digest_ocean_url()
+    return f"{base}/api/radar"
+
+
+def _ao_digest_event_count(event_types: list[str] | None = None, like_pattern: str | None = None) -> int:
+    with _session() as session:
+        query = select(func.count(AcquisitionEvent.id))
+        if event_types:
+            query = query.where(AcquisitionEvent.event_type.in_(event_types))
+        if like_pattern:
+            query = query.where(AcquisitionEvent.event_type.like(like_pattern))
+        return _ao_digest_int(session.execute(query).scalar())
+
+
+def _ao_digest_total_sends(outreach_digest: dict[str, Any]) -> int:
+    existing = outreach_digest.get("total_sends_all_time")
+    if existing is not None:
+        return _ao_digest_int(existing)
+    return _ao_digest_event_count(like_pattern="custom_outreach_sent_step_%")
+
+
+def _ao_digest_total_replies(outreach_digest: dict[str, Any]) -> int:
+    existing = outreach_digest.get("total_replies_all_time")
+    if existing is not None:
+        return _ao_digest_int(existing)
+    return _ao_digest_event_count(["custom_outreach_reply_seen", "smartlead_reply"])
+
+
+def _ao_digest_fetch_json(url: str, timeout_seconds: int = 8) -> dict[str, Any]:
+    request = _ao_digest_urlrequest.Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "AO Digest/1.0",
+        },
+    )
+    with _ao_digest_urlrequest.urlopen(request, timeout=timeout_seconds) as response:
+        raw = response.read(2_000_000)
+    return json.loads(raw.decode("utf-8", errors="replace"))
+
+
+def _ao_digest_static_ocean_items() -> list[dict[str, Any]]:
+    return [
+        {
+            "type": "Field signal",
+            "source": "Disney Imagineering",
+            "title": "Watch creative technology, animatronics, show systems, robotics, and R&D roles.",
+            "url": "https://jobs.disneycareers.com/search-jobs?k=imagineering%20research%20development%20creative%20technology",
+            "why": "Use role language to decide what proof to build: mechanisms, interaction, reliability, and audience experience.",
+        },
+        {
+            "type": "Learning lane",
+            "source": "Disney Research Studios",
+            "title": "Study how research becomes tools, characters, environments, effects, and physical experiences.",
+            "url": "https://studios.disneyresearch.com/",
+            "why": "The goal is not one narrow topic. The goal is becoming strong at turning technical depth into memorable experiences.",
+        },
+        {
+            "type": "Build idea",
+            "source": "Ocean",
+            "title": "Make one small physical or interactive proof this week.",
+            "url": _ao_digest_ocean_url(),
+            "why": "A measured prototype, a short demo, or a clear technical note moves the career forward more than rereading the whole plan.",
+        },
+    ]
+
+
+def _ao_digest_ocean_digest(limit: int = 5) -> dict[str, Any]:
+    try:
+        radar = _ao_digest_fetch_json(_ao_digest_ocean_api_url())
+        items = radar.get("items") if isinstance(radar, dict) else []
+        clean_items = []
+        for item in items if isinstance(items, list) else []:
+            if not isinstance(item, dict):
+                continue
+            clean_items.append(
+                {
+                    "type": str(item.get("type") or "Signal").strip(),
+                    "source": str(item.get("source") or "Ocean").strip(),
+                    "title": str(item.get("title") or "Untitled signal").strip(),
+                    "url": str(item.get("url") or "").strip(),
+                    "why": str(item.get("why") or item.get("summary") or "").strip(),
+                    "date": str(item.get("date") or "").strip(),
+                    "location": str(item.get("location") or "").strip(),
+                }
+            )
+        return {
+            "status": "ok",
+            "updated_at": radar.get("updatedAt"),
+            "items": clean_items[:limit] if clean_items else _ao_digest_static_ocean_items(),
+            "source_status": radar.get("sourceStatus") if isinstance(radar.get("sourceStatus"), list) else [],
+            "error": radar.get("error"),
+        }
+    except (_ao_digest_urlerror.URLError, TimeoutError, json.JSONDecodeError, Exception) as error:
+        return {
+            "status": "fallback",
+            "updated_at": None,
+            "items": _ao_digest_static_ocean_items(),
+            "source_status": [],
+            "error": str(error),
+        }
+
+
+def _ao_digest_relay_state(summary: dict[str, Any], outreach_digest: dict[str, Any]) -> str:
+    today = summary.get("today", {})
+    week = summary.get("week", {})
+    replies_today = _ao_digest_int(outreach_digest.get("replies_today"))
+    sent_today = _ao_digest_int(outreach_digest.get("sent_today"))
+    payments_today = _ao_digest_int(today.get("payments_count"))
+    payments_week = _ao_digest_int(week.get("payments_count"))
+    due = _ao_digest_int(outreach_digest.get("direct_due_count", outreach_digest.get("due_now_count")))
+    cap_remaining = _ao_digest_int(outreach_digest.get("cap_remaining"))
+
+    if payments_today > 0:
+        return "Money landed today"
+    if payments_week > 0:
+        return "Money landed this week"
+    if replies_today > 0:
+        return "Reply signal exists"
+    if sent_today > 0:
+        return "Outreach is running"
+    if due > 0 and cap_remaining > 0:
+        return "Leads are ready"
+    return "Keep the loop stable"
+
+
+def _ao_digest_relay_move(summary: dict[str, Any], outreach_digest: dict[str, Any]) -> str:
+    explicit = str(outreach_digest.get("next_money_move") or "").strip()
+    if explicit:
+        return explicit
+
+    replies_today = _ao_digest_int(outreach_digest.get("replies_today"))
+    due = _ao_digest_int(outreach_digest.get("direct_due_count", outreach_digest.get("due_now_count")))
+    sent_today = _ao_digest_int(outreach_digest.get("sent_today"))
+    daily_cap = _ao_digest_int(outreach_digest.get("daily_send_cap"))
+
+    if replies_today > 0:
+        return "Handle replies first. Real humans are the closest money."
+    if daily_cap > 0 and sent_today >= daily_cap:
+        return "Daily cap is used. Wait for replies or the next send window."
+    if due > 0:
+        return "Let direct leads send during the next window. Do not chase generic inboxes."
+    return "Refill direct decision-maker leads before increasing volume."
+
+
+def _ao_digest_life_note() -> dict[str, str]:
+    notes = [
+        {
+            "title": "Stress is information, not a command.",
+            "body": "Someone having an opinion does not mean you did something wrong. Feel the stress, slow down, and keep the next action clean.",
+        },
+        {
+            "title": "Getting rich still uses ordinary reps.",
+            "body": "The work is not to feel certain first. The work is to keep sending, learning, building, and answering real signals when they appear.",
+        },
+        {
+            "title": "You can be uncomfortable and still be effective.",
+            "body": "Let the body react without letting it run the day. Other people can feel however they feel; your job is clarity and consistency.",
+        },
+        {
+            "title": "Pressure tolerance is a skill.",
+            "body": "Every day you practice staying steady under uncertainty, you make it easier to sell, build, ask, date, and lead without collapsing into defense.",
+        },
+    ]
+    index = datetime.utcnow().timetuple().tm_yday % len(notes)
+    return notes[index]
+
+
+def _ao_digest_metric_html(label: str, value: str, note: str = "") -> str:
+    note_html = f'<div style="font-size:12px;color:#64748b;margin-top:3px;">{escape(note)}</div>' if note else ""
+    return f"""
+      <div style="border:1px solid #d8dee8;border-radius:12px;padding:12px 14px;background:#ffffff;">
+        <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;font-weight:800;">{escape(label)}</div>
+        <div style="font-size:24px;line-height:1.15;color:#101827;font-weight:900;margin-top:4px;">{escape(value)}</div>
+        {note_html}
+      </div>
+    """.strip()
+
+
+def _ao_digest_ocean_items_html(ocean_digest: dict[str, Any]) -> str:
+    items = ocean_digest.get("items") if isinstance(ocean_digest.get("items"), list) else []
+    rows = []
+    for item in items[:5]:
+        title = str(item.get("title") or "Untitled signal")
+        source = str(item.get("source") or "Ocean")
+        item_type = str(item.get("type") or "Signal")
+        url = str(item.get("url") or "")
+        why = str(item.get("why") or "")
+        link = (
+            f'<a href="{escape(url)}" style="color:#2458d3;text-decoration:none;font-weight:800;">{escape(title)}</a>'
+            if url
+            else f'<strong style="color:#101827;">{escape(title)}</strong>'
+        )
+        rows.append(
+            f"""
+            <div style="border-top:1px solid #e5e7eb;padding:12px 0;">
+              <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;font-weight:800;">{escape(item_type)} / {escape(source)}</div>
+              <div style="font-size:15px;line-height:1.35;margin:3px 0;">{link}</div>
+              <div style="font-size:13px;line-height:1.45;color:#475569;">{escape(why)}</div>
+            </div>
+            """.strip()
+        )
+    return "".join(rows) or '<div style="font-size:13px;color:#64748b;">No Ocean items available today.</div>'
+
+
+def _daily_update_subject(summary: dict[str, Any], outreach_digest: dict[str, Any]) -> str:
+    today = summary.get("today", {})
+    money_today = _ao_digest_money(today.get("gross_usd", 0))
+    sent_today = _ao_digest_int(outreach_digest.get("sent_today"))
+    replies_today = _ao_digest_int(outreach_digest.get("replies_today"))
+    total_sent = _ao_digest_total_sends(outreach_digest)
+    total_replies = _ao_digest_total_replies(outreach_digest)
+    return _ascii_safe(
+        f"[AO Digest] Relay {money_today} | sent {sent_today}/{total_sent} | replies {replies_today}/{total_replies}"
+    )
+
+
+def _daily_update_html(
+    summary: dict[str, Any],
+    outreach_digest: dict[str, Any],
+    seed_result: dict[str, Any],
+    ocean_digest: dict[str, Any] | None = None,
+) -> str:
+    ocean_digest = ocean_digest or _ao_digest_ocean_digest()
+    today = summary.get("today", {})
+    week = summary.get("week", {})
+    month = summary.get("month", {})
+    target = outreach_digest.get("money_target") if isinstance(outreach_digest.get("money_target"), dict) else {}
+    life = _ao_digest_life_note()
+    total_sent = _ao_digest_total_sends(outreach_digest)
+    total_replies = _ao_digest_total_replies(outreach_digest)
+    relay_url = _ao_digest_relay_live_url()
+    ocean_url = _ao_digest_ocean_url()
+    relay_state = _ao_digest_relay_state(summary, outreach_digest)
+    relay_move = _ao_digest_relay_move(summary, outreach_digest)
+
+    return f"""
+<div style="margin:0;padding:12px;background:#f6f7f9;">
+  <div style="max-width:720px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;color:#101827;line-height:1.5;">
+    <div style="background:#ffffff;border:1px solid #d8dee8;border-radius:18px;padding:18px 16px;margin-bottom:12px;">
+      <div style="font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#2458d3;font-weight:900;">AO Digest</div>
+      <div style="font-size:30px;line-height:1.05;font-weight:900;letter-spacing:-0.03em;margin:6px 0;">{escape(relay_state)}</div>
+      <div style="font-size:14px;color:#475569;">Daily status for Relay money, Ocean learning, and staying steady under pressure.</div>
+    </div>
+
+    <div style="background:#ffffff;border:1px solid #d8dee8;border-radius:18px;padding:16px;margin-bottom:12px;">
+      <div style="font-size:18px;font-weight:900;margin-bottom:10px;">Relay</div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+        {_ao_digest_metric_html("Money today", _ao_digest_money(today.get("gross_usd")), f"{today.get('payments_count', 0)} payments")}
+        {_ao_digest_metric_html("Money week", _ao_digest_money(week.get("gross_usd")), f"month {_ao_digest_money(month.get('gross_usd'))}")}
+        {_ao_digest_metric_html("Emails sent", str(total_sent), f"today {outreach_digest.get('sent_today', 0)} / cap {outreach_digest.get('daily_send_cap', 0)}")}
+        {_ao_digest_metric_html("Replies received", str(total_replies), f"today {outreach_digest.get('replies_today', 0)}")}
+        {_ao_digest_metric_html("Direct leads due", str(outreach_digest.get("direct_due_count", outreach_digest.get("due_now_count", 0))), f"{outreach_digest.get('generic_paused_count', 0)} generic paused")}
+        {_ao_digest_metric_html("Weekly target", _ao_digest_money(target.get("weekly_target_usd", 100)), f"{target.get('paid_tests_needed_weekly', 3)} paid tests needed")}
+      </div>
+      <div style="border:1px solid #d8dee8;border-radius:12px;padding:12px 14px;margin-top:12px;background:#f8fafc;">
+        <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;font-weight:800;">Next money move</div>
+        <div style="font-size:15px;line-height:1.45;font-weight:800;color:#101827;margin-top:4px;">{escape(relay_move)}</div>
+      </div>
+      <div style="margin-top:14px;">
+        <a href="{escape(relay_url)}" style="display:inline-block;background:#101827;color:#ffffff;text-decoration:none;padding:10px 13px;border-radius:10px;font-weight:900;margin-right:8px;">Open Relay Live</a>
+      </div>
+    </div>
+
+    <div style="background:#ffffff;border:1px solid #d8dee8;border-radius:18px;padding:16px;margin-bottom:12px;">
+      <div style="font-size:18px;font-weight:900;margin-bottom:4px;">Ocean</div>
+      <div style="font-size:14px;color:#475569;margin-bottom:6px;">Learn broadly. Build evidence. Track creative R&D, Disney Imagineering, labs, robotics, interaction, fabrication, tools, and anything worth becoming good for.</div>
+      {_ao_digest_ocean_items_html(ocean_digest)}
+      <div style="border:1px solid #bfdbfe;border-radius:12px;padding:12px 14px;margin-top:10px;background:#f8fbff;">
+        <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#2458d3;font-weight:800;">Today&apos;s build move</div>
+        <div style="font-size:14px;line-height:1.45;color:#172033;margin-top:4px;">Pick one signal above. Write three bullets: what it teaches, what proof it asks for, and one tiny thing you can prototype or study today.</div>
+      </div>
+      <div style="margin-top:14px;">
+        <a href="{escape(ocean_url)}" style="display:inline-block;background:#2458d3;color:#ffffff;text-decoration:none;padding:10px 13px;border-radius:10px;font-weight:900;">Open Ocean</a>
+      </div>
+    </div>
+
+    <div style="background:#ffffff;border:1px solid #d8dee8;border-radius:18px;padding:16px;">
+      <div style="font-size:18px;font-weight:900;margin-bottom:6px;">Life / pressure</div>
+      <div style="font-size:16px;font-weight:900;color:#101827;">{escape(life["title"])}</div>
+      <div style="font-size:14px;line-height:1.5;color:#475569;margin-top:4px;">{escape(life["body"])}</div>
+    </div>
+  </div>
+</div>
+""".strip()
+
+
+def _daily_update_text(
+    summary: dict[str, Any],
+    outreach_digest: dict[str, Any],
+    seed_result: dict[str, Any],
+    ocean_digest: dict[str, Any] | None = None,
+) -> str:
+    ocean_digest = ocean_digest or _ao_digest_ocean_digest()
+    today = summary.get("today", {})
+    week = summary.get("week", {})
+    month = summary.get("month", {})
+    target = outreach_digest.get("money_target") if isinstance(outreach_digest.get("money_target"), dict) else {}
+    life = _ao_digest_life_note()
+    total_sent = _ao_digest_total_sends(outreach_digest)
+    total_replies = _ao_digest_total_replies(outreach_digest)
+    items = ocean_digest.get("items") if isinstance(ocean_digest.get("items"), list) else []
+
+    lines = [
+        "AO Digest",
+        "",
+        "Relay",
+        f"- state: {_ao_digest_relay_state(summary, outreach_digest)}",
+        _ascii_safe(f"- money today: {_ao_digest_money(today.get('gross_usd'))} from {today.get('payments_count', 0)} payments"),
+        _ascii_safe(f"- money week: {_ao_digest_money(week.get('gross_usd'))} | month: {_ao_digest_money(month.get('gross_usd'))}"),
+        _ascii_safe(f"- emails sent: {total_sent} total | {outreach_digest.get('sent_today', 0)} today / cap {outreach_digest.get('daily_send_cap', 0)}"),
+        _ascii_safe(f"- replies received: {total_replies} total | {outreach_digest.get('replies_today', 0)} today"),
+        _ascii_safe(f"- direct leads due: {outreach_digest.get('direct_due_count', outreach_digest.get('due_now_count', 0))} | generic paused: {outreach_digest.get('generic_paused_count', 0)}"),
+        _ascii_safe(f"- weekly target: {_ao_digest_money(target.get('weekly_target_usd', 100))} | paid tests needed: {target.get('paid_tests_needed_weekly', 3)}"),
+        _ascii_safe(f"- next money move: {_ao_digest_relay_move(summary, outreach_digest)}"),
+        "",
+        f"Relay Live: {_ao_digest_relay_live_url()}",
+        "",
+        "Ocean",
+        "Learn broadly. Build evidence. Track creative R&D, Disney Imagineering, labs, robotics, interaction, fabrication, tools, and anything worth becoming good for.",
+    ]
+
+    for item in items[:5]:
+        lines.extend(
+            [
+                "",
+                _ascii_safe(f"- {item.get('type', 'Signal')} / {item.get('source', 'Ocean')}: {item.get('title', 'Untitled signal')}"),
+                _ascii_safe(f"  why: {item.get('why', '')}"),
+            ]
+        )
+        if item.get("url"):
+            lines.append(_ascii_safe(f"  link: {item.get('url')}"))
+
+    lines.extend(
+        [
+            "",
+            "Today's build move: Pick one Ocean signal. Write three bullets: what it teaches, what proof it asks for, and one tiny thing you can prototype or study today.",
+            f"Ocean: {_ao_digest_ocean_url()}",
+            "",
+            "Life / pressure",
+            _ascii_safe(f"- {life['title']} {life['body']}"),
+        ]
+    )
+
+    return "\n".join(lines)
+
+
+def send_daily_money_summary() -> dict[str, Any]:
+    summary = money_summary()
+    outreach_digest = outreach_status()
+    ocean_digest = _ao_digest_ocean_digest()
+    seed_result = {"status": "skipped", "reason": "ao_digest_replaces_seed_check"}
+
+    update_subject = _daily_update_subject(summary, outreach_digest)
+    update_html = _daily_update_html(summary, outreach_digest, seed_result, ocean_digest)
+    update_text = _daily_update_text(summary, outreach_digest, seed_result, ocean_digest)
+    update_send_result = _send_smtp_email_from_seed_sender(
+        subject=update_subject,
+        text_body=update_text,
+        html_body=update_html,
+    )
+
+    with _session() as session:
+        session.add(
+            AcquisitionEvent(
+                event_type="daily_ops_update_sent",
+                prospect_external_id="ops",
+                summary=update_subject,
+                payload_json=json.dumps(
+                    {
+                        "mail_name": "AO Digest",
+                        "money": summary,
+                        "outreach_digest": outreach_digest,
+                        "ocean_digest": ocean_digest,
+                        "seed_result": seed_result,
+                        "update_send_result": update_send_result,
+                    },
+                    ensure_ascii=False,
+                ),
+            )
+        )
+        session.commit()
+
+    return {
+        "status": "ok",
+        "mail_name": "AO Digest",
+        "seed_result": seed_result,
+        "update_subject": update_subject,
+        "update_send_result": update_send_result,
+        "summary": summary,
+        "outreach_digest": outreach_digest,
+        "ocean_digest": ocean_digest,
+    }
+
+# --- AO DIGEST OVERRIDE END ---
+
