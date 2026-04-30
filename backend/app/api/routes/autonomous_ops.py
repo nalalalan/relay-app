@@ -5,6 +5,7 @@ import asyncio
 from fastapi import APIRouter, BackgroundTasks, Body
 
 from app.services.autonomous_ops import (
+    daily_series,
     money_summary,
     monthly_summary,
     ops_status,
@@ -23,6 +24,11 @@ async def autonomous_status() -> dict:
 @router.get("/money-summary")
 async def autonomous_money_summary() -> dict:
     return money_summary()
+
+
+@router.get("/daily-series")
+async def autonomous_daily_series(days: int | None = None) -> dict:
+    return daily_series(days=days)
 
 
 @router.get("/monthly-summary")

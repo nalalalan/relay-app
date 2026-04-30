@@ -4,10 +4,11 @@ import json
 import os
 import smtplib
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from email.message import EmailMessage
 from html import escape
 from typing import Any, Dict
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -460,6 +461,156 @@ def money_summary() -> dict[str, Any]:
         "today": _money_summary_window(1),
         "week": _money_summary_window(7),
         "month": _money_summary_window(30),
+    }
+
+
+def _daily_series_tz() -> ZoneInfo:
+    tz_name = os.getenv("COLD_SEND_TIMEZONE", "America/New_York").strip() or "America/New_York"
+    try:
+        return ZoneInfo(tz_name)
+    except Exception:
+        return ZoneInfo("America/New_York")
+
+
+def _event_local_day(value: datetime | None, tz: ZoneInfo) -> date | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(tz).date()
+
+
+def _event_utc_iso(value: datetime | None) -> str:
+    if value is None:
+        return ""
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _safe_event_payload(event: AcquisitionEvent) -> dict[str, Any]:
+    try:
+        payload = json.loads(event.payload_json or "{}")
+    except Exception:
+        payload = {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _stripe_event_email(payload: dict[str, Any]) -> str:
+    raw_object = payload.get("raw", {}).get("data", {}).get("object", {})
+    return str(
+        payload.get("customer_details", {}).get("email")
+        or payload.get("customer_email")
+        or payload.get("email")
+        or raw_object.get("customer_details", {}).get("email")
+        or raw_object.get("customer_email")
+        or ""
+    ).strip().lower()
+
+
+def _stripe_event_amount_cents(payload: dict[str, Any]) -> int:
+    raw_object = payload.get("raw", {}).get("data", {}).get("object", {})
+    try:
+        return int(payload.get("amount_total") or raw_object.get("amount_total") or 0)
+    except Exception:
+        return 0
+
+
+def _blank_daily_series_row(day: date) -> dict[str, Any]:
+    return {
+        "date": day.isoformat(),
+        "gross_cents": 0,
+        "money_usd": 0.0,
+        "payments": 0,
+        "sends": 0,
+        "replies": 0,
+    }
+
+
+def daily_series(days: int | None = None) -> dict[str, Any]:
+    tz = _daily_series_tz()
+    today = datetime.now(tz).date()
+    max_days = None
+    if days is not None:
+        max_days = max(1, min(int(days), 366))
+
+    with _session() as session:
+        events = list(
+            session.execute(
+                select(AcquisitionEvent)
+                .where(
+                    (AcquisitionEvent.event_type.like("custom_outreach_sent_step_%"))
+                    | (
+                        AcquisitionEvent.event_type.in_(
+                            ["custom_outreach_reply_seen", "smartlead_reply", "stripe_paid"]
+                        )
+                    )
+                )
+                .order_by(AcquisitionEvent.created_at.asc())
+            ).scalars().all()
+        )
+
+    first_send = next(
+        (
+            event.created_at
+            for event in events
+            if str(event.event_type or "").startswith("custom_outreach_sent_step_")
+        ),
+        None,
+    )
+    first_event_day = min(
+        (day for day in (_event_local_day(event.created_at, tz) for event in events) if day is not None),
+        default=today,
+    )
+    start_day = _event_local_day(first_send, tz) or first_event_day
+    if max_days is not None and (today - start_day).days + 1 > max_days:
+        start_day = today - timedelta(days=max_days - 1)
+
+    row_count = max((today - start_day).days + 1, 1)
+    rows_by_day = {
+        (start_day + timedelta(days=offset)).isoformat(): _blank_daily_series_row(start_day + timedelta(days=offset))
+        for offset in range(row_count)
+    }
+
+    for event in events:
+        local_day = _event_local_day(event.created_at, tz)
+        if local_day is None:
+            continue
+        key = local_day.isoformat()
+        row = rows_by_day.get(key)
+        if row is None:
+            continue
+
+        event_type = str(event.event_type or "")
+        if event_type.startswith("custom_outreach_sent_step_"):
+            row["sends"] += 1
+        elif event_type in {"custom_outreach_reply_seen", "smartlead_reply"}:
+            row["replies"] += 1
+        elif event_type == "stripe_paid":
+            payload = _safe_event_payload(event)
+            if _stripe_event_email(payload) == "pham.alann@gmail.com":
+                continue
+            amount_cents = _stripe_event_amount_cents(payload)
+            row["payments"] += 1
+            row["gross_cents"] += amount_cents
+            row["money_usd"] = round(row["gross_cents"] / 100.0, 2)
+
+    rows = list(rows_by_day.values())
+    totals = {
+        "gross_cents": sum(int(row["gross_cents"]) for row in rows),
+        "payments": sum(int(row["payments"]) for row in rows),
+        "sends": sum(int(row["sends"]) for row in rows),
+        "replies": sum(int(row["replies"]) for row in rows),
+    }
+    totals["money_usd"] = round(totals["gross_cents"] / 100.0, 2)
+
+    return {
+        "timezone": str(tz),
+        "start_date": start_day.isoformat(),
+        "end_date": today.isoformat(),
+        "first_send_at": _event_utc_iso(first_send),
+        "totals": totals,
+        "days": rows,
     }
 
 
