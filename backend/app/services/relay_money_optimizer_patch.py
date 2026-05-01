@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 import smtplib
 from datetime import datetime
 from email.message import EmailMessage
@@ -23,9 +24,15 @@ GENERIC_INBOX_LOCAL_PARTS = {
     "hi",
     "info",
     "inquiries",
+    "jobs",
     "mail",
     "marketing",
+    "media",
+    "news",
     "office",
+    "partnerships",
+    "press",
+    "pr",
     "sales",
     "support",
     "team",
@@ -88,9 +95,10 @@ OPTIMIZED_STEP_TEMPLATES = [
         subject="client call recaps",
         body=(
             "Hey - quick question.\n\n"
-            "After a client or sales call, who turns the messy notes into the recap, follow-up email, next steps, and CRM update?\n\n"
-            "I run Relay for that exact cleanup. No new software: send rough notes or a recording link, get a client-ready handoff back.\n\n"
-            "If that is a bottleneck, reply \"sample\" and I will send the before/after packet.\n\n"
+            "I built Relay to turn rough notes from one client or sales call into the finished recap, follow-up draft, next steps, and CRM-ready update.\n\n"
+            "Sample:\n"
+            "{sample_url}\n\n"
+            "Is that cleanup painful enough at {company_name} to test on one real call, or not really?\n\n"
             "- Alan"
         ),
         delay_after_prev_days=0,
@@ -99,11 +107,10 @@ OPTIMIZED_STEP_TEMPLATES = [
         step_number=2,
         subject="re: client call recaps",
         body=(
-            "Following up with the concrete version.\n\n"
-            "Sample output:\n"
-            "{sample_url}\n\n"
-            "The workflow is simple: one rough call note or recording link goes in; a polished recap, follow-up draft, open questions, and CRM-ready update come back.\n\n"
-            "The low-risk test is one real call for $40. Useful when a good conversation is getting stuck in cleanup.\n\n"
+            "Following up once.\n\n"
+            "The useful part is not more software. It is getting the post-call cleanup finished when the team is busy.\n\n"
+            "If you have one messy call from this week, I can turn it into a polished handoff as a $40 test.\n\n"
+            "Worth doing, or should I close the loop?\n\n"
             "- Alan"
         ),
         delay_after_prev_days=1,
@@ -113,12 +120,10 @@ OPTIMIZED_STEP_TEMPLATES = [
         subject="re: client call recaps",
         body=(
             "Last note from me.\n\n"
-            "If same-day follow-up is actually a problem, the paid test is here:\n"
+            "If after-call cleanup is not a real bottleneck, no worries.\n\n"
+            "If one call is worth testing, the $40 checkout is here:\n"
             "{packet_checkout_url}\n\n"
-            "After checkout, send one messy call note or recording link and I will turn it into the handoff packet.\n\n"
-            "Details/sample:\n"
-            "{landing_page_url}\n\n"
-            "If it is not relevant, no worries - I will not keep chasing.\n\n"
+            "Either way, this is my last email unless you reply.\n\n"
             "- Alan"
         ),
         delay_after_prev_days=2,
@@ -127,6 +132,16 @@ OPTIMIZED_STEP_TEMPLATES = [
 
 _applied = False
 _original_outreach_status: Callable[[], dict[str, Any]] | None = None
+
+
+def _safe_json(raw: str | None) -> dict[str, Any]:
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        return {}
 
 
 def _active_experiment() -> dict[str, Any]:
@@ -188,14 +203,23 @@ def _email_parts(email_address: str) -> tuple[str, str]:
     return local.strip(), domain.strip()
 
 
+def _normalized_email(email_address: str) -> str:
+    local, domain = _email_parts(email_address)
+    return f"{local}@{domain}" if local and domain else ""
+
+
+def _local_base(value: str) -> str:
+    return (value or "").strip().lower().replace(".", "").replace("-", "").replace("_", "")
+
+
 def _is_generic_inbox(email_address: str) -> bool:
     local, _domain = _email_parts(email_address)
     if not local:
         return True
-    local_base = local.replace(".", "").replace("-", "").replace("_", "")
+    local_base = _local_base(local)
     if local in GENERIC_INBOX_LOCAL_PARTS or local_base in GENERIC_INBOX_LOCAL_PARTS:
         return True
-    return local.startswith(("info", "hello", "contact", "admin", "support", "sales"))
+    return local.startswith(("info", "hello", "contact", "admin", "support", "sales", "media", "press"))
 
 
 def _is_placeholder_email(email_address: str) -> bool:
@@ -203,7 +227,7 @@ def _is_placeholder_email(email_address: str) -> bool:
     local, domain = _email_parts(value)
     if not local or not domain or "." not in domain:
         return True
-    local_base = local.replace(".", "").replace("-", "").replace("_", "")
+    local_base = _local_base(local)
     if value in PLACEHOLDER_EMAILS:
         return True
     if domain in PLACEHOLDER_EMAIL_DOMAINS:
@@ -213,6 +237,30 @@ def _is_placeholder_email(email_address: str) -> bool:
     if domain.endswith(".example") or domain.endswith(".invalid"):
         return True
     return False
+
+
+def _has_human_contact_name(prospect: AcquisitionProspect) -> bool:
+    contact = str(getattr(prospect, "contact_name", "") or "").strip().lower()
+    company = str(getattr(prospect, "company_name", "") or "").strip().lower()
+    if not contact or "@" in contact:
+        return False
+    if company and _local_base(contact) == _local_base(company):
+        return False
+    company_words = {"agency", "company", "marketing", "media", "group", "llc", "inc", "seo", "ads"}
+    words = [part for part in contact.replace(",", " ").split() if part]
+    if not words:
+        return False
+    if any(word in company_words for word in words):
+        return False
+    return any(char.isalpha() for char in contact)
+
+
+def _is_human_decision_maker(prospect: AcquisitionProspect) -> bool:
+    if _is_generic_inbox(prospect.contact_email):
+        return False
+    if _title_relevance(prospect) == 0:
+        return True
+    return _has_human_contact_name(prospect)
 
 
 def _generic_policy() -> str:
@@ -239,17 +287,50 @@ def _title_relevance(prospect: AcquisitionProspect) -> int:
     return 1
 
 
-def _prospect_priority(prospect: AcquisitionProspect) -> tuple[int, int, int, int, int, datetime]:
+def _prospect_priority(prospect: AcquisitionProspect) -> tuple[int, int, int, int, int, int, datetime]:
     band_rank = {"strong": 0, "good": 1, "maybe": 2}.get((prospect.fit_band or "").lower(), 9)
     created = prospect.created_at or datetime.min
     return (
         1 if _is_placeholder_email(prospect.contact_email) else 0,
         1 if _is_generic_inbox(prospect.contact_email) else 0,
+        0 if _has_human_contact_name(prospect) else 1,
         _title_relevance(prospect),
         band_rank,
         -int(prospect.fit_score or 0),
         created,
     )
+
+
+def _sent_email_external_ids(session, email_address: str) -> set[str]:
+    email = _normalized_email(email_address)
+    if not email:
+        return set()
+
+    rows = list(
+        session.execute(
+            select(AcquisitionEvent)
+            .where(AcquisitionEvent.event_type.like("custom_outreach_sent_step_%"))
+            .where(AcquisitionEvent.payload_json.like(f"%{email}%"))
+        ).scalars().all()
+    )
+    external_ids: set[str] = set()
+    for row in rows:
+        payload = _safe_json(row.payload_json)
+        sent_to = _normalized_email(str(payload.get("to_email") or ""))
+        if sent_to == email:
+            external_ids.add(str(row.prospect_external_id or ""))
+    return external_ids
+
+
+def _is_duplicate_outreach_email(session, prospect: AcquisitionProspect) -> bool:
+    external_ids = _sent_email_external_ids(session, prospect.contact_email)
+    if not external_ids:
+        return False
+    return any(external_id and external_id != prospect.external_id for external_id in external_ids)
+
+
+def _zero_reply_strict_mode(total_sends: int, total_replies: int) -> bool:
+    return total_sends >= 100 and total_replies == 0
 
 
 def _render_body(template: StepTemplate, prospect: AcquisitionProspect) -> str:
@@ -280,6 +361,23 @@ def _quality_snapshot(session) -> dict[str, Any]:
     blocked_bad_email = 0
     direct_due = 0
     generic_due = 0
+    duplicate_email_due = 0
+    weak_decision_maker_due = 0
+
+    total_sends_all_time = int(outreach._total_send_count(session) or 0)
+    total_replies_all_time = int(
+        session.execute(
+            select(func.count(AcquisitionEvent.id)).where(
+                AcquisitionEvent.event_type.in_(
+                    ["custom_outreach_reply_seen", "smartlead_reply"]
+                )
+            )
+        ).scalar()
+        or 0
+    )
+    strict_mode = _zero_reply_strict_mode(total_sends_all_time, total_replies_all_time)
+    active_experiment = _active_experiment()
+    active_variant = str(active_experiment.get("experiment_variant") or "control_sample_ask")
 
     for prospect in prospects:
         if _is_placeholder_email(prospect.contact_email):
@@ -295,7 +393,15 @@ def _quality_snapshot(session) -> dict[str, Any]:
         if outreach._has_any_reply(session, prospect.external_id):
             continue
         sent_events = outreach._sent_events_for_prospect(session, prospect.external_id)
-        if outreach._step_due(prospect, sent_events) is None:
+        prospect_variant = _prospect_variant(sent_events, active_variant)
+        templates = _templates_for_variant(prospect_variant)
+        if outreach._step_due(prospect, sent_events, templates=templates) is None:
+            continue
+        if _is_duplicate_outreach_email(session, prospect):
+            duplicate_email_due += 1
+            continue
+        if strict_mode and not _is_human_decision_maker(prospect):
+            weak_decision_maker_due += 1
             continue
         if is_generic:
             generic_due += 1
@@ -315,26 +421,20 @@ def _quality_snapshot(session) -> dict[str, Any]:
 
     daily_cap = int(settings.buyer_acq_daily_send_cap or 0)
     sent_today = int(outreach._daily_send_count(session) or 0)
-    total_replies_all_time = int(
-        session.execute(
-            select(func.count(AcquisitionEvent.id)).where(
-                AcquisitionEvent.event_type.in_(
-                    ["custom_outreach_reply_seen", "smartlead_reply"]
-                )
-            )
-        ).scalar()
-        or 0
-    )
 
     return {
         "direct_inbox_count": direct_active,
         "generic_inbox_count": generic_active,
         "blocked_bad_email_count": blocked_bad_email,
+        "duplicate_email_due_count": duplicate_email_due,
+        "weak_decision_maker_due_count": weak_decision_maker_due,
         "direct_due_count": direct_due,
         "generic_due_count": generic_due,
         "sendable_due_count": sendable_due,
         "generic_paused_count": paused_generic,
         "cap_remaining": max(daily_cap - sent_today, 0),
+        "zero_reply_strict_mode": strict_mode,
+        "total_sends_all_time": total_sends_all_time,
         "total_replies_all_time": total_replies_all_time,
     }
 
@@ -343,9 +443,17 @@ def _next_money_move(status: dict[str, Any]) -> str:
     total_sends = int(status.get("total_sends_all_time") or 0)
     total_replies = int(status.get("total_replies_all_time") or 0)
     if total_sends >= 100 and total_replies == 0:
+        weak_due = int(status.get("weak_decision_maker_due_count") or 0)
+        duplicate_due = int(status.get("duplicate_email_due_count") or 0)
+        if weak_due or duplicate_due:
+            return (
+                f"No reply signal after {total_sends} sends. Relay is now suppressing "
+                f"{weak_due} weak decision-maker leads and {duplicate_due} duplicate email leads; "
+                "send only named direct buyers with the reply-first sample ask."
+            )
         return (
             f"No reply signal after {total_sends} sends. Treat this as a targeting/copy problem: "
-            "use the active sample-first experiment, keep volume capped, and refill only direct decision-maker leads."
+            "send only named direct buyers with the reply-first sample ask, and do not increase volume yet."
         )
     if int(status.get("replies_today") or 0) > 0:
         return "Handle replies first; real humans are closest to money."
@@ -391,6 +499,8 @@ def _fallback_quality(status: dict[str, Any], error: Exception) -> dict[str, Any
         "direct_inbox_count": int(status.get("direct_inbox_count") or 0),
         "generic_inbox_count": int(status.get("generic_inbox_count") or 0),
         "blocked_bad_email_count": int(status.get("blocked_bad_email_count") or 0),
+        "duplicate_email_due_count": int(status.get("duplicate_email_due_count") or 0),
+        "weak_decision_maker_due_count": int(status.get("weak_decision_maker_due_count") or 0),
         "direct_due_count": int(status.get("direct_due_count") or due_now),
         "generic_due_count": int(status.get("generic_due_count") or 0),
         "sendable_due_count": due_now,
@@ -402,6 +512,7 @@ def _fallback_quality(status: dict[str, Any], error: Exception) -> dict[str, Any
             or status.get("replies_today")
             or 0
         ),
+        "zero_reply_strict_mode": bool(status.get("zero_reply_strict_mode") or False),
         "quality_snapshot_warning": type(error).__name__,
     }
 
@@ -462,7 +573,22 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
 
         direct_due: list[tuple[AcquisitionProspect, Any]] = []
         generic_due: list[tuple[AcquisitionProspect, Any]] = []
+        reserved_emails: set[str] = set()
         blocked_bad_email = 0
+        duplicate_email_blocked = 0
+        weak_decision_maker_blocked = 0
+        total_sends_all_time = int(outreach._total_send_count(session) or 0)
+        total_replies_all_time = int(
+            session.execute(
+                select(func.count(AcquisitionEvent.id)).where(
+                    AcquisitionEvent.event_type.in_(
+                        ["custom_outreach_reply_seen", "smartlead_reply"]
+                    )
+                )
+            ).scalar()
+            or 0
+        )
+        strict_mode = _zero_reply_strict_mode(total_sends_all_time, total_replies_all_time)
 
         for prospect in prospects:
             if _is_placeholder_email(prospect.contact_email):
@@ -481,6 +607,44 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
                 skipped += 1
                 continue
 
+            email = _normalized_email(prospect.contact_email)
+            if email in reserved_emails or _is_duplicate_outreach_email(session, prospect):
+                prospect.status = "manual_review"
+                outreach._log_event(
+                    session,
+                    "custom_outreach_blocked_duplicate_email",
+                    prospect.external_id,
+                    "blocked duplicate outreach email before send",
+                    {
+                        "to_email": prospect.contact_email,
+                        "company_name": prospect.company_name,
+                        "contact_name": prospect.contact_name,
+                    },
+                )
+                duplicate_email_blocked += 1
+                skipped += 1
+                continue
+
+            if strict_mode and not _is_human_decision_maker(prospect):
+                prospect.status = "manual_review"
+                outreach._log_event(
+                    session,
+                    "custom_outreach_paused_weak_decision_maker",
+                    prospect.external_id,
+                    "paused weak decision-maker lead after zero-reply send signal",
+                    {
+                        "to_email": prospect.contact_email,
+                        "company_name": prospect.company_name,
+                        "contact_name": prospect.contact_name,
+                        "title": prospect.title,
+                        "fit_score": prospect.fit_score,
+                        "fit_band": prospect.fit_band,
+                    },
+                )
+                weak_decision_maker_blocked += 1
+                skipped += 1
+                continue
+
             if outreach._has_any_reply(session, prospect.external_id):
                 continue
             sent_events = outreach._sent_events_for_prospect(session, prospect.external_id)
@@ -494,6 +658,8 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
                 generic_due.append((prospect, step))
             else:
                 direct_due.append((prospect, step))
+                if email:
+                    reserved_emails.add(email)
 
         session.commit()
 
@@ -577,6 +743,9 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
             "generic_due_count": len(generic_due),
             "generic_paused_count": paused_generic,
             "blocked_bad_email_count": blocked_bad_email,
+            "blocked_duplicate_email_count": duplicate_email_blocked,
+            "paused_weak_decision_maker_count": weak_decision_maker_blocked,
+            "zero_reply_strict_mode": strict_mode,
             "cap_remaining_after": quality["cap_remaining"],
         },
     }
@@ -800,6 +969,7 @@ def apply_relay_money_optimizer_patch() -> None:
     outreach.STEP_TEMPLATE_VARIANTS = {
         **(getattr(outreach, "STEP_TEMPLATE_VARIANTS", {}) or {}),
         "control_sample_ask": OPTIMIZED_STEP_TEMPLATES,
+        "sample_first_plain": OPTIMIZED_STEP_TEMPLATES,
     }
     outreach._landing_page_url = _landing_page_url
     outreach._sample_url = _sample_url

@@ -286,9 +286,15 @@ GENERIC_INBOX_LOCAL_PARTS = {
     "hi",
     "info",
     "inquiries",
+    "jobs",
     "mail",
     "marketing",
+    "media",
+    "news",
     "office",
+    "partnerships",
+    "press",
+    "pr",
     "sales",
     "support",
     "team",
@@ -376,7 +382,7 @@ def _is_generic_inbox(email_address: str) -> bool:
     local_base = local.replace(".", "").replace("-", "").replace("_", "")
     if local in GENERIC_INBOX_LOCAL_PARTS or local_base in GENERIC_INBOX_LOCAL_PARTS:
         return True
-    return local.startswith(("info", "hello", "contact", "admin", "support", "sales"))
+    return local.startswith(("info", "hello", "contact", "admin", "support", "sales", "media", "press"))
 
 
 def _render_body(template: StepTemplate, prospect: AcquisitionProspect) -> str:
