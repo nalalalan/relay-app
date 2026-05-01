@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import APIRouter, BackgroundTasks, Body
+from fastapi import APIRouter, BackgroundTasks, Body, Depends
 
+from app.api.admin_auth import require_relay_admin
 from app.services.autonomous_ops import (
     daily_series,
     money_summary,
@@ -17,22 +18,28 @@ router = APIRouter()
 
 
 @router.get("/status")
-async def autonomous_status() -> dict:
+async def autonomous_status(_: None = Depends(require_relay_admin)) -> dict:
     return ops_status()
 
 
 @router.get("/money-summary")
-async def autonomous_money_summary() -> dict:
+async def autonomous_money_summary(_: None = Depends(require_relay_admin)) -> dict:
     return money_summary()
 
 
 @router.get("/daily-series")
-async def autonomous_daily_series(days: int | None = None) -> dict:
+async def autonomous_daily_series(
+    days: int | None = None,
+    _: None = Depends(require_relay_admin),
+) -> dict:
     return daily_series(days=days)
 
 
 @router.get("/monthly-summary")
-async def autonomous_monthly_summary(days: int = 30) -> dict:
+async def autonomous_monthly_summary(
+    days: int = 30,
+    _: None = Depends(require_relay_admin),
+) -> dict:
     return monthly_summary(days=days)
 
 
@@ -40,6 +47,7 @@ async def autonomous_monthly_summary(days: int = 30) -> dict:
 def autonomous_run(
     background_tasks: BackgroundTasks,
     body: dict = Body(default={}),
+    _: None = Depends(require_relay_admin),
 ) -> dict:
     force_query = body.get("q_keywords")
     send_live = body.get("send_live", True)
@@ -50,7 +58,7 @@ def autonomous_run(
 
 
 @router.post("/send-daily-summary")
-def trigger_daily_summary() -> dict:
+def trigger_daily_summary(_: None = Depends(require_relay_admin)) -> dict:
     return send_daily_money_summary()
 
 

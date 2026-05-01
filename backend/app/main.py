@@ -48,12 +48,6 @@ def _cors_origins() -> list[str]:
     defaults = [
         "https://relay.aolabs.io",
         "https://www.relay.aolabs.io",
-        "https://liverelay.aolabs.io",
-        "https://www.liverelay.aolabs.io",
-        "https://relaylive.aolabs.io",
-        "https://www.relaylive.aolabs.io",
-        "http://relaylive.aolabs.io",
-        "http://www.relaylive.aolabs.io",
         "https://nalalalan.github.io",
         "https://nalalalan.github.io/alan-operator-site",
         "http://localhost:3000",

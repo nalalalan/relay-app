@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AO Live</title>
+  <title>Relay Admin</title>
+  <meta name="robots" content="noindex,nofollow,noarchive" />
   <meta name="theme-color" content="#0b0d12" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
@@ -92,6 +93,16 @@
     .bad{color:var(--red)}
     .warn{color:var(--yellow)}
 
+    .admin-gate{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:18px;background:rgba(11,13,18,.92);backdrop-filter:blur(18px)}
+    .admin-gate[hidden]{display:none}
+    .admin-card{width:min(420px,100%);display:grid;gap:12px;padding:24px;border-radius:24px;background:linear-gradient(180deg,var(--panel) 0%, var(--panel-2) 100%);border:1px solid var(--line);box-shadow:var(--shadow)}
+    .admin-card h1{margin:0;font-size:30px;line-height:1;font-weight:900;letter-spacing:-.05em}
+    .admin-card p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}
+    .admin-card label{display:grid;gap:7px;color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}
+    .admin-card input{width:100%;min-height:48px;border-radius:14px;border:1px solid var(--line);background:#0d1117;color:var(--text);padding:0 13px;font:inherit;outline:none}
+    .admin-card input:focus{border-color:rgba(63,231,116,.5);box-shadow:0 0 0 4px rgba(0,200,5,.12)}
+    .admin-message{min-height:18px}
+
     @media (max-height: 900px){
       body{padding:10px}
       .app{gap:8px;min-height:calc(100dvh - 20px)}
@@ -127,18 +138,33 @@
   </style>
 </head>
 <body>
+  <div class="admin-gate" id="adminGate" role="dialog" aria-modal="true">
+    <form class="admin-card" id="adminGateForm">
+      <div class="eyebrow">Relay admin</div>
+      <h1>Private dashboard</h1>
+      <p>Enter the Relay admin password to load the private live view.</p>
+      <label>
+        Password
+        <input id="adminPassword" type="password" autocomplete="current-password" />
+      </label>
+      <button class="btn btn-primary" type="submit">Unlock</button>
+      <p class="admin-message" id="adminGateMessage"></p>
+    </form>
+  </div>
+
   <div class="app">
     <div class="topbar">
       <div class="brand">
         <div class="logo">AO</div>
         <div>
-          <h1>AO Live</h1>
-          <p>One-screen view of the only signals that matter.</p>
+          <h1>Relay Admin</h1>
+          <p>Private owner view.</p>
         </div>
       </div>
       <div class="actions">
         <button class="btn btn-ghost" id="refreshBtn">Refresh now</button>
         <button class="btn btn-primary" id="copyBtn">Copy status</button>
+        <button class="btn btn-ghost" id="lockBtn">Lock</button>
       </div>
     </div>
 
@@ -256,9 +282,37 @@
   <script>
     const STATUS_URL = "https://alan-operator-backend-production.up.railway.app/custom-outreach/status";
     const MONEY_URL  = "https://alan-operator-backend-production.up.railway.app/ops/money-summary";
+    const ADMIN_TOKEN_KEY = "relay_admin_token";
+    const ADMIN_HEADER = "X-Relay-Admin";
     let lastPayload = null;
+    let refreshTimer = null;
 
     function $(id){ return document.getElementById(id); }
+    function adminToken(){ return sessionStorage.getItem(ADMIN_TOKEN_KEY) || ""; }
+    function adminHeaders(){
+      const token = adminToken();
+      return token ? { [ADMIN_HEADER]: token } : {};
+    }
+    function showAdminGate(message=""){
+      $("adminGate").hidden = false;
+      $("adminGateMessage").textContent = message;
+      $("adminPassword").focus();
+    }
+    function hideAdminGate(){
+      $("adminGate").hidden = true;
+      $("adminGateMessage").textContent = "";
+    }
+    function lockAdmin(message=""){
+      sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+      lastPayload = null;
+      if(refreshTimer){
+        clearInterval(refreshTimer);
+        refreshTimer = null;
+      }
+      $("liveState").textContent = "locked";
+      $("statusLine").innerHTML = `<span class="warn">Admin locked.</span>`;
+      showAdminGate(message);
+    }
     function fmtMoney(v){ return `$${Number(v || 0).toFixed(2)}`; }
     function fmtTime(date){ return date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}); }
     function fmtShort(date){ return date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
@@ -463,14 +517,24 @@
     }
 
     async function fetchAll(){
+      if(!adminToken()){
+        lockAdmin();
+        return;
+      }
       try{
+        const options = {cache:"no-store", headers:adminHeaders()};
         const [statusRes, moneyRes] = await Promise.all([
-          fetch(STATUS_URL, {cache:"no-store"}),
-          fetch(MONEY_URL, {cache:"no-store"})
+          fetch(STATUS_URL, options),
+          fetch(MONEY_URL, options)
         ]);
+        if([statusRes.status, moneyRes.status].some(status => status === 401 || status === 403 || status === 404)){
+          lockAdmin("Couldn't unlock admin. Check the password.");
+          return;
+        }
         if(!statusRes.ok || !moneyRes.ok) throw new Error(`status ${statusRes.status} / money ${moneyRes.status}`);
         const status = await statusRes.json();
         const money = await moneyRes.json();
+        hideAdminGate();
         render(status, money);
       }catch(err){
         $("liveState").textContent = "stale";
@@ -478,7 +542,27 @@
       }
     }
 
+    function startAdminRefresh(){
+      if(refreshTimer) clearInterval(refreshTimer);
+      fetchAll();
+      refreshTimer = setInterval(fetchAll, 5000);
+    }
+
+    $("adminGateForm").addEventListener("submit", event => {
+      event.preventDefault();
+      const password = $("adminPassword").value.trim();
+      if(!password){
+        $("adminGateMessage").textContent = "Enter the admin password.";
+        return;
+      }
+      sessionStorage.setItem(ADMIN_TOKEN_KEY, password);
+      $("adminPassword").value = "";
+      hideAdminGate();
+      startAdminRefresh();
+    });
+
     $("refreshBtn").addEventListener("click", fetchAll);
+    $("lockBtn").addEventListener("click", () => lockAdmin());
 
     $("copyBtn").addEventListener("click", async () => {
       if(!lastPayload){
@@ -488,7 +572,7 @@
       const s = lastPayload.status;
       const m = lastPayload.money;
       const text = [
-        `AO LIVE`,
+        `RELAY ADMIN`,
         `replies_today=${s.replies_today}`,
         `money_today=${m.today?.gross_usd || 0}`,
         `payments_today=${m.today?.payments_count || 0}`,
@@ -509,8 +593,11 @@
       $("statusLine").innerHTML = `<span class="good">Status copied.</span>`;
     });
 
-    fetchAll();
-    setInterval(fetchAll, 5000);
+    if(adminToken()){
+      startAdminRefresh();
+    } else {
+      lockAdmin();
+    }
   </script>
 </body>
 </html>

@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     packet_offer_name: str = "One live packet - $40"
     packet_checkout_url: str = "https://buy.stripe.com/bJeaEZb4mf6de64dSi2Nq02"
     client_intake_destination: str = ""
+    ops_admin_token: str = ""
 
 
 settings = Settings()

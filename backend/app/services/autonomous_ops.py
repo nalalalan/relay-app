@@ -1992,7 +1992,7 @@ def _relay_mail_live_url() -> str:
     if landing:
         return f"{landing}/ao_live_robinhood_desktop.html"
 
-    return "https://liverelay.aolabs.io"
+    return "https://relay.aolabs.io/admin.html"
 
 
 def _relay_mail_state(summary: dict[str, Any], outreach_digest: dict[str, Any]) -> str:
@@ -2108,7 +2108,7 @@ def _daily_update_html(summary: dict[str, Any], outreach_digest: dict[str, Any],
     live_button = (
         f"""
         <div style="margin:16px 0 0;">
-          <a href="{escape(live_url)}" style="display:inline-block;background:#f8fafc;color:#0f1115;text-decoration:none;padding:11px 15px;border-radius:12px;font-weight:900;">Open LiveRelay</a>
+          <a href="{escape(live_url)}" style="display:inline-block;background:#f8fafc;color:#0f1115;text-decoration:none;padding:11px 15px;border-radius:12px;font-weight:900;">Open Relay Admin</a>
         </div>
         """
         if live_url
@@ -2159,7 +2159,7 @@ def _daily_update_text(summary: dict[str, Any], outreach_digest: dict[str, Any],
     ]
 
     if live_url:
-        lines.extend(["", f"LiveRelay: {live_url}"])
+        lines.extend(["", f"Relay Admin: {live_url}"])
 
     return "\n".join(lines)
 
@@ -2249,7 +2249,7 @@ def _ao_digest_relay_live_url() -> str:
         value = str(os.getenv(key, "") or "").strip().rstrip("/")
         if value:
             return value
-    return "https://relaylive.aolabs.io"
+    return "https://relay.aolabs.io/admin.html"
 
 
 def _ao_digest_ocean_url() -> str:
@@ -2517,7 +2517,7 @@ def _daily_update_html(
         <div style="font-size:15px;line-height:1.45;font-weight:800;color:#101827;margin-top:4px;">{escape(relay_move)}</div>
       </div>
       <div style="margin-top:14px;">
-        <a href="{escape(relay_url)}" style="display:inline-block;background:#101827;color:#ffffff;text-decoration:none;padding:10px 13px;border-radius:10px;font-weight:900;margin-right:8px;">Open Relay Live</a>
+        <a href="{escape(relay_url)}" style="display:inline-block;background:#101827;color:#ffffff;text-decoration:none;padding:10px 13px;border-radius:10px;font-weight:900;margin-right:8px;">Open Relay Admin</a>
       </div>
     </div>
 
@@ -2573,7 +2573,7 @@ def _daily_update_text(
         _ascii_safe(f"- weekly target: {_ao_digest_money(target.get('weekly_target_usd', 100))} | paid tests needed: {target.get('paid_tests_needed_weekly', 3)}"),
         _ascii_safe(f"- next money move: {_ao_digest_relay_move(summary, outreach_digest)}"),
         "",
-        f"Relay Live: {_ao_digest_relay_live_url()}",
+        f"Relay Admin: {_ao_digest_relay_live_url()}",
         "",
         "Ocean",
         "Learn broadly. Build evidence. Track creative R&D, Disney Imagineering, labs, robotics, interaction, fabrication, tools, and anything worth becoming good for.",
