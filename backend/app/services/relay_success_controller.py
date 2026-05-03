@@ -30,6 +30,7 @@ INTAKE_SMOKE_EVENT = "relay_intake_smoke_test"
 DELIVERY_SMOKE_EVENT = "relay_delivery_smoke_test"
 OUTBOUND_SMOKE_EVENT = "relay_outbound_smoke_test"
 PUBLIC_OFFER_SMOKE_EVENT = "relay_public_offer_smoke_test"
+REPLY_AUTOCLOSE_SMOKE_EVENT = "relay_reply_autoclose_smoke_test"
 EXPERIMENT_PLAN_EVENT = "relay_experiment_plan"
 DEFAULT_EXPERIMENT_VARIANT = "control_sample_ask"
 HARD_PAID_TEST_VARIANT = "hard_paid_test_direct"
@@ -675,6 +676,10 @@ def _public_offer_smoke_interval_hours() -> int:
     return max(_int_env("RELAY_PUBLIC_OFFER_SMOKE_INTERVAL_HOURS", 6), 1)
 
 
+def _reply_autoclose_smoke_interval_hours() -> int:
+    return max(_int_env("RELAY_REPLY_AUTOCLOSE_SMOKE_INTERVAL_HOURS", 6), 1)
+
+
 def _run_intake_smoke_check_if_needed() -> dict[str, Any]:
     now = _now()
     interval_hours = _intake_smoke_interval_hours()
@@ -1018,6 +1023,127 @@ def _run_outbound_smoke_check_if_needed() -> dict[str, Any]:
         }
 
 
+def _reply_autoclose_preflight() -> dict[str, Any]:
+    now = _now()
+    missing: list[str] = []
+    detail: dict[str, Any] = {
+        "did_not_poll_mailbox": True,
+        "did_not_send_email": True,
+        "did_not_create_payment": True,
+        "checked_at": now.isoformat(),
+    }
+    try:
+        import app.services.custom_outreach as outreach_service
+        from app.services.relay_money_optimizer_patch import optimized_auto_reply_text
+
+        smtp_enabled = bool(getattr(outreach_service, "_smtp_enabled", lambda: False)())
+        smtp_mailboxes = list(getattr(outreach_service, "_smtp_mailboxes", lambda: [])())
+        reply_to = os.getenv("COLD_SMTP_REPLY_TO", settings.reply_to_email or "").strip()
+        intent, reply_text = optimized_auto_reply_text("yes, interested - how much does it cost?")
+        reply_text = reply_text or ""
+        checkout_url = str(settings.packet_checkout_url or "").strip()
+        notes_url = ""
+        try:
+            notes_url = str(getattr(outreach_service, "_notes_url", lambda: "")() or "")
+        except Exception:
+            notes_url = ""
+
+        detail.update(
+            {
+                "mode": "transactional_smtp_cap_bypass",
+                "buyer_mailbox_address_configured": bool(settings.buyer_acq_mailbox_address),
+                "buyer_mailbox_password_configured": bool(settings.buyer_acq_mailbox_password),
+                "imap_host_configured": bool(settings.buyer_acq_imap_host),
+                "imap_port": settings.buyer_acq_imap_port,
+                "smtp_enabled": smtp_enabled,
+                "smtp_mailboxes_configured": len(smtp_mailboxes),
+                "smtp_host": os.getenv("COLD_SMTP_HOST", "smtp.porkbun.com").strip(),
+                "smtp_port": int(os.getenv("COLD_SMTP_PORT", "587").strip() or "587"),
+                "smtp_security": os.getenv("COLD_SMTP_SECURITY", "starttls").strip().lower(),
+                "reply_to_configured": bool(reply_to),
+                "checkout_configured": bool(checkout_url),
+                "sample_intent": intent,
+                "reply_preview": reply_text[:500],
+                "reply_contains_checkout_url": bool(checkout_url and checkout_url in reply_text),
+                "reply_contains_price": "$40" in reply_text,
+                "reply_contains_notes_url": bool(notes_url and notes_url in reply_text),
+            }
+        )
+        if not settings.buyer_acq_mailbox_address:
+            missing.append("BUYER_MAILBOX_ADDRESS")
+        if not settings.buyer_acq_mailbox_password:
+            missing.append("BUYER_MAILBOX_PASSWORD")
+        if not settings.buyer_acq_imap_host:
+            missing.append("BUYER_IMAP_HOST")
+        if not smtp_enabled:
+            missing.append("COLD_SMTP_ENABLED")
+        if not smtp_mailboxes:
+            missing.append("COLD_SMTP_MAILBOXES")
+        if not reply_to:
+            missing.append("REPLY_TO_EMAIL")
+        if not checkout_url:
+            missing.append("PACKET_CHECKOUT_URL")
+        if intent == "negative" or not reply_text:
+            missing.append("REPLY_AUTOCLOSE_TEXT")
+        if checkout_url and not detail["reply_contains_checkout_url"]:
+            missing.append("REPLY_AUTOCLOSE_CHECKOUT_LINK")
+        if not detail["reply_contains_price"]:
+            missing.append("REPLY_AUTOCLOSE_PRICE_COPY")
+    except Exception as exc:
+        missing.append("REPLY_AUTOCLOSE_PREFLIGHT_EXCEPTION")
+        detail["error_type"] = type(exc).__name__
+        detail["error"] = str(exc)[:500]
+
+    missing = sorted(set(missing))
+    return {
+        "status": "ok" if not missing else "error",
+        "summary": "reply_autoclose_ready" if not missing else "reply_autoclose_missing_config",
+        "missing": missing,
+        **detail,
+    }
+
+
+def _run_reply_autoclose_smoke_check_if_needed() -> dict[str, Any]:
+    now = _now()
+    interval_hours = _reply_autoclose_smoke_interval_hours()
+    with _session() as session:
+        latest = session.execute(
+            select(AcquisitionEvent)
+            .where(AcquisitionEvent.event_type == REPLY_AUTOCLOSE_SMOKE_EVENT)
+            .order_by(AcquisitionEvent.created_at.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if latest is not None and latest.created_at is not None:
+            age_seconds = max(int((now - latest.created_at.replace(tzinfo=None)).total_seconds()), 0)
+            latest_payload = _safe_json(latest.payload_json)
+            if latest_payload.get("status") != "error" and age_seconds < interval_hours * 3600:
+                return {
+                    "status": "skipped",
+                    "summary": "recent_reply_autoclose_smoke_check_exists",
+                    "latest_at": latest.created_at.isoformat(),
+                    "age_seconds": age_seconds,
+                    "interval_hours": interval_hours,
+                }
+
+        payload = _reply_autoclose_preflight()
+        session.add(
+            AcquisitionEvent(
+                event_type=REPLY_AUTOCLOSE_SMOKE_EVENT,
+                prospect_external_id="relay-reply-autoclose-smoke",
+                summary=str(payload.get("summary") or "reply_autoclose_smoke_checked"),
+                payload_json=json.dumps(payload, ensure_ascii=False),
+            )
+        )
+        session.commit()
+        return {
+            "status": payload.get("status"),
+            "summary": payload.get("summary"),
+            "missing": payload.get("missing", []),
+            "interval_hours": interval_hours,
+            "mode": payload.get("mode", ""),
+        }
+
+
 def _run_delivery_smoke_check_if_needed() -> dict[str, Any]:
     now = _now()
     interval_hours = _delivery_smoke_interval_hours()
@@ -1317,6 +1443,7 @@ def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
     env = _env_snapshot()
     outbound_preflight = _active_outbound_preflight()
     public_offer_preflight = _public_offer_preflight()
+    reply_autoclose_preflight = _reply_autoclose_preflight()
     critical_missing = [
         name
         for name in ["DATABASE_URL", "RESEND_API_KEY", "PACKET_CHECKOUT_URL", "FROM_EMAIL_FULFILLMENT"]
@@ -1326,6 +1453,8 @@ def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
         critical_missing.append("ACTIVE_OUTBOUND_PREFLIGHT")
     if public_offer_preflight.get("status") == "error":
         critical_missing.append("PUBLIC_OFFER_PREFLIGHT")
+    if reply_autoclose_preflight.get("status") == "error" and unhandled_replies > 0:
+        critical_missing.append("REPLY_AUTOCLOSE_PREFLIGHT")
 
     return {
         "status": "ok",
@@ -1335,6 +1464,7 @@ def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
         "critical_missing": critical_missing,
         "outbound_preflight": outbound_preflight,
         "public_offer_preflight": public_offer_preflight,
+        "reply_autoclose_preflight": reply_autoclose_preflight,
         "money": money,
         "intent": {
             "page_views": page_views,
@@ -1936,6 +2066,7 @@ def run_relay_success_control_tick() -> dict[str, Any]:
     actions["delivery_smoke_check"] = _run_delivery_smoke_check_if_needed()
     actions["outbound_smoke_check"] = _run_outbound_smoke_check_if_needed()
     actions["public_offer_smoke_check"] = _run_public_offer_smoke_check_if_needed()
+    actions["reply_autoclose_smoke_check"] = _run_reply_autoclose_smoke_check_if_needed()
     actions["inbound_conversion"] = run_inbound_conversion_sweep()
     actions["paid_intake_reminders"] = run_paid_intake_reminder_sweep(
         hours=int(os.getenv("OPS_INTAKE_REMINDER_HOURS", "12") or "12")
