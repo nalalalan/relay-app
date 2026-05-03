@@ -83,6 +83,16 @@ EXPERIMENTS: dict[str, dict[str, Any]] = {
         ],
         "change": "Mention the $40 test earlier after enough reply signal exists.",
     },
+    "hard_paid_test_direct": {
+        "label": "Hard paid test",
+        "hypothesis": "If free sample language gets no reply signal, direct paid-outcome language may reveal actual buyers.",
+        "query_rotation": [
+            "agency owner client follow up",
+            "b2b agency operations founder",
+            "sales operations agency owner",
+        ],
+        "change": "Lead with the concrete $40 paid test and the after-call follow-up outcome instead of a free sample ask.",
+    },
 }
 
 DEFAULT_RESEARCH_SOURCES = [
@@ -429,6 +439,69 @@ def _current_week_plan_payload(session: Session, week_start: datetime | None = N
     return None
 
 
+def _int_from(value: Any, default: int = 0) -> int:
+    try:
+        return int(value or default)
+    except Exception:
+        return default
+
+
+def _min_experiment_sample() -> int:
+    return max(1, _int_from(os.getenv("RELAY_EXPERIMENT_MIN_SAMPLE", "20"), 20))
+
+
+def _zero_signal_rotation_threshold() -> int:
+    return max(1, _int_from(os.getenv("RELAY_ZERO_SIGNAL_ROTATION_ESCALATION_COUNT", "2"), 2))
+
+
+def _zero_signal_plan(payload: dict[str, Any], min_sample: int) -> bool:
+    decision_reasons = [
+        str(reason)
+        for reason in payload.get("decision_reasons", [])
+        if str(reason).strip()
+    ]
+    reason_text = " ".join(decision_reasons).lower()
+    windows = [
+        payload.get("rolling_7_day_metrics"),
+        payload.get("prior_week_metrics"),
+        payload.get("current_week_metrics"),
+    ]
+    for metrics in windows:
+        if not isinstance(metrics, dict):
+            continue
+        if _int_from(metrics.get("replies")) > 0 or _int_from(metrics.get("payments")) > 0:
+            return False
+    for metrics in windows:
+        if not isinstance(metrics, dict):
+            continue
+        if (
+            _int_from(metrics.get("sends")) >= min_sample
+            and _int_from(metrics.get("replies")) <= 0
+            and _int_from(metrics.get("payments")) <= 0
+        ):
+            return True
+    return "no reply signal" in reason_text and "measurable sends" in reason_text
+
+
+def _zero_signal_rotation_count(session: Session) -> int:
+    min_sample = _min_experiment_sample()
+    threshold = _zero_signal_rotation_threshold()
+    rows = session.execute(
+        select(AcquisitionEvent)
+        .where(AcquisitionEvent.event_type == EXPERIMENT_PLAN_EVENT)
+        .order_by(AcquisitionEvent.created_at.desc())
+        .limit(max(threshold + 4, 6))
+    ).scalars().all()
+
+    count = 0
+    for row in rows:
+        payload = _safe_json(row.payload_json)
+        if not _zero_signal_plan(payload, min_sample):
+            break
+        count += 1
+    return count
+
+
 def _variant_sequence() -> list[str]:
     raw = os.getenv("RELAY_EXPERIMENT_SEQUENCE", "").strip()
     variants = [item.strip() for item in raw.split("|") if item.strip()] if raw else []
@@ -442,8 +515,9 @@ def _choose_variant(
     prior_week: dict[str, Any],
     rolling_window: dict[str, Any] | None = None,
     latest_plan: dict[str, Any] | None,
+    zero_signal_rotation_count: int = 0,
 ) -> tuple[str, list[str]]:
-    min_sample = int(os.getenv("RELAY_EXPERIMENT_MIN_SAMPLE", "20"))
+    min_sample = _min_experiment_sample()
     evidence_candidates = [
         ("prior week", prior_week),
         ("rolling 7-day window", rolling_window or {}),
@@ -482,6 +556,9 @@ def _choose_variant(
         return "paid_test_explicit", reasons
 
     reasons.append(f"No reply signal after measurable sends in the {evidence_name}; rotate one controlled copy/targeting variable.")
+    if zero_signal_rotation_count + 1 >= _zero_signal_rotation_threshold():
+        reasons.append("Repeated no-reply/no-payment rotations reached the escalation threshold; test the harder paid-offer lane.")
+        return "hard_paid_test_direct", reasons
     if previous_variant not in sequence:
         return sequence[0], reasons
     return sequence[(sequence.index(previous_variant) + 1) % len(sequence)], reasons
@@ -511,8 +588,11 @@ def _plan_payload(
     latest_plan: dict[str, Any] | None,
     research_inputs: list[dict[str, Any]],
     reasons: list[str],
+    zero_signal_rotation_count: int,
+    zero_signal_rotation_threshold: int,
 ) -> dict[str, Any]:
     experiment = EXPERIMENTS.get(variant, EXPERIMENTS[DEFAULT_EXPERIMENT_VARIANT])
+    zero_signal_effective_count = zero_signal_rotation_count + (1 if variant == "hard_paid_test_direct" else 0)
     evidence_for_cap = (
         prior_week
         if int(prior_week.get("sends", 0))
@@ -535,6 +615,10 @@ def _plan_payload(
         "prior_week_metrics": prior_week,
         "rolling_7_day_metrics": rolling_window,
         "previous_experiment_variant": (latest_plan or {}).get("experiment_variant"),
+        "zero_signal_rotation_count": zero_signal_rotation_count,
+        "zero_signal_current_evidence_count": zero_signal_effective_count,
+        "zero_signal_rotation_threshold": zero_signal_rotation_threshold,
+        "zero_signal_rotation_escalated": zero_signal_effective_count >= zero_signal_rotation_threshold,
         "knowledge_takeaways": _knowledge_takeaways(),
         "online_research_inputs": research_inputs,
         "guardrails": [
@@ -571,13 +655,16 @@ def run_weekly_performance_review(*, force: bool = False, fetch_research: bool =
         rolling_window = _metrics_for_window(session, start=rolling_start, end=now)
         current_week["prospect_health"] = _prospect_health(session)
         latest_plan = _latest_plan_payload(session)
+        zero_signal_rotations = _zero_signal_rotation_count(session)
 
     research_inputs = fetch_online_research_inputs() if fetch_research else []
+    zero_signal_threshold = _zero_signal_rotation_threshold()
     variant, reasons = _choose_variant(
         current_week=current_week,
         prior_week=prior_week,
         rolling_window=rolling_window,
         latest_plan=latest_plan,
+        zero_signal_rotation_count=zero_signal_rotations,
     )
     plan = _plan_payload(
         week_start=week_start,
@@ -588,6 +675,8 @@ def run_weekly_performance_review(*, force: bool = False, fetch_research: bool =
         latest_plan=latest_plan,
         research_inputs=research_inputs,
         reasons=reasons,
+        zero_signal_rotation_count=zero_signal_rotations,
+        zero_signal_rotation_threshold=zero_signal_threshold,
     )
 
     with _session() as session:

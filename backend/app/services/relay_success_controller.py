@@ -23,6 +23,7 @@ from app.services.relay_performance import relay_performance_status, run_weekly_
 SUCCESS_TICK_EVENT = "relay_success_control_tick"
 INTAKE_SMOKE_EVENT = "relay_intake_smoke_test"
 DELIVERY_SMOKE_EVENT = "relay_delivery_smoke_test"
+EXPERIMENT_PLAN_EVENT = "relay_experiment_plan"
 
 
 def _session() -> Session:
@@ -453,6 +454,93 @@ def _experiment_failure_sample() -> int:
     return max(1, _int_env("RELAY_EXPERIMENT_FAILURE_SAMPLE", min_sample))
 
 
+def _zero_signal_rotation_threshold() -> int:
+    return max(1, _int_env("RELAY_ZERO_SIGNAL_ROTATION_ESCALATION_COUNT", 2))
+
+
+def _zero_signal_plan_detail(payload: dict[str, Any], min_sample: int) -> dict[str, Any] | None:
+    decision_reasons = [
+        str(reason)
+        for reason in payload.get("decision_reasons", [])
+        if str(reason).strip()
+    ]
+    reason_text = " ".join(decision_reasons).lower()
+    metric_windows = [
+        ("rolling_7_day", payload.get("rolling_7_day_metrics")),
+        ("prior_week", payload.get("prior_week_metrics")),
+        ("current_week", payload.get("current_week_metrics")),
+    ]
+
+    for name, metrics in metric_windows:
+        if not isinstance(metrics, dict):
+            continue
+        if _safe_int(metrics.get("replies")) > 0 or _safe_int(metrics.get("payments")) > 0:
+            return None
+
+    for name, metrics in metric_windows:
+        if not isinstance(metrics, dict):
+            continue
+        sends = _safe_int(metrics.get("sends"))
+        replies = _safe_int(metrics.get("replies"))
+        payments = _safe_int(metrics.get("payments"))
+        if sends >= min_sample and replies <= 0 and payments <= 0:
+            return {
+                "window": name,
+                "sends": sends,
+                "replies": replies,
+                "payments": payments,
+                "reason": decision_reasons[0] if decision_reasons else "completed sample had no reply or payment signal",
+            }
+
+    if "no reply signal" in reason_text and "measurable sends" in reason_text:
+        return {
+            "window": "decision_reason",
+            "sends": 0,
+            "replies": 0,
+            "payments": 0,
+            "reason": decision_reasons[0],
+        }
+
+    return None
+
+
+def _zero_signal_rotation_status(session: Session) -> dict[str, Any]:
+    threshold = _zero_signal_rotation_threshold()
+    min_sample = _experiment_failure_sample()
+    limit = max(threshold + 4, 6)
+    rows = session.execute(
+        select(AcquisitionEvent)
+        .where(AcquisitionEvent.event_type == EXPERIMENT_PLAN_EVENT)
+        .order_by(AcquisitionEvent.created_at.desc())
+        .limit(limit)
+    ).scalars().all()
+
+    streak = 0
+    details: list[dict[str, Any]] = []
+    for row in rows:
+        payload = _safe_json(row.payload_json)
+        detail = _zero_signal_plan_detail(payload, min_sample)
+        if detail is None:
+            break
+        streak += 1
+        details.append(
+            {
+                "created_at": row.created_at.isoformat() if row.created_at else "",
+                "experiment_variant": str(payload.get("experiment_variant") or ""),
+                "experiment_label": str(payload.get("experiment_label") or ""),
+                **detail,
+            }
+        )
+
+    return {
+        "zero_signal_rotation_count": streak,
+        "zero_signal_rotation_threshold": threshold,
+        "zero_signal_rotation_escalated": streak >= threshold,
+        "latest_zero_signal_rotation": details[0] if details else None,
+        "recent_zero_signal_rotations": details,
+    }
+
+
 def _intake_smoke_interval_hours() -> int:
     return max(_int_env("RELAY_INTAKE_SMOKE_INTERVAL_HOURS", 24), 1)
 
@@ -797,6 +885,7 @@ def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
             + _event_count(session, "autopilot_checkout_intent_second_followup_sent", since=since)
         )
         due_followups = _due_followup_counts(session, now=now)
+        experiment_history = _zero_signal_rotation_status(session)
 
     try:
         performance = relay_performance_status()
@@ -896,6 +985,7 @@ def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
             "paid_onboarding_sent": onboarding,
             "paid_notes_fulfilled": fulfilled,
         },
+        "experiment_history": experiment_history,
         "performance": performance,
     }
 
@@ -941,6 +1031,7 @@ def _bottleneck(snapshot: dict[str, Any]) -> str:
     intent = snapshot["intent"]
     outreach = snapshot["outreach"]
     conversion = snapshot["conversion"]
+    experiment_history = snapshot.get("experiment_history") if isinstance(snapshot.get("experiment_history"), dict) else {}
     performance = snapshot.get("performance") if isinstance(snapshot.get("performance"), dict) else {}
     performance_ok = performance.get("status") == "ok"
     active_signal = performance.get("active_experiment_signal") if isinstance(performance.get("active_experiment_signal"), dict) else {}
@@ -955,6 +1046,9 @@ def _bottleneck(snapshot: dict[str, Any]) -> str:
         and active_replies <= 0
         and active_payments <= 0
     )
+    no_signal_rotation_count = _safe_int(experiment_history.get("zero_signal_rotation_count"))
+    no_signal_rotation_threshold = max(_safe_int(experiment_history.get("zero_signal_rotation_threshold")), 1)
+    repeated_no_signal = active_sample_complete_without_signal and no_signal_rotation_count + 1 >= no_signal_rotation_threshold
     unhandled_replies = int(
         outreach.get("unhandled_replies")
         if outreach.get("unhandled_replies") is not None
@@ -1015,6 +1109,8 @@ def _bottleneck(snapshot: dict[str, Any]) -> str:
         return "page_to_lead"
     if int(intent.get("page_views") or 0) < 20 and int(outreach.get("sends") or 0) < 20:
         return "traffic"
+    if repeated_no_signal:
+        return "offer_market_rebuild_required"
     if active_sample_complete_without_signal:
         return "outbound_targeting_or_copy"
     if int(outreach.get("sends") or 0) >= _experiment_failure_sample() and int(outreach.get("replies") or 0) == 0:
@@ -1057,6 +1153,9 @@ def _next_action(bottleneck: str) -> str:
         "active_experiment_refill": "Refill fresh first-touch leads for the active outbound experiment.",
         "page_to_lead": "Improve the first-screen ask before changing the backend.",
         "traffic": "Let direct-buyer outbound refill and send; the system needs more qualified traffic.",
+        "offer_market_rebuild_required": (
+            "Stop routine rotations; switch to a harder paid-offer and market proof before another full sample."
+        ),
         "outbound_targeting_or_copy": "Do not scale volume; rotate one controlled experiment and target direct buyers only.",
         "lead_refill": "Refill direct decision-maker leads.",
         "running": "Keep the loop steady and avoid random changes.",
@@ -1069,6 +1168,7 @@ def _money_proof_mandate(snapshot: dict[str, Any], bottleneck: str) -> dict[str,
     outreach = snapshot.get("outreach") if isinstance(snapshot.get("outreach"), dict) else {}
     intent = snapshot.get("intent") if isinstance(snapshot.get("intent"), dict) else {}
     conversion = snapshot.get("conversion") if isinstance(snapshot.get("conversion"), dict) else {}
+    experiment_history = snapshot.get("experiment_history") if isinstance(snapshot.get("experiment_history"), dict) else {}
     window_contract = (
         outreach.get("window_execution_contract")
         if isinstance(outreach.get("window_execution_contract"), dict)
@@ -1085,6 +1185,9 @@ def _money_proof_mandate(snapshot: dict[str, Any], bottleneck: str) -> dict[str,
     checkout_gap = max(int(intent.get("checkout_clicks") or 0) - payments, 0)
     unhandled_replies = int(outreach.get("unhandled_replies") or 0)
     fulfilled = int(conversion.get("paid_notes_fulfilled") or 0)
+    zero_signal_rotations = _safe_int(experiment_history.get("zero_signal_rotation_count"))
+    zero_signal_threshold = max(_safe_int(experiment_history.get("zero_signal_rotation_threshold")), 1)
+    zero_signal_effective_count = zero_signal_rotations + (1 if bottleneck == "offer_market_rebuild_required" else 0)
 
     if snapshot.get("critical_missing"):
         state = "restore_revenue_loop"
@@ -1129,6 +1232,10 @@ def _money_proof_mandate(snapshot: dict[str, Any], bottleneck: str) -> dict[str,
         state = "refill_direct_buyer_leads"
         primary_action = _next_action(bottleneck)
         owner_policy = "owner_out_of_loop"
+    elif bottleneck == "offer_market_rebuild_required":
+        state = "rebuild_offer_or_market_proof"
+        primary_action = "switch from routine rotations to a harder paid-offer and market proof before another full sample"
+        owner_policy = "owner_out_of_loop"
     elif bottleneck == "outbound_targeting_or_copy":
         state = "rotate_one_variable"
         primary_action = _next_action(bottleneck)
@@ -1156,6 +1263,10 @@ def _money_proof_mandate(snapshot: dict[str, Any], bottleneck: str) -> dict[str,
             "active_experiment_remaining": active_remaining,
             "unhandled_replies": unhandled_replies,
             "checkout_to_payment_gap": checkout_gap,
+            "zero_signal_rotation_count": zero_signal_rotations,
+            "zero_signal_current_evidence_count": zero_signal_effective_count,
+            "zero_signal_rotation_threshold": zero_signal_threshold,
+            "zero_signal_rotation_escalated": zero_signal_effective_count >= zero_signal_threshold,
         },
         "proof_deadline": window_contract.get("audit_at") or outreach.get("next_window_audit_at") or "",
         "success_condition": (
@@ -1219,6 +1330,10 @@ def _money_proof_health(mandate: dict[str, Any]) -> dict[str, Any]:
         health = "rotation_required"
         reason = "completed sample has no buyer signal or payment"
         recovery = "rotate exactly one controlled copy or targeting variable before the next sample"
+    elif state == "rebuild_offer_or_market_proof":
+        health = "offer_rebuild_required"
+        reason = "repeated completed samples produced no reply or payment signal"
+        recovery = "switch to a harder paid-offer and market proof before another full sample"
     elif checkout_gap > 0 or unhandled_replies > 0:
         health = "buyer_signal_open"
         reason = "buyer signal is ahead of payment"
@@ -1259,7 +1374,7 @@ def _money_proof_health(mandate: dict[str, Any]) -> dict[str, Any]:
 
 
 def _run_outbound_experiment_review_if_needed(bottleneck: str, snapshot: dict[str, Any]) -> dict[str, Any]:
-    if bottleneck != "outbound_targeting_or_copy":
+    if bottleneck not in {"outbound_targeting_or_copy", "offer_market_rebuild_required"}:
         return {"status": "skipped", "summary": "outbound experiment review not needed for this bottleneck"}
 
     failure_sample = _experiment_failure_sample()
