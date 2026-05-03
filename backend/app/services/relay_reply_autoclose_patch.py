@@ -27,51 +27,74 @@ def _send_direct_smtp(to_email: str, subject: str, plain_text: str, html_body: s
     if not mailboxes:
         raise RuntimeError("No SMTP mailboxes configured")
 
-    mailbox = mailboxes[0]
     host = os.getenv("COLD_SMTP_HOST", "smtp.porkbun.com").strip()
     port = int(os.getenv("COLD_SMTP_PORT", "587").strip() or "587")
     security = os.getenv("COLD_SMTP_SECURITY", "starttls").strip().lower()
     reply_to = os.getenv("COLD_SMTP_REPLY_TO", settings.reply_to_email or "").strip()
+    failures: list[dict[str, str]] = []
+    last_exc: Exception | None = None
 
-    message = EmailMessage()
-    message["From"] = mailbox.address
-    message["To"] = to_email
-    message["Subject"] = subject
-    if reply_to:
-        message["Reply-To"] = reply_to
-    message.set_content(plain_text)
-    message.add_alternative(
-        f"<div style='font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6'>{html_body}</div>",
-        subtype="html",
-    )
+    for mailbox in sorted(mailboxes, key=lambda m: m.slot):
+        message = EmailMessage()
+        message["From"] = mailbox.address
+        message["To"] = to_email
+        message["Subject"] = subject
+        if reply_to:
+            message["Reply-To"] = reply_to
+        message.set_content(plain_text)
+        message.add_alternative(
+            f"<div style='font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6'>{html_body}</div>",
+            subtype="html",
+        )
 
-    if security == "ssl":
-        server = smtplib.SMTP_SSL(host, port, timeout=30)
-    else:
-        server = smtplib.SMTP(host, port, timeout=30)
-
-    try:
-        server.ehlo()
-        if security == "starttls":
-            server.starttls()
-            server.ehlo()
-        server.login(mailbox.address, mailbox.password)
-        server.sendmail(mailbox.address, [to_email], message.as_string())
-    finally:
+        server: smtplib.SMTP | smtplib.SMTP_SSL | None = None
         try:
-            server.quit()
-        except Exception:
-            pass
+            if security == "ssl":
+                server = smtplib.SMTP_SSL(host, port, timeout=30)
+            else:
+                server = smtplib.SMTP(host, port, timeout=30)
+            server.ehlo()
+            if security == "starttls":
+                server.starttls()
+                server.ehlo()
+            server.login(mailbox.address, mailbox.password)
+            rejected = server.sendmail(mailbox.address, [to_email], message.as_string())
+            if isinstance(rejected, dict) and to_email in rejected:
+                raise RuntimeError(f"SMTP recipient rejected: {to_email}")
+        except Exception as exc:
+            last_exc = exc
+            failures.append(
+                {
+                    "sender_address": mailbox.address,
+                    "error_type": type(exc).__name__,
+                    "error": str(exc)[:500],
+                }
+            )
+            continue
+        finally:
+            if server is not None:
+                try:
+                    server.quit()
+                except Exception:
+                    pass
 
-    return {
-        "provider": "smtp",
-        "sender_address": mailbox.address,
-        "smtp_host": host,
-        "smtp_port": port,
-        "smtp_security": security,
-        "ignored_campaign_cap": True,
-        "status": "sent",
-    }
+        return {
+            "provider": "smtp",
+            "sender_address": mailbox.address,
+            "smtp_host": host,
+            "smtp_port": port,
+            "smtp_security": security,
+            "ignored_campaign_cap": True,
+            "reply_autoclose_cap_bypass": True,
+            "smtp_failover_attempts": failures,
+            "smtp_mailboxes_available": len(mailboxes),
+            "status": "sent",
+        }
+
+    failure_summary = "; ".join(
+        f"{failure['sender_address']}:{failure['error_type']}" for failure in failures
+    )
+    raise RuntimeError(f"All reply auto-close SMTP mailboxes failed: {failure_summary}") from last_exc
 
 
 def optimized_poll_reply_mailbox(limit: int | None = None) -> dict[str, Any]:
