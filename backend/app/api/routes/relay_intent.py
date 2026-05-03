@@ -370,6 +370,11 @@ def _compact_money_loop_payload(payload: dict[str, Any] | None) -> dict[str, Any
         else {}
     )
     status_after = payload.get("status_after") if isinstance(payload.get("status_after"), dict) else {}
+    refill_backoff = (
+        payload.get("refill_timeout_backoff")
+        if isinstance(payload.get("refill_timeout_backoff"), dict)
+        else {}
+    )
     return {
         "refill_status": refill.get("status"),
         "refill_reason": refill.get("reason"),
@@ -414,6 +419,10 @@ def _compact_money_loop_payload(payload: dict[str, Any] | None) -> dict[str, Any
         "active_experiment_new_due_before": payload.get("active_experiment_new_due_before"),
         "refill_due_before": payload.get("refill_due_before"),
         "refill_due_for_decision": payload.get("refill_due_for_decision"),
+        "refill_backoff_active": refill_backoff.get("active"),
+        "refill_backoff_reason": refill_backoff.get("timeout_reason") or refill_backoff.get("reason"),
+        "refill_backoff_age_seconds": refill_backoff.get("age_seconds"),
+        "refill_backoff_remaining_seconds": refill_backoff.get("remaining_seconds"),
         "direct_due_before": payload.get("direct_due_before"),
         "send_window_open_before": payload.get("send_window_open_before"),
         "outreach_phase": payload.get("outreach_phase"),

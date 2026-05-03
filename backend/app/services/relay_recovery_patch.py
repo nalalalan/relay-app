@@ -130,11 +130,55 @@ def _apify_fallback_timeout_seconds() -> float:
     return _env_float("AO_RELAY_APIFY_FALLBACK_TIMEOUT_SECONDS", 180.0)
 
 
+def _refill_timeout_backoff_seconds() -> float:
+    return _env_float("AO_RELAY_REFILL_TIMEOUT_BACKOFF_SECONDS", 3600.0, minimum=60.0)
+
+
 def _timeout_refill_fields(source: str, timeout_seconds: float) -> dict[str, Any]:
     return {
         "error_type": "TimeoutError",
         "timeout_seconds": timeout_seconds,
         "source": source,
+    }
+
+
+def _parse_iso_seconds_ago(value: Any) -> int | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return max(int((datetime.utcnow() - parsed).total_seconds()), 0)
+    except Exception:
+        return None
+
+
+def _last_refill_timeout_reason() -> str:
+    result = _money_loop_state.get("last_result")
+    if not isinstance(result, dict):
+        return ""
+    refill = result.get("refill_result")
+    if not isinstance(refill, dict):
+        return ""
+    reason = str(refill.get("reason") or "").strip()
+    if "timeout" in reason:
+        return reason
+    return ""
+
+
+def _refill_timeout_backoff_status(*, force_refill: bool = False) -> dict[str, Any]:
+    backoff_seconds = _refill_timeout_backoff_seconds()
+    reason = _last_refill_timeout_reason()
+    age_seconds = _parse_iso_seconds_ago(_money_loop_state.get("last_tick_at"))
+    active = bool(reason and age_seconds is not None and age_seconds < backoff_seconds and not force_refill)
+    return {
+        "active": active,
+        "timeout_reason": reason,
+        "age_seconds": age_seconds,
+        "backoff_seconds": backoff_seconds,
+        "remaining_seconds": max(int(backoff_seconds - (age_seconds or 0)), 0) if active else 0,
     }
 
 
@@ -985,14 +1029,28 @@ async def _relay_money_loop_tick(
     refill_active_experiment_needs_sample = bool(status_for_refill.get("active_experiment_needs_sample"))
     refill_active_experiment_new_due = int(status_for_refill.get("active_experiment_new_due_count") or 0)
     refill_direct_due = int(status_for_refill.get("direct_due_count") or 0)
+    refill_cap_remaining = int(status_for_refill.get("cap_remaining") or 0)
     refill_due_for_decision = (
         refill_active_experiment_new_due if refill_active_experiment_needs_sample else refill_direct_due
     )
 
     latest_refill_status = status_for_refill
+    backoff_status = _refill_timeout_backoff_status(force_refill=force_refill)
     refill_result: dict[str, Any] = {"status": "skipped", "reason": "direct_due_ok"}
     if not settings.apollo_api_key:
         refill_result = {"status": "skipped", "reason": "missing_apollo_api_key"}
+    elif refill_cap_remaining <= 0 and not force_refill:
+        refill_result = {
+            "status": "skipped",
+            "reason": "cap_remaining_zero",
+            "cap_remaining": refill_cap_remaining,
+        }
+    elif backoff_status["active"]:
+        refill_result = {
+            "status": "skipped",
+            "reason": "refill_timeout_backoff",
+            **backoff_status,
+        }
     elif force_refill or refill_due_for_decision < min_direct_due:
         query = refill_query or ops.choose_query()
         importer = getattr(ops, "import_from_apollo_people_search", import_from_apollo_people_search)
@@ -1177,6 +1235,7 @@ async def _relay_money_loop_tick(
         "active_experiment_new_due_before": active_experiment_new_due,
         "refill_due_before": refill_due,
         "refill_due_for_decision": refill_due_for_decision,
+        "refill_timeout_backoff": backoff_status,
         "send_window_open_before": send_window_open,
         "outreach_phase": outreach_phase,
         "cap_remaining_before": cap_remaining,
