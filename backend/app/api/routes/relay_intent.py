@@ -255,6 +255,74 @@ def _reply_autonomy_contract(
     }
 
 
+def _success_governor_contract(
+    *,
+    revenue_objective: dict[str, Any],
+    money_decision: dict[str, Any],
+    reply_autonomy: dict[str, Any],
+    launch_readiness: dict[str, Any],
+    operator_mode: dict[str, Any],
+) -> dict[str, Any]:
+    window_contract = (
+        launch_readiness.get("window_execution_contract")
+        if isinstance(launch_readiness.get("window_execution_contract"), dict)
+        else {}
+    )
+    window_state = str(window_contract.get("state") or launch_readiness.get("window_execution_state") or "").strip()
+    reply_state = str(reply_autonomy.get("state") or "").strip()
+    money_state = str(money_decision.get("state") or "").strip()
+    revenue_state = str(revenue_objective.get("state") or "").strip()
+    ready = launch_readiness.get("ready") is not False
+    operator_interrupt = operator_mode.get("do_not_interrupt_user") is False
+
+    if operator_interrupt or reply_state == "attention_required":
+        state = "interrupt_required"
+        next_step = reply_autonomy.get("next_action") or money_decision.get("next_action") or operator_mode.get("reason") or "handle buyer signal"
+        human_policy = "interrupt Alan now"
+    elif revenue_state == "weekly_target_met":
+        state = "target_met_stabilize"
+        next_step = "keep the current winning lane stable and fulfill paid buyers"
+        human_policy = "stay out unless fulfillment or system health needs attention"
+    elif reply_state == "auto_closed_waiting_payment":
+        state = "wait_for_payment"
+        next_step = "wait for checkout or payment after the auto-reply"
+        human_policy = "stay out unless payment, unhandled reply, or health failure appears"
+    elif window_state in {"window_missed", "window_underfilled"}:
+        state = "fix_execution"
+        next_step = window_contract.get("failure_condition") or launch_readiness.get("window_execution_failure_condition") or "fix send-window execution"
+        human_policy = "interrupt because the autonomous send proof failed"
+    elif not ready or window_state == "blocked":
+        state = "remove_blocker"
+        blockers = launch_readiness.get("blockers") if isinstance(launch_readiness.get("blockers"), list) else []
+        next_step = "; ".join(str(item) for item in blockers) or window_contract.get("failure_condition") or "remove launch blocker"
+        human_policy = "interrupt only if the blocker cannot be cleared autonomously"
+    elif money_state == "rotate_one_variable":
+        state = "rotate_experiment"
+        next_step = money_decision.get("next_action") or "rotate one controlled variable"
+        human_policy = "stay out unless rotation fails or a buyer signal appears"
+    elif money_state == "collect_sample" and window_state in {"waiting_for_window", "window_open"}:
+        state = "run_next_send_window"
+        next_step = window_contract.get("success_criterion") or launch_readiness.get("next_window_success_criterion") or money_decision.get("next_action")
+        human_policy = "stay out until the audit time unless replies, payment, or health changes"
+    else:
+        state = "monitor"
+        next_step = money_decision.get("next_action") or launch_readiness.get("next_decision") or "keep monitoring"
+        human_policy = "stay out unless replies, payment, execution miss, or system health changes"
+
+    return {
+        "state": state,
+        "next_step": next_step,
+        "human_policy": human_policy,
+        "do_not_change": "do not change copy, target, price, or volume outside this governor",
+        "success_definition": revenue_objective.get("success_condition") or "collect paid tests and protect execution quality",
+        "audit_at": window_contract.get("audit_at") or launch_readiness.get("next_window_audit_at"),
+        "window_state": window_state,
+        "reply_state": reply_state,
+        "money_decision_state": money_state,
+        "revenue_state": revenue_state,
+    }
+
+
 def _parse_contract_datetime(value: Any) -> datetime | None:
     if not value:
         return None
@@ -1673,6 +1741,13 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 active_signal_payments=active_signal_payments,
                 unhandled_replies=unhandled_replies,
             )
+            success_governor = _success_governor_contract(
+                revenue_objective=revenue_objective,
+                money_decision=money_decision_contract,
+                reply_autonomy=reply_autonomy_contract,
+                launch_readiness=launch_readiness,
+                operator_mode=operator_mode,
+            )
             checks["money_system"] = {
                 "state": money_state,
                 "gross_usd": money.get("gross_usd", 0),
@@ -1682,6 +1757,7 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 "revenue_objective": revenue_objective,
                 "money_decision_contract": money_decision_contract,
                 "reply_autonomy_contract": reply_autonomy_contract,
+                "success_governor": success_governor,
                 "revenue_ladder": revenue_ladder,
                 "close_path": {
                     "replies": replies,
