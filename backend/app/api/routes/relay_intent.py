@@ -364,6 +364,11 @@ def _compact_money_loop_payload(payload: dict[str, Any] | None) -> dict[str, Any
         return None
     refill = payload.get("refill_result") if isinstance(payload.get("refill_result"), dict) else {}
     fallback = refill.get("fallback_result") if isinstance(refill.get("fallback_result"), dict) else {}
+    post_refill_outreach = (
+        payload.get("post_refill_outreach_result")
+        if isinstance(payload.get("post_refill_outreach_result"), dict)
+        else {}
+    )
     status_after = payload.get("status_after") if isinstance(payload.get("status_after"), dict) else {}
     return {
         "refill_status": refill.get("status"),
@@ -395,6 +400,12 @@ def _compact_money_loop_payload(payload: dict[str, Any] | None) -> dict[str, Any
         "direct_due_before": payload.get("direct_due_before"),
         "send_window_open_before": payload.get("send_window_open_before"),
         "outreach_phase": payload.get("outreach_phase"),
+        "post_refill_outreach_sent": post_refill_outreach.get("send_result", {}).get("sent_count")
+        if isinstance(post_refill_outreach.get("send_result"), dict)
+        else None,
+        "post_refill_outreach_summary": post_refill_outreach.get("send_result", {}).get("summary")
+        if isinstance(post_refill_outreach.get("send_result"), dict)
+        else None,
         "status_after": {
             "active_experiment_variant": status_after.get("active_experiment_variant"),
             "active_experiment_sends": status_after.get("active_experiment_sends"),

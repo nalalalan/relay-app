@@ -912,9 +912,10 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
         active_sample_needed = max(experiment_sample_target - active_variant_sends, 0)
         active_first_touch = [candidate for candidate in candidates if candidate[3]]
         if active_sample_needed > 0 and active_first_touch:
-            reserved = active_first_touch[:active_sample_needed]
-            reserved_ids = {id(candidate[0]) for candidate in reserved}
-            candidates = reserved + [candidate for candidate in candidates if id(candidate[0]) not in reserved_ids]
+            candidates = active_first_touch[:active_sample_needed]
+            active_sample_reserved_only = True
+        else:
+            active_sample_reserved_only = False
 
         remaining_cap = max(effective_daily_cap - outreach._daily_send_count(session), 0)
 
@@ -993,6 +994,7 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
             "active_experiment_sends_before": active_variant_sends,
             "active_experiment_sample_target": experiment_sample_target,
             "active_experiment_new_due_count": len(active_first_touch),
+            "active_sample_reserved_only": active_sample_reserved_only,
             "blocked_bad_email_count": blocked_bad_email,
             "blocked_duplicate_email_count": duplicate_email_blocked,
             "paused_weak_decision_maker_count": weak_decision_maker_blocked,

@@ -309,6 +309,16 @@ def _compact_outreach_result(result: Any) -> Any:
     return compact
 
 
+def _refill_upserted_count(result: Any) -> int:
+    if not isinstance(result, dict):
+        return 0
+    total = int(result.get("upserted") or 0)
+    fallback = result.get("fallback_result")
+    if isinstance(fallback, dict):
+        total += int(fallback.get("upserted") or 0)
+    return total
+
+
 def _status_label(value: Any) -> str:
     if not isinstance(value, dict):
         return str(value or "unknown")[:80]
@@ -361,6 +371,7 @@ def _log_money_loop_tick(result: dict[str, Any]) -> None:
         summary = (
             f"refill={_status_label(result.get('refill_result'))} "
             f"outreach={_status_label(result.get('outreach_result'))} "
+            f"post_refill_outreach={_status_label(result.get('post_refill_outreach_result'))} "
             f"success={_status_label(result.get('success_control'))}"
         )
         with SessionLocal() as session:
@@ -926,18 +937,32 @@ async def _relay_money_loop_tick(
                     }
 
     if outreach_result is not None:
-        pass
+        post_refill_outreach_result = None
+        if send_live and _refill_upserted_count(refill_result) > 0:
+            status_after_refill = await asyncio.to_thread(outreach.outreach_status)
+            if (
+                status_after_refill.get("send_window_is_open")
+                and int(status_after_refill.get("direct_due_count") or 0) > 0
+                and int(status_after_refill.get("cap_remaining") or 0) > 0
+            ):
+                post_refill_outreach_result = _compact_outreach_result(
+                    await asyncio.to_thread(outreach.run_custom_outreach_cycle)
+                )
+                outreach_phase = "before_and_after_refill"
     elif send_live:
         outreach_result = _compact_outreach_result(await asyncio.to_thread(outreach.run_custom_outreach_cycle))
+        post_refill_outreach_result = None
     else:
         outreach_result = {
             "status": "skipped",
             "reason": "send_live_false",
             "snapshot": _compact_status_for_loop(await asyncio.to_thread(outreach.outreach_status)),
         }
+        post_refill_outreach_result = None
     result = {
         "refill_result": refill_result,
         "outreach_result": outreach_result,
+        "post_refill_outreach_result": post_refill_outreach_result,
         "success_control": success_control,
         "success_control_phase": "before_refill",
         "direct_due_before": direct_due,
