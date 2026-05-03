@@ -936,6 +936,7 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 "next_action": success.get("next_action"),
                 "money": success_snapshot.get("money") or {},
                 "intent": success_snapshot.get("intent") or {},
+                "outreach": success_snapshot.get("outreach") or {},
                 "conversion": success_snapshot.get("conversion") or {},
             }
         except Exception as exc:

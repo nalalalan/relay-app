@@ -479,6 +479,14 @@ def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
             "sent_today": int(outreach.get("sent_today") or 0),
             "daily_send_cap": int(outreach.get("daily_send_cap") or 0),
             "cap_remaining": int(outreach.get("cap_remaining") or 0),
+            "active_experiment_variant": outreach.get("active_experiment_variant", ""),
+            "active_experiment_sends": int(outreach.get("active_experiment_sends") or 0),
+            "active_experiment_sample_target": int(outreach.get("active_experiment_sample_target") or 0),
+            "active_experiment_needs_sample": bool(outreach.get("active_experiment_needs_sample") or False),
+            "active_experiment_new_due_count": int(outreach.get("active_experiment_new_due_count") or 0),
+            "send_window_is_open": bool(outreach.get("send_window_is_open") or False),
+            "send_window_reason": outreach.get("send_window_reason", ""),
+            "send_window_next_open_local": outreach.get("send_window_next_open_local", ""),
             "next_money_move": outreach.get("next_money_move", ""),
         },
         "conversion": {
@@ -520,6 +528,10 @@ def _bottleneck(snapshot: dict[str, Any]) -> str:
         return "checkout_to_payment"
     if int(intent.get("checkout_clicks") or 0) > int(money.get("payments") or 0):
         return "checkout_to_payment"
+    if outreach.get("active_experiment_needs_sample"):
+        if int(outreach.get("active_experiment_new_due_count") or 0) > 0:
+            return "active_experiment_sample"
+        return "active_experiment_refill"
     if int(intent.get("lead_count") or 0) == 0 and int(intent.get("page_views") or 0) >= 20:
         return "page_to_lead"
     if int(intent.get("page_views") or 0) < 20 and int(outreach.get("sends") or 0) < 20:
@@ -538,6 +550,8 @@ def _next_action(bottleneck: str) -> str:
         "messy_notes_to_payment": "Send the notes-to-checkout follow-up.",
         "sample_to_notes": "Send the sample-to-notes follow-up.",
         "checkout_to_payment": "Keep notes-first friction low and make the paid test obvious after interest.",
+        "active_experiment_sample": "Collect the active outbound experiment sample before judging the offer.",
+        "active_experiment_refill": "Refill fresh first-touch leads for the active outbound experiment.",
         "page_to_lead": "Improve the first-screen ask before changing the backend.",
         "traffic": "Let direct-buyer outbound refill and send; the system needs more qualified traffic.",
         "outbound_targeting_or_copy": "Do not scale volume; rotate one controlled experiment and target direct buyers only.",
