@@ -266,13 +266,21 @@ def _status_label(value: Any) -> str:
             reason = str(value.get("reason") or "").strip()
             if reason:
                 details.append(reason)
+            error_type = str(value.get("error_type") or "").strip()
+            if error_type:
+                details.append(f"error_type={error_type}")
+            elif value.get("error"):
+                details.append("error_present=1")
             fallback = value.get("fallback_result")
             if isinstance(fallback, dict):
                 fallback_status = str(fallback.get("status") or "").strip()
+                fallback_error_type = str(fallback.get("error_type") or "").strip()
                 upserted = fallback.get("upserted")
                 searched = fallback.get("searched")
                 if fallback_status:
                     details.append(f"fallback={fallback_status}")
+                if fallback_error_type:
+                    details.append(f"fallback_error_type={fallback_error_type}")
                 if upserted is not None:
                     details.append(f"upserted={upserted}")
                 if searched is not None:
@@ -682,6 +690,7 @@ async def _relay_money_loop_tick(
             refill_result = {
                 "status": "error",
                 "reason": "apollo_refill_failed",
+                "error_type": type(exc).__name__,
                 "error": str(exc),
                 "q_keywords": query,
             }
@@ -691,6 +700,7 @@ async def _relay_money_loop_tick(
                     refill_result = {
                         "status": "degraded_ok",
                         "reason": "apollo_refill_failed_apify_fallback_ran",
+                        "error_type": type(exc).__name__,
                         "error": str(exc),
                         "q_keywords": query,
                         "fallback_result": fallback_result,
@@ -699,6 +709,7 @@ async def _relay_money_loop_tick(
                     refill_result["fallback_result"] = {
                         "status": "error",
                         "reason": "apify_fallback_failed",
+                        "error_type": type(fallback_exc).__name__,
                         "error": str(fallback_exc),
                     }
 

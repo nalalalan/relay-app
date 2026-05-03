@@ -620,6 +620,33 @@ def _quality_snapshot(session) -> dict[str, Any]:
 def _next_money_move(status: dict[str, Any]) -> str:
     total_sends = int(status.get("total_sends_all_time") or 0)
     total_replies = int(status.get("total_replies_all_time") or 0)
+    if int(status.get("replies_today") or 0) > 0:
+        return "Handle replies first; real humans are closest to money."
+    if int(status.get("blocked_bad_email_count") or 0) > 0:
+        return "Bad placeholder emails are being blocked; keep capacity for real decision-maker inboxes."
+    if status.get("active_experiment_needs_sample"):
+        active_due = int(status.get("active_experiment_new_due_count") or 0)
+        active_sends = int(status.get("active_experiment_sends") or 0)
+        target = int(status.get("active_experiment_sample_target") or _experiment_sample_target())
+        variant = str(status.get("active_experiment_variant") or "active experiment")
+        if active_due > 0:
+            if status.get("send_window_is_open"):
+                return f"Build {variant} sample now: send fresh first-touch leads before old follow-ups."
+            return f"{variant} needs sample {active_sends}/{target}; wait for the send window."
+        direct_due = int(status.get("direct_due_count") or 0)
+        if direct_due > 0 and int(status.get("cap_remaining") or 0) > 0:
+            if status.get("send_window_is_open"):
+                return (
+                    f"{variant} needs sample {active_sends}/{target}, but no fresh first-touch leads are ready. "
+                    "Send ready direct follow-ups while refilling fresh named buyers."
+                )
+            return (
+                f"{variant} needs sample {active_sends}/{target}, but no fresh first-touch leads are ready. "
+                "Direct follow-ups are ready; wait for the send window while refilling fresh named buyers."
+            )
+        return f"Refill fresh direct buyer leads for {variant}; old follow-ups do not count toward the new experiment."
+    if int(status.get("sent_today") or 0) >= int(status.get("daily_send_cap") or 0) and int(status.get("replies_today") or 0) == 0:
+        return "Cap is used with no replies today; do not scale volume until targeting/copy produces a reply signal."
     if total_sends >= 100 and total_replies == 0:
         weak_due = int(status.get("weak_decision_maker_due_count") or 0)
         duplicate_due = int(status.get("duplicate_email_due_count") or 0)
@@ -633,22 +660,6 @@ def _next_money_move(status: dict[str, Any]) -> str:
             f"No reply signal after {total_sends} sends. Treat this as a targeting/copy problem: "
             "send only named direct buyers with the reply-first sample ask, and do not increase volume yet."
         )
-    if int(status.get("replies_today") or 0) > 0:
-        return "Handle replies first; real humans are closest to money."
-    if int(status.get("blocked_bad_email_count") or 0) > 0:
-        return "Bad placeholder emails are being blocked; keep capacity for real decision-maker inboxes."
-    if int(status.get("sent_today") or 0) >= int(status.get("daily_send_cap") or 0) and int(status.get("replies_today") or 0) == 0:
-        return "Cap is used with no replies today; do not scale volume until targeting/copy produces a reply signal."
-    if status.get("active_experiment_needs_sample"):
-        active_due = int(status.get("active_experiment_new_due_count") or 0)
-        active_sends = int(status.get("active_experiment_sends") or 0)
-        target = int(status.get("active_experiment_sample_target") or _experiment_sample_target())
-        variant = str(status.get("active_experiment_variant") or "active experiment")
-        if active_due > 0:
-            if status.get("send_window_is_open"):
-                return f"Build {variant} sample now: send fresh first-touch leads before old follow-ups."
-            return f"{variant} needs sample {active_sends}/{target}; wait for the send window."
-        return f"Refill fresh direct buyer leads for {variant}; old follow-ups do not count toward the new experiment."
     if int(status.get("direct_due_count") or 0) > 0 and int(status.get("cap_remaining") or 0) > 0:
         if status.get("send_window_is_open"):
             return "Send direct decision-maker leads now; keep generic inboxes paused."

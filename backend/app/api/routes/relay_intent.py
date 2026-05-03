@@ -368,9 +368,12 @@ def _compact_money_loop_payload(payload: dict[str, Any] | None) -> dict[str, Any
     return {
         "refill_status": refill.get("status"),
         "refill_reason": refill.get("reason"),
+        "refill_error_type": refill.get("error_type"),
+        "refill_error_present": bool(refill.get("error")),
         "refill_query": refill.get("q_keywords"),
         "refill_upserted": refill.get("upserted"),
         "fallback_status": fallback.get("status"),
+        "fallback_error_type": fallback.get("error_type"),
         "fallback_upserted": fallback.get("upserted"),
         "fallback_searched": fallback.get("searched"),
         "active_experiment_needs_sample": payload.get("active_experiment_needs_sample"),
