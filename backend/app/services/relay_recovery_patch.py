@@ -167,6 +167,56 @@ def _render_body(template: StepTemplate, prospect: AcquisitionProspect) -> str:
     return body.strip()
 
 
+def _active_experiment_context(outreach) -> dict[str, Any]:
+    try:
+        experiment = outreach._active_experiment_context()
+    except Exception as exc:
+        experiment = {
+            "experiment_variant": "control_sample_ask",
+            "experiment_label": "Control: sample ask",
+            "source": "recovery_fallback",
+            "error": str(exc)[:500],
+        }
+    return experiment if isinstance(experiment, dict) else {}
+
+
+def _templates_for_variant(outreach, variant: str) -> list[StepTemplate]:
+    try:
+        templates = outreach._templates_for_variant(variant)
+        if templates:
+            return templates
+    except Exception:
+        pass
+    return RECOVERY_STEP_TEMPLATES
+
+
+def _prospect_variant(outreach, sent_events: list[AcquisitionEvent], fallback_variant: str) -> str:
+    try:
+        return outreach._prospect_variant(sent_events, fallback_variant)
+    except Exception:
+        return fallback_variant or "control_sample_ask"
+
+
+def _step_due_for_experiment(
+    outreach,
+    prospect: AcquisitionProspect,
+    sent_events: list[AcquisitionEvent],
+    active_variant: str,
+) -> tuple[str, StepTemplate | None]:
+    prospect_variant = _prospect_variant(outreach, sent_events, active_variant)
+    templates = _templates_for_variant(outreach, prospect_variant)
+    return prospect_variant, outreach._step_due(prospect, sent_events, templates)
+
+
+def _effective_daily_cap(experiment: dict[str, Any] | None = None) -> int:
+    base_cap = max(int(settings.buyer_acq_daily_send_cap or 0), 1)
+    try:
+        experiment_cap = int((experiment or {}).get("daily_cap_recommendation") or base_cap)
+    except Exception:
+        experiment_cap = base_cap
+    return max(min(experiment_cap, base_cap), 1)
+
+
 def _patched_outreach_status() -> dict[str, Any]:
     assert _original_outreach_status is not None
     status = _original_outreach_status()
@@ -240,6 +290,7 @@ def _compact_status_for_loop(status: dict[str, Any]) -> dict[str, Any]:
         "active_experiment_sample_target",
         "active_experiment_needs_sample",
         "active_experiment_new_due_count",
+        "effective_daily_cap",
         "blocked_bad_email_count",
         "reply_autoclose_mode",
     ]
@@ -326,6 +377,9 @@ def _log_money_loop_tick(result: dict[str, Any]) -> None:
 def _quality_snapshot(session) -> dict[str, Any]:
     import app.services.custom_outreach as outreach
 
+    experiment = _active_experiment_context(outreach)
+    active_variant = str(experiment.get("experiment_variant") or "control_sample_ask")
+
     prospects = list(
         session.execute(
             select(AcquisitionProspect)
@@ -349,7 +403,8 @@ def _quality_snapshot(session) -> dict[str, Any]:
         if outreach._has_any_reply(session, prospect.external_id):
             continue
         sent_events = outreach._sent_events_for_prospect(session, prospect.external_id)
-        if outreach._step_due(prospect, sent_events) is None:
+        _, step = _step_due_for_experiment(outreach, prospect, sent_events, active_variant)
+        if step is None:
             continue
         if is_generic:
             generic_due += 1
@@ -367,7 +422,7 @@ def _quality_snapshot(session) -> dict[str, Any]:
         sendable_due = direct_due
         paused_generic = generic_due
 
-    daily_cap = int(settings.buyer_acq_daily_send_cap or 0)
+    daily_cap = _effective_daily_cap(experiment)
     sent_today = int(outreach._daily_send_count(session) or 0)
 
     return {
@@ -378,6 +433,7 @@ def _quality_snapshot(session) -> dict[str, Any]:
         "sendable_due_count": sendable_due,
         "generic_paused_count": paused_generic,
         "cap_remaining": max(daily_cap - sent_today, 0),
+        "effective_daily_cap": daily_cap,
         "total_sends_all_time": _total_send_count(session),
     }
 
@@ -468,7 +524,10 @@ def _exception_refill_fields(exc: Exception) -> dict[str, Any]:
 def _patched_send_due_sequence_messages(limit: int | None = None) -> dict[str, Any]:
     import app.services.custom_outreach as outreach
 
-    limit = limit or settings.buyer_acq_daily_send_cap
+    experiment = _active_experiment_context(outreach)
+    active_variant = str(experiment.get("experiment_variant") or "control_sample_ask")
+    effective_daily_cap = _effective_daily_cap(experiment)
+    limit = min(limit or effective_daily_cap, effective_daily_cap)
     sent = 0
     skipped = 0
     failures: list[dict[str, Any]] = []
@@ -482,6 +541,12 @@ def _patched_send_due_sequence_messages(limit: int | None = None) -> dict[str, A
             "skipped_count": 0,
             "failures": [],
             "send_window": window,
+            "experiment": {
+                "experiment_variant": active_variant,
+                "experiment_label": experiment.get("experiment_label"),
+                "source": experiment.get("source"),
+            },
+            "effective_daily_cap": effective_daily_cap,
         }
 
     with SessionLocal() as session:
@@ -494,21 +559,21 @@ def _patched_send_due_sequence_messages(limit: int | None = None) -> dict[str, A
         )
         prospects.sort(key=_prospect_priority)
 
-        direct_due: list[tuple[AcquisitionProspect, Any]] = []
-        generic_due: list[tuple[AcquisitionProspect, Any]] = []
+        direct_due: list[tuple[AcquisitionProspect, Any, str]] = []
+        generic_due: list[tuple[AcquisitionProspect, Any, str]] = []
 
         for prospect in prospects:
             if outreach._has_any_reply(session, prospect.external_id):
                 continue
             sent_events = outreach._sent_events_for_prospect(session, prospect.external_id)
-            step = outreach._step_due(prospect, sent_events)
+            prospect_variant, step = _step_due_for_experiment(outreach, prospect, sent_events, active_variant)
             if step is None:
                 skipped += 1
                 continue
             if _is_generic_inbox(prospect.contact_email):
-                generic_due.append((prospect, step))
+                generic_due.append((prospect, step, prospect_variant))
             else:
-                direct_due.append((prospect, step))
+                direct_due.append((prospect, step, prospect_variant))
 
         policy = _generic_policy()
         if policy == "include":
@@ -521,9 +586,9 @@ def _patched_send_due_sequence_messages(limit: int | None = None) -> dict[str, A
             candidates = direct_due
             paused_generic = len(generic_due)
 
-        remaining_cap = max(settings.buyer_acq_daily_send_cap - outreach._daily_send_count(session), 0)
+        remaining_cap = max(effective_daily_cap - outreach._daily_send_count(session), 0)
 
-        for prospect, step in candidates:
+        for prospect, step, prospect_variant in candidates:
             if sent >= limit or remaining_cap <= 0:
                 break
 
@@ -551,6 +616,10 @@ def _patched_send_due_sequence_messages(limit: int | None = None) -> dict[str, A
                         "fit_band": prospect.fit_band,
                         "is_generic_inbox": _is_generic_inbox(prospect.contact_email),
                         "quality_gate": "direct_first",
+                        "experiment_variant": prospect_variant,
+                        "active_experiment_variant": active_variant,
+                        "experiment_label": experiment.get("experiment_label"),
+                        "experiment_source": experiment.get("source"),
                         "body_preview": outreach._preview_text(plain_text, limit=240),
                         **result,
                     },
@@ -566,7 +635,12 @@ def _patched_send_due_sequence_messages(limit: int | None = None) -> dict[str, A
                     "custom_outreach_send_failed",
                     prospect.external_id,
                     "custom outreach send failed",
-                    {"error": str(exc), "step_number": step.step_number},
+                    {
+                        "error": str(exc),
+                        "step_number": step.step_number,
+                        "experiment_variant": prospect_variant,
+                        "active_experiment_variant": active_variant,
+                    },
                 )
                 session.commit()
 
@@ -578,6 +652,12 @@ def _patched_send_due_sequence_messages(limit: int | None = None) -> dict[str, A
         "sent_count": sent,
         "skipped_count": skipped + paused_generic,
         "failures": failures,
+        "experiment": {
+            "experiment_variant": active_variant,
+            "experiment_label": experiment.get("experiment_label"),
+            "source": experiment.get("source"),
+        },
+        "effective_daily_cap": effective_daily_cap,
         "quality_gate": {
             "policy": policy,
             "direct_due_count": len(direct_due),
