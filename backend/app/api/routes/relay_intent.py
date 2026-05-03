@@ -469,6 +469,10 @@ def _current_money_loop_runtime() -> dict[str, Any]:
         from app.services import relay_recovery_patch
 
         state = dict(getattr(relay_recovery_patch, "_money_loop_state", {}) or {})
+        try:
+            tick_timeout_seconds = int(relay_recovery_patch._money_loop_tick_timeout_seconds())
+        except Exception:
+            tick_timeout_seconds = int(float(os.getenv("AO_RELAY_MONEY_LOOP_TICK_TIMEOUT_SECONDS", "300") or 300))
     except Exception as exc:
         return {"status": "error", "summary": f"money_loop_state_unavailable:{type(exc).__name__}"}
 
@@ -476,23 +480,73 @@ def _current_money_loop_runtime() -> dict[str, Any]:
     manual_result = state.get("last_manual_result") if isinstance(state.get("last_manual_result"), dict) else None
     running_seconds = None
     last_tick_at = state.get("last_tick_at") or ""
-    if state.get("running") and last_tick_at:
+    last_tick_age_seconds = None
+    if last_tick_at:
         try:
             started = datetime.fromisoformat(str(last_tick_at).replace("Z", "+00:00"))
             if started.tzinfo is not None:
                 started = started.astimezone().replace(tzinfo=None)
-            running_seconds = max(int((datetime.now() - started).total_seconds()), 0)
+            last_tick_age_seconds = max(int((datetime.now() - started).total_seconds()), 0)
         except Exception:
-            running_seconds = None
+            last_tick_age_seconds = None
+
+    if state.get("running"):
+        running_seconds = last_tick_age_seconds
+
+    next_sleep_raw = state.get("next_sleep_seconds")
+    try:
+        next_sleep_seconds = int(next_sleep_raw) if next_sleep_raw is not None else None
+    except Exception:
+        next_sleep_seconds = None
+    running_stuck_after_seconds = tick_timeout_seconds + 60
+    late_wake_after_seconds = (
+        next_sleep_seconds + tick_timeout_seconds + 120
+        if next_sleep_seconds is not None
+        else None
+    )
+    enabled = bool(state.get("enabled"))
+    running = bool(state.get("running"))
+    last_error = state.get("last_error") or ""
+    ticks = int(state.get("ticks") or 0)
+
+    status = "ok"
+    summary = "money_loop_ok"
+    if not enabled:
+        status = "disabled"
+        summary = "money_loop_disabled"
+    elif last_error:
+        status = "error"
+        summary = str(last_error)[:200]
+    elif running and running_seconds is not None and running_seconds > running_stuck_after_seconds:
+        status = "stuck"
+        summary = "money_loop_tick_exceeded_timeout"
+    elif ticks <= 0:
+        status = "starting"
+        summary = "money_loop_waiting_for_first_tick"
+    elif (
+        not running
+        and last_tick_age_seconds is not None
+        and late_wake_after_seconds is not None
+        and last_tick_age_seconds > late_wake_after_seconds
+    ):
+        status = "late"
+        summary = "money_loop_late_to_wake"
+
     return {
-        "enabled": bool(state.get("enabled")),
-        "running": bool(state.get("running")),
+        "status": status,
+        "summary": summary,
+        "enabled": enabled,
+        "running": running,
         "last_tick_at": last_tick_at,
+        "last_tick_age_seconds": last_tick_age_seconds,
         "running_seconds": running_seconds,
-        "last_error": state.get("last_error") or "",
-        "next_sleep_seconds": state.get("next_sleep_seconds"),
+        "tick_timeout_seconds": tick_timeout_seconds,
+        "running_stuck_after_seconds": running_stuck_after_seconds,
+        "late_wake_after_seconds": late_wake_after_seconds,
+        "last_error": last_error,
+        "next_sleep_seconds": next_sleep_seconds,
         "next_wake_reason": state.get("next_wake_reason") or "",
-        "ticks": int(state.get("ticks") or 0),
+        "ticks": ticks,
         "last_manual_kick_at": state.get("last_manual_kick_at") or "",
         "last_result": _compact_money_loop_payload(last_result),
         "last_manual_result": _compact_money_loop_payload(manual_result),
@@ -577,6 +631,11 @@ def _ready_label(checks: dict[str, Any]) -> str:
 
     if missing:
         return "needs_env: " + ", ".join(missing)
+
+    money_loop = checks.get("money_loop_runtime", {})
+    money_loop_status = str(money_loop.get("status") or "unknown")
+    if money_loop_status in {"disabled", "error", "stuck", "late"}:
+        return f"money_loop_unhealthy:{money_loop_status}"
 
     recent = checks.get("recent", {})
     if not recent.get("last_stripe_event"):
