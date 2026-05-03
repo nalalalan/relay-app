@@ -75,6 +75,13 @@ def _safe_payload(raw: str | None) -> dict[str, Any]:
         return {}
 
 
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except Exception:
+        return default
+
+
 def _internal_emails() -> set[str]:
     configured = os.getenv("RELAY_INTERNAL_EMAILS", "pham.alann@gmail.com").split(",")
     return {email.strip().lower() for email in configured if email.strip()}
@@ -1053,6 +1060,14 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
             success = relay_success_status()
             active_experiment = performance.get("active_experiment") or {}
             outreach = outreach_status()
+            active_sends = _safe_int(outreach.get("active_experiment_sends"))
+            active_target = _safe_int(outreach.get("active_experiment_sample_target"))
+            active_due = _safe_int(outreach.get("active_experiment_new_due_count"))
+            active_remaining = max(active_target - active_sends, 0) if active_target else 0
+            cap_remaining = _safe_int(outreach.get("cap_remaining"))
+            send_window_open = bool(outreach.get("send_window_is_open"))
+            active_queue_ready = active_due > 0 and cap_remaining > 0
+            active_autonomous_ready = active_queue_ready and send_window_open
             checks["relay_performance"] = {
                 "active_experiment": {
                     "experiment_variant": active_experiment.get("experiment_variant"),
@@ -1064,18 +1079,20 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 "rolling_7_day": performance.get("rolling_7_day") or {},
                 "active_experiment_queue": {
                     "active_experiment_variant": outreach.get("active_experiment_variant"),
-                    "active_experiment_sends": outreach.get("active_experiment_sends"),
-                    "active_experiment_sample_target": outreach.get("active_experiment_sample_target"),
+                    "active_experiment_sends": active_sends,
+                    "active_experiment_sample_target": active_target,
+                    "active_experiment_sends_remaining": active_remaining,
+                    "active_experiment_progress_label": f"{active_sends}/{active_target}" if active_target else "",
                     "active_experiment_needs_sample": outreach.get("active_experiment_needs_sample"),
-                    "active_experiment_new_due_count": outreach.get("active_experiment_new_due_count"),
+                    "active_experiment_new_due_count": active_due,
                     "active_experiment_direct_new_due_count": outreach.get("active_experiment_direct_new_due_count"),
                     "active_experiment_generic_new_due_count": outreach.get("active_experiment_generic_new_due_count"),
                     "active_experiment_allowed_generic_new_due_count": outreach.get("active_experiment_allowed_generic_new_due_count"),
                     "active_experiment_generic_sample_daily_cap": outreach.get("active_experiment_generic_sample_daily_cap"),
                     "direct_due_count": outreach.get("direct_due_count"),
-                    "cap_remaining": outreach.get("cap_remaining"),
+                    "cap_remaining": cap_remaining,
                     "effective_daily_cap": outreach.get("effective_daily_cap"),
-                    "send_window_is_open": outreach.get("send_window_is_open"),
+                    "send_window_is_open": send_window_open,
                     "send_window_reason": outreach.get("send_window_reason"),
                     "send_window_now_local": outreach.get("send_window_now_local"),
                     "send_window_start_local": outreach.get("send_window_start_local"),
@@ -1084,6 +1101,8 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                     "send_window_seconds_until_open": outreach.get("send_window_seconds_until_open"),
                     "send_window_seconds_open": outreach.get("send_window_seconds_open"),
                     "send_window_business_days_only": outreach.get("send_window_business_days_only"),
+                    "active_experiment_queue_ready": active_queue_ready,
+                    "active_experiment_autonomous_send_ready": active_autonomous_ready,
                     "next_money_move": outreach.get("next_money_move"),
                 },
             }
@@ -1096,12 +1115,27 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 "outreach": success_snapshot.get("outreach") or {},
                 "conversion": success_snapshot.get("conversion") or {},
             }
+            money = success_snapshot.get("money") or {}
+            checks["money_system"] = {
+                "state": success.get("bottleneck") or "unknown",
+                "gross_usd": money.get("gross_usd", 0),
+                "payments": money.get("payments", 0),
+                "active_experiment_progress": f"{active_sends}/{active_target}" if active_target else "",
+                "active_experiment_sends_remaining": active_remaining,
+                "queued_direct_leads": outreach.get("direct_due_count"),
+                "cap_remaining": cap_remaining,
+                "loop_status": checks.get("money_loop_runtime", {}).get("status"),
+                "next_autonomous_window": outreach.get("send_window_next_open_local"),
+                "next_action": success.get("next_action"),
+            }
         except Exception as exc:
             checks["relay_performance"] = {
                 "status": "error",
                 "summary": str(exc),
             }
         checks["verdict"] = _ready_label(checks)
+        if isinstance(checks.get("money_system"), dict):
+            checks["money_system"]["verdict"] = checks["verdict"]
         return checks
     finally:
         db.close()
