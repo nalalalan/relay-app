@@ -82,6 +82,41 @@ def _safe_int(value: Any, default: int = 0) -> int:
         return default
 
 
+def _configured_offer_url(env_name: str, setting_name: str) -> str:
+    return (
+        os.getenv(env_name, "").strip()
+        or str(getattr(settings, setting_name, "") or "").strip()
+    )
+
+
+def _revenue_ladder_status() -> dict[str, Any]:
+    entry_url = str(settings.packet_checkout_url or "").strip()
+    offers = [
+        ("entry_packet", "one live packet", bool(entry_url)),
+        ("five_pack", "5-call sprint", bool(_configured_offer_url("PACKET_5_PACK_URL", "packet_5_pack_url"))),
+        ("weekly_sprint", "done-for-you week", bool(_configured_offer_url("WEEKLY_SPRINT_URL", "weekly_sprint_url"))),
+        (
+            "monthly_autopilot",
+            "done-for-you month",
+            bool(_configured_offer_url("MONTHLY_AUTOPILOT_URL", "monthly_autopilot_url")),
+        ),
+    ]
+    configured = [
+        {"key": key, "label": label}
+        for key, label, available in offers
+        if available
+    ]
+    higher_offer_count = max(len(configured) - (1 if entry_url else 0), 0)
+    return {
+        "mode": "ladder" if higher_offer_count > 0 else "entry_offer_only",
+        "configured_offer_count": len(configured),
+        "higher_offer_count": higher_offer_count,
+        "configured_offers": configured,
+        "entry_offer_ready": bool(entry_url),
+        "higher_offers_ready": higher_offer_count > 0,
+    }
+
+
 def _internal_emails() -> set[str]:
     configured = os.getenv("RELAY_INTERNAL_EMAILS", "pham.alann@gmail.com").split(",")
     return {email.strip().lower() for email in configured if email.strip()}
@@ -908,6 +943,7 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
 
     db = SessionLocal()
     try:
+        revenue_ladder = _revenue_ladder_status()
         env = {
             "DATABASE_URL": _env_present("DATABASE_URL"),
             "RESEND_API_KEY": _env_present("RESEND_API_KEY"),
@@ -915,6 +951,9 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
             "STRIPE_WEBHOOK_SECRET": _env_present("STRIPE_WEBHOOK_SECRET"),
             "TALLY_WEBHOOK_SECRET": _env_present("TALLY_WEBHOOK_SECRET"),
             "PACKET_CHECKOUT_URL": bool(getattr(settings, "packet_checkout_url", "") or os.getenv("PACKET_CHECKOUT_URL", "")),
+            "PACKET_5_PACK_URL": bool(_configured_offer_url("PACKET_5_PACK_URL", "packet_5_pack_url")),
+            "WEEKLY_SPRINT_URL": bool(_configured_offer_url("WEEKLY_SPRINT_URL", "weekly_sprint_url")),
+            "MONTHLY_AUTOPILOT_URL": bool(_configured_offer_url("MONTHLY_AUTOPILOT_URL", "monthly_autopilot_url")),
             "CLIENT_INTAKE_DESTINATION": bool(getattr(settings, "client_intake_destination", "") or os.getenv("CLIENT_INTAKE_DESTINATION", "")),
             "FROM_EMAIL_FULFILLMENT": bool(getattr(settings, "from_email_fulfillment", "") or os.getenv("FROM_EMAIL_FULFILLMENT", "")),
         }
@@ -1120,6 +1159,7 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 "state": success.get("bottleneck") or "unknown",
                 "gross_usd": money.get("gross_usd", 0),
                 "payments": money.get("payments", 0),
+                "revenue_ladder": revenue_ladder,
                 "active_experiment_progress": f"{active_sends}/{active_target}" if active_target else "",
                 "active_experiment_sends_remaining": active_remaining,
                 "queued_direct_leads": outreach.get("direct_due_count"),
