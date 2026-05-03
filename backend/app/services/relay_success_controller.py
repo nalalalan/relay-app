@@ -900,6 +900,27 @@ def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
     }
 
 
+def _progress_current(value: Any) -> int:
+    text = str(value or "").strip()
+    if "/" not in text:
+        return 0
+    return _safe_int(text.split("/", 1)[0])
+
+
+def _active_sample_execution_proof_missed(outreach: dict[str, Any], active_sends: int) -> bool:
+    window_contract = (
+        outreach.get("window_execution_contract")
+        if isinstance(outreach.get("window_execution_contract"), dict)
+        else {}
+    )
+    deadline = window_contract.get("audit_at") or outreach.get("next_window_audit_at") or ""
+    deadline_at = _parse_proof_datetime(deadline)
+    if deadline_at is None or datetime.now(timezone.utc) <= deadline_at:
+        return False
+    expected_active_sends = _progress_current(window_contract.get("expected_progress"))
+    return expected_active_sends > 0 and active_sends < expected_active_sends
+
+
 def _bottleneck(snapshot: dict[str, Any]) -> str:
     if snapshot.get("critical_missing"):
         return "infrastructure_blocked"
@@ -956,6 +977,8 @@ def _bottleneck(snapshot: dict[str, Any]) -> str:
         return "reply_to_payment"
     if int(money.get("payments") or 0) > 0:
         return "paid_signal_keep_stable"
+    if _active_sample_execution_proof_missed(outreach, active_sends):
+        return "active_sample_execution_missed"
     if (
         int(outreach.get("send_failures_today") or 0) > 0
         and int(outreach.get("sent_today") or 0) == 0
@@ -1012,6 +1035,9 @@ def _next_action(bottleneck: str) -> str:
             "Send window closed with queued leads and unused capacity; "
             "treat the partial send as an execution miss before judging demand."
         ),
+        "active_sample_execution_missed": (
+            "Active sample proof missed its audit deadline; recover execution before judging demand."
+        ),
         "active_experiment_sample": "Collect the active outbound experiment sample before judging the offer.",
         "active_experiment_refill": "Refill fresh first-touch leads for the active outbound experiment.",
         "page_to_lead": "Improve the first-screen ask before changing the backend.",
@@ -1065,7 +1091,13 @@ def _money_proof_mandate(snapshot: dict[str, Any], bottleneck: str) -> dict[str,
         state = "protect_winning_lane"
         primary_action = "keep the paid lane stable and continue only controlled tests that do not disturb fulfillment"
         owner_policy = "owner_out_of_loop"
-    elif bottleneck in {"outbound_send_failed", "outbound_send_stalled", "outbound_window_missed", "outbound_window_underfilled"}:
+    elif bottleneck in {
+        "active_sample_execution_missed",
+        "outbound_send_failed",
+        "outbound_send_stalled",
+        "outbound_window_missed",
+        "outbound_window_underfilled",
+    }:
         state = "restore_send_execution"
         primary_action = _next_action(bottleneck)
         owner_policy = "manual_input_required"

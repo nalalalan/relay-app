@@ -781,6 +781,7 @@ def _operator_mode(
         "paid_fulfillment",
         "checkout_to_payment",
         "reply_to_payment",
+        "active_sample_execution_missed",
         "outbound_send_failed",
         "outbound_send_stalled",
         "outbound_window_missed",
@@ -868,6 +869,7 @@ def _launch_readiness_contract(
     blockers: list[str] = []
     execution_blocker_states = {
         "infrastructure_blocked",
+        "active_sample_execution_missed",
         "outbound_send_failed",
         "outbound_send_stalled",
         "outbound_window_missed",

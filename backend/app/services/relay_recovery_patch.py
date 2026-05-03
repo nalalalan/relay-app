@@ -1686,6 +1686,7 @@ def _money_loop_success_sleep(result: dict[str, Any] | None, default_interval: i
     if bottleneck in {"checkout_to_payment", "reply_to_payment"}:
         return min(default_interval, 120), "buyer_signal_watch"
     if bottleneck in {
+        "active_sample_execution_missed",
         "outbound_send_failed",
         "outbound_send_stalled",
         "outbound_window_missed",
