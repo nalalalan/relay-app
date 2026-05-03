@@ -731,6 +731,7 @@ async def _relay_money_loop_tick(
     active_experiment_new_due = int(status.get("active_experiment_new_due_count") or 0)
     refill_due = active_experiment_new_due if active_experiment_needs_sample else direct_due
     cap_remaining = int(status.get("cap_remaining") or 0)
+    send_window_open = bool(status.get("send_window_is_open"))
     min_direct_due = int(os.getenv("AO_RELAY_MIN_DIRECT_DUE", str(max(settings.buyer_acq_daily_send_cap, 10))) or 10)
 
     if send_live:
@@ -750,10 +751,27 @@ async def _relay_money_loop_tick(
             "reason": "send_live_false",
         }
 
+    outreach_phase = "after_refill"
+    send_first = send_live and send_window_open and direct_due > 0 and cap_remaining > 0
+    if send_first:
+        outreach_result = _compact_outreach_result(await asyncio.to_thread(outreach.run_custom_outreach_cycle))
+        outreach_phase = "before_refill"
+        status_for_refill = await asyncio.to_thread(outreach.outreach_status)
+    else:
+        outreach_result = None
+        status_for_refill = status
+
+    refill_active_experiment_needs_sample = bool(status_for_refill.get("active_experiment_needs_sample"))
+    refill_active_experiment_new_due = int(status_for_refill.get("active_experiment_new_due_count") or 0)
+    refill_direct_due = int(status_for_refill.get("direct_due_count") or 0)
+    refill_due_for_decision = (
+        refill_active_experiment_new_due if refill_active_experiment_needs_sample else refill_direct_due
+    )
+
     refill_result: dict[str, Any] = {"status": "skipped", "reason": "direct_due_ok"}
     if not settings.apollo_api_key:
         refill_result = {"status": "skipped", "reason": "missing_apollo_api_key"}
-    elif force_refill or refill_due < min_direct_due:
+    elif force_refill or refill_due_for_decision < min_direct_due:
         query = refill_query or ops.choose_query()
         importer = getattr(ops, "import_from_apollo_people_search", import_from_apollo_people_search)
         refill_attempts: list[dict[str, Any]] = []
@@ -772,7 +790,7 @@ async def _relay_money_loop_tick(
                     refill_result = attempt
                     if int(attempt.get("upserted") or 0) > 0:
                         break
-                    if not active_experiment_needs_sample:
+                    if not refill_active_experiment_needs_sample:
                         break
                 else:
                     refill_result = {"status": "error", "reason": "unexpected_refill_result"}
@@ -821,7 +839,9 @@ async def _relay_money_loop_tick(
                         "error": str(fallback_exc),
                     }
 
-    if send_live:
+    if outreach_result is not None:
+        pass
+    elif send_live:
         outreach_result = _compact_outreach_result(await asyncio.to_thread(outreach.run_custom_outreach_cycle))
     else:
         outreach_result = {
@@ -838,6 +858,9 @@ async def _relay_money_loop_tick(
         "active_experiment_needs_sample": active_experiment_needs_sample,
         "active_experiment_new_due_before": active_experiment_new_due,
         "refill_due_before": refill_due,
+        "refill_due_for_decision": refill_due_for_decision,
+        "send_window_open_before": send_window_open,
+        "outreach_phase": outreach_phase,
         "cap_remaining_before": cap_remaining,
         "force_refill": force_refill,
         "send_live": send_live,

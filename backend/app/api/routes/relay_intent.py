@@ -391,7 +391,10 @@ def _compact_money_loop_payload(payload: dict[str, Any] | None) -> dict[str, Any
         "active_experiment_needs_sample": payload.get("active_experiment_needs_sample"),
         "active_experiment_new_due_before": payload.get("active_experiment_new_due_before"),
         "refill_due_before": payload.get("refill_due_before"),
+        "refill_due_for_decision": payload.get("refill_due_for_decision"),
         "direct_due_before": payload.get("direct_due_before"),
+        "send_window_open_before": payload.get("send_window_open_before"),
+        "outreach_phase": payload.get("outreach_phase"),
         "status_after": {
             "active_experiment_variant": status_after.get("active_experiment_variant"),
             "active_experiment_sends": status_after.get("active_experiment_sends"),
