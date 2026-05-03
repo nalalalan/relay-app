@@ -557,16 +557,26 @@ def _refill_query_candidates(primary_query: str | None) -> list[str]:
     for query in os.getenv("ACQ_OPS_QUERY_ROTATION", "").split("|"):
         add(query)
     for query in [
+        "paid media agency",
+        "google ads agency",
+        "performance marketing agency",
+        "client services agency",
+        "digital marketing agency",
+        "b2b marketing agency",
         "paid media agency founder",
         "google ads agency owner",
         "performance marketing agency owner",
         "ppc agency owner",
+        "paid media agency los angeles",
+        "google ads agency chicago",
+        "performance marketing agency austin",
+        "ppc agency denver",
     ]:
         add(query)
     try:
-        limit = max(int(os.getenv("AO_RELAY_REFILL_QUERY_ATTEMPTS", "3") or 3), 1)
+        limit = max(int(os.getenv("AO_RELAY_REFILL_QUERY_ATTEMPTS", "5") or 5), 1)
     except Exception:
-        limit = 3
+        limit = 5
     return candidates[:limit]
 
 
@@ -1019,9 +1029,9 @@ async def _relay_money_loop_tick(
                 fallback_attempts: list[dict[str, Any]] = []
                 fallback_result: dict[str, Any] = {}
                 try:
-                    fallback_limit = max(int(os.getenv("AO_RELAY_APIFY_FALLBACK_QUERY_ATTEMPTS", "2") or 2), 1)
+                    fallback_limit = max(int(os.getenv("AO_RELAY_APIFY_FALLBACK_QUERY_ATTEMPTS", "4") or 4), 1)
                 except Exception:
-                    fallback_limit = 2
+                    fallback_limit = 4
                 for fallback_query in _refill_query_candidates(query)[:fallback_limit]:
                     previous_refill_status = latest_refill_status
                     try:
