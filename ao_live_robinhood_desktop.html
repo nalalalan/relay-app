@@ -867,6 +867,7 @@
       const revenueObjective = moneySystem.revenue_objective || status.money_target || {};
       const moneyDecisionContract = moneySystem.money_decision_contract || {};
       const replyAutonomyContract = moneySystem.reply_autonomy_contract || {};
+      const conversionLadder = moneySystem.conversion_ladder || {};
       const successGovernor = moneySystem.success_governor || {};
       const blockers = Array.isArray(launch.blockers) ? launch.blockers : [];
 
@@ -888,6 +889,7 @@
           revenueObjective,
           moneyDecisionContract,
           replyAutonomyContract,
+          conversionLadder,
           successGovernor,
           planSummary: proofTarget,
           successMetric,
@@ -916,6 +918,7 @@
           revenueObjective,
           moneyDecisionContract,
           replyAutonomyContract,
+          conversionLadder,
           successGovernor,
           planSummary: "",
           successMetric: "",
@@ -940,6 +943,7 @@
         revenueObjective,
         moneyDecisionContract,
         replyAutonomyContract,
+        conversionLadder,
         successGovernor,
         planSummary: plan.summary || "",
         successMetric: "",
@@ -1103,8 +1107,12 @@
         const governorLine = governor.state
           ? ` Governor: ${governor.state}; ${governor.next_step || governor.human_policy || ""}.`
           : "";
+        const ladder = operator.conversionLadder || {};
+        const ladderLine = ladder.state
+          ? ` Ladder: ${ladder.active_stage || ladder.state}; ${ladder.next_step || ""}.`
+          : "";
         const success = !operator.nextWindowSuccessCriterion && operator.successMetric ? ` Success metric: ${operator.successMetric}.` : "";
-        copy = `${operator.reason}${next ? ` Next autonomous window: ${next}.` : ""}${progress}${proof}${audit}${moneyTarget}${replyHandling}${governorLine}${success}`;
+        copy = `${operator.reason}${next ? ` Next autonomous window: ${next}.` : ""}${progress}${proof}${audit}${moneyTarget}${replyHandling}${governorLine}${ladderLine}${success}`;
       } else if (operator && !operator.doNotInterrupt) {
         headline = "Attention needed.";
         copy = operator.reason || operator.planSummary || "There is a real signal worth handling before the system keeps scaling.";

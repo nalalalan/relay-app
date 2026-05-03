@@ -255,6 +255,97 @@ def _reply_autonomy_contract(
     }
 
 
+def _conversion_ladder_contract(
+    *,
+    sends: int,
+    active_sends: int,
+    active_target: int,
+    active_remaining: int,
+    replies: int,
+    auto_replies: int,
+    unhandled_replies: int,
+    checkout_clicks: int,
+    payments: int,
+    revenue_objective: dict[str, Any],
+    launch_readiness: dict[str, Any],
+) -> dict[str, Any]:
+    expected_next_sends = _safe_int(launch_readiness.get("expected_next_window_sends"))
+    if payments > 0:
+        state = "paid"
+        active_stage = "payment"
+        next_step = "fulfill paid buyer, keep the lane stable, and continue only controlled tests"
+    elif checkout_clicks > payments:
+        state = "checkout_open"
+        active_stage = "checkout"
+        next_step = "keep the paid test obvious and follow up checkout intent"
+    elif unhandled_replies > 0:
+        state = "reply_open"
+        active_stage = "reply"
+        next_step = "close unhandled reply through the paid test"
+    elif auto_replies > 0:
+        state = "auto_reply_sent"
+        active_stage = "auto_reply"
+        next_step = "wait for checkout or payment after the auto-reply"
+    elif active_remaining > 0:
+        state = "sample_collection"
+        active_stage = "send"
+        next_step = launch_readiness.get("next_window_success_criterion") or "collect the next active send batch"
+    else:
+        state = "sample_review"
+        active_stage = "review"
+        next_step = "review the completed active sample and keep or rotate one variable"
+
+    reply_rate = round(replies / sends, 4) if sends > 0 else 0
+    payment_rate = round(payments / sends, 4) if sends > 0 else 0
+    paid_tests_left = _safe_int(revenue_objective.get("paid_tests_remaining_weekly"))
+
+    return {
+        "state": state,
+        "active_stage": active_stage,
+        "next_step": next_step,
+        "stages": [
+            {
+                "key": "send",
+                "label": "Send active sample",
+                "current": active_sends,
+                "target": active_target,
+                "next_expected": expected_next_sends,
+                "done": active_target > 0 and active_sends >= active_target,
+            },
+            {
+                "key": "reply",
+                "label": "Turn sends into replies",
+                "current": replies,
+                "target": 1,
+                "open": unhandled_replies,
+                "auto_closed": min(auto_replies, replies),
+                "done": replies > 0,
+            },
+            {
+                "key": "checkout",
+                "label": "Turn replies into checkout intent",
+                "current": checkout_clicks,
+                "target": 1,
+                "open": max(checkout_clicks - payments, 0),
+                "done": checkout_clicks > 0,
+            },
+            {
+                "key": "payment",
+                "label": "Turn checkout into paid tests",
+                "current": payments,
+                "target": max(payments + paid_tests_left, payments, 1),
+                "remaining": paid_tests_left,
+                "done": paid_tests_left <= 0,
+            },
+        ],
+        "rates": {
+            "reply_rate": reply_rate,
+            "payment_rate": payment_rate,
+        },
+        "guardrail": "do not judge conversion before the active send sample lands unless real buyer signal appears",
+    }
+
+
 def _success_governor_contract(
     *,
     revenue_objective: dict[str, Any],
@@ -1741,6 +1832,19 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 active_signal_payments=active_signal_payments,
                 unhandled_replies=unhandled_replies,
             )
+            conversion_ladder = _conversion_ladder_contract(
+                sends=_safe_int(success_outreach.get("sends")),
+                active_sends=active_sends,
+                active_target=active_target,
+                active_remaining=active_remaining,
+                replies=replies,
+                auto_replies=auto_replies,
+                unhandled_replies=unhandled_replies,
+                checkout_clicks=checkout_clicks,
+                payments=payments,
+                revenue_objective=revenue_objective,
+                launch_readiness=launch_readiness,
+            )
             success_governor = _success_governor_contract(
                 revenue_objective=revenue_objective,
                 money_decision=money_decision_contract,
@@ -1757,6 +1861,7 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 "revenue_objective": revenue_objective,
                 "money_decision_contract": money_decision_contract,
                 "reply_autonomy_contract": reply_autonomy_contract,
+                "conversion_ladder": conversion_ladder,
                 "success_governor": success_governor,
                 "revenue_ladder": revenue_ladder,
                 "close_path": {
