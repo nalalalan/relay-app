@@ -250,12 +250,26 @@ def _compact_outreach_result(result: Any) -> Any:
     return compact
 
 
+def _status_label(value: Any) -> str:
+    if not isinstance(value, dict):
+        return str(value or "unknown")[:80]
+    status = value.get("status")
+    if isinstance(status, str) and status.strip():
+        return status.strip()[:80]
+    if isinstance(status, dict):
+        return "snapshot"
+    reason = value.get("reason") or value.get("summary")
+    if reason:
+        return str(reason).strip()[:80]
+    return "ok"
+
+
 def _log_money_loop_tick(result: dict[str, Any]) -> None:
     try:
         summary = (
-            f"refill={result.get('refill_result', {}).get('status', 'unknown')} "
-            f"outreach={result.get('outreach_result', {}).get('status', 'unknown')} "
-            f"success={result.get('success_control', {}).get('status', 'unknown')}"
+            f"refill={_status_label(result.get('refill_result'))} "
+            f"outreach={_status_label(result.get('outreach_result'))} "
+            f"success={_status_label(result.get('success_control'))}"
         )
         with SessionLocal() as session:
             session.add(
