@@ -907,6 +907,18 @@ def _progress_current(value: Any) -> int:
     return _safe_int(text.split("/", 1)[0])
 
 
+def _expected_active_sends_for_proof(window_contract: dict[str, Any]) -> int:
+    expected_active_sends = _progress_current(window_contract.get("expected_progress"))
+    if expected_active_sends > 0:
+        return expected_active_sends
+    success_criterion = str(window_contract.get("success_criterion") or "").strip()
+    if " to " in success_criterion:
+        expected_active_sends = _progress_current(success_criterion.rsplit(" to ", 1)[-1])
+        if expected_active_sends > 0:
+            return expected_active_sends
+    return _safe_int(window_contract.get("expected_sends"))
+
+
 def _active_sample_execution_proof_missed(outreach: dict[str, Any], active_sends: int) -> bool:
     window_contract = (
         outreach.get("window_execution_contract")
@@ -917,7 +929,7 @@ def _active_sample_execution_proof_missed(outreach: dict[str, Any], active_sends
     deadline_at = _parse_proof_datetime(deadline)
     if deadline_at is None or datetime.now(timezone.utc) <= deadline_at:
         return False
-    expected_active_sends = _progress_current(window_contract.get("expected_progress"))
+    expected_active_sends = _expected_active_sends_for_proof(window_contract)
     return expected_active_sends > 0 and active_sends < expected_active_sends
 
 
