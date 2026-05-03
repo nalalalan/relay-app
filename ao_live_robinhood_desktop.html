@@ -849,23 +849,34 @@
 
     function operatorState(ops, status, rhythm) {
       const moneySystem = ops?.money_system || {};
+      const launch = moneySystem.launch_readiness || {};
       const op = moneySystem.operator_mode || status.operator_mode || {};
       const plan = status.autonomous_plan || {};
       const mode = String(op.mode || "");
       const doNotInterrupt = op.do_not_interrupt_user === true;
       const reason = String(op.reason || "");
-      const nextWindow = moneySystem.next_autonomous_window || plan.next_autonomous_window || status.send_window_next_open_local || "";
+      const nextWindow = moneySystem.next_autonomous_window || launch.next_autonomous_window || plan.next_autonomous_window || status.send_window_next_open_local || "";
+      const proofTarget = launch.proof_target || plan.summary || "";
+      const successMetric = launch.success_metric || "";
+      const interruptRule = launch.interrupt_rule || "";
+      const blockers = Array.isArray(launch.blockers) ? launch.blockers : [];
 
       if (mode) {
         return {
-          label: doNotInterrupt ? "Stay out" : "Attention",
-          reason: reason || (doNotInterrupt ? "Relay is operating without a useful human move." : "Relay found a signal worth handling."),
+          label: doNotInterrupt && launch.ready !== false ? "Stay out" : "Attention",
+          reason: blockers.length
+            ? blockers.join(" / ")
+            : reason || (doNotInterrupt ? "Relay is operating without a useful human move." : "Relay found a signal worth handling."),
           mode,
-          doNotInterrupt,
+          doNotInterrupt: doNotInterrupt && launch.ready !== false,
           nextWindow,
-          activeProgress: moneySystem.active_experiment_progress || plan.active_experiment_progress || "",
-          planSummary: plan.summary || "",
-          reviewRule: plan.review_rule || ""
+          activeProgress: launch.active_experiment_progress || moneySystem.active_experiment_progress || plan.active_experiment_progress || "",
+          planSummary: proofTarget,
+          successMetric,
+          interruptRule,
+          reviewRule: launch.review_rule || plan.review_rule || "",
+          ready: launch.ready !== false,
+          blockers
         };
       }
 
@@ -880,7 +891,11 @@
           nextWindow,
           activeProgress: "",
           planSummary: "",
-          reviewRule: ""
+          successMetric: "",
+          interruptRule: "",
+          reviewRule: "",
+          ready: false,
+          blockers: []
         };
       }
       return {
@@ -891,7 +906,11 @@
         nextWindow,
         activeProgress: plan.active_experiment_progress || "",
         planSummary: plan.summary || "",
-        reviewRule: plan.review_rule || ""
+        successMetric: "",
+        interruptRule: "",
+        reviewRule: plan.review_rule || "",
+        ready: true,
+        blockers: []
       };
     }
 
@@ -1031,8 +1050,9 @@
         headline = "Stay out. Relay is handling it.";
         const next = fmtMoment(operator.nextWindow);
         const progress = operator.activeProgress ? ` Active sample: ${operator.activeProgress}.` : "";
-        const plan = operator.planSummary ? ` ${operator.planSummary}` : "";
-        copy = `${operator.reason}${next ? ` Next autonomous window: ${next}.` : ""}${progress}${plan}`;
+        const proof = operator.planSummary ? ` Proof target: ${operator.planSummary}.` : "";
+        const success = operator.successMetric ? ` Success metric: ${operator.successMetric}.` : "";
+        copy = `${operator.reason}${next ? ` Next autonomous window: ${next}.` : ""}${progress}${proof}${success}`;
       } else if (operator && !operator.doNotInterrupt) {
         headline = "Attention needed.";
         copy = operator.reason || operator.planSummary || "There is a real signal worth handling before the system keeps scaling.";
@@ -1070,7 +1090,7 @@
       $("todayReplies").textContent = String(status.replies_today ?? 0);
       $("sendRhythm").textContent = operator.label;
       $("rhythmCopy").textContent = operator.doNotInterrupt
-        ? operator.reason
+        ? (operator.interruptRule || operator.reason)
         : "Handle the real signal first. Do not tune volume until that is done.";
       if (!operator.reason) {
         $("rhythmCopy").textContent = rhythm.label === "Moving"
