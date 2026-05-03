@@ -1712,6 +1712,8 @@ def _money_loop_success_sleep(result: dict[str, Any] | None, default_interval: i
             return min(default_interval, 120), "money_proof_recovery_watch"
         if health_state == "winning_lane_active":
             return min(default_interval, 300), "winning_lane_watch"
+        if health_state == "rotation_required":
+            return min(default_interval, 300), "experiment_rotation_watch"
         if health_state == "waiting_for_proof_deadline":
             try:
                 seconds_until_deadline = int(proof_health.get("seconds_until_deadline") or 0)

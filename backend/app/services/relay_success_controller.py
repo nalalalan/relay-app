@@ -1215,6 +1215,10 @@ def _money_proof_health(mandate: dict[str, Any]) -> dict[str, Any]:
         health = "active_signal_open"
         reason = "active sample has buyer signal ahead of payment"
         recovery = "keep the active lane stable and convert replies to checkout or payment"
+    elif state == "rotate_one_variable":
+        health = "rotation_required"
+        reason = "completed sample has no buyer signal or payment"
+        recovery = "rotate exactly one controlled copy or targeting variable before the next sample"
     elif checkout_gap > 0 or unhandled_replies > 0:
         health = "buyer_signal_open"
         reason = "buyer signal is ahead of payment"
