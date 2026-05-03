@@ -392,6 +392,10 @@ async def import_from_apollo_search(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     with _session() as session:
         count = 0
+        prospects_with_email = 0
+        sendable_upserted = 0
+        missing_email = 0
+        rejected_or_unsendable = 0
 
         for item in items:
             website = item.get("website") or ""
@@ -409,12 +413,34 @@ async def import_from_apollo_search(payload: Dict[str, Any]) -> Dict[str, Any]:
                 "source": "apify",
             }
 
-            _upsert_prospect(session, row)
+            prospect = _upsert_prospect(session, row)
             count += 1
+            if prospect.contact_email:
+                prospects_with_email += 1
+            else:
+                missing_email += 1
+            if prospect.contact_email and prospect.status in {
+                "scored",
+                "queued_to_sender",
+                "sent_custom",
+                "sent_to_smartlead",
+            }:
+                sendable_upserted += 1
+            else:
+                rejected_or_unsendable += 1
 
         session.commit()
 
-    return {"status": "ok", "searched": len(items), "upserted": count}
+    return {
+        "status": "ok",
+        "source": "apify",
+        "searched": len(items),
+        "upserted": count,
+        "prospects_with_email": prospects_with_email,
+        "sendable_upserted": sendable_upserted,
+        "missing_email_count": missing_email,
+        "rejected_or_unsendable_count": rejected_or_unsendable,
+    }
 
 
 def _split_csv(value: str) -> list[str]:

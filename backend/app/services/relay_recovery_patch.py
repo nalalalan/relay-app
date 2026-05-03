@@ -312,14 +312,54 @@ def _compact_outreach_result(result: Any) -> Any:
     return compact
 
 
-def _refill_upserted_count(result: Any) -> int:
+def _refill_capacity_count(status: dict[str, Any]) -> int:
+    if status.get("active_experiment_needs_sample"):
+        return int(status.get("active_experiment_new_due_count") or 0)
+    return int(status.get("direct_due_count") or 0)
+
+
+def _refill_capacity_mode(status: dict[str, Any]) -> str:
+    if status.get("active_experiment_needs_sample"):
+        return "active_experiment_new_due"
+    return "direct_due"
+
+
+def _refill_capacity_fields(
+    before_status: dict[str, Any],
+    after_status: dict[str, Any],
+    *,
+    previous_status: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    before_count = _refill_capacity_count(before_status)
+    after_count = _refill_capacity_count(after_status)
+    previous_count = _refill_capacity_count(previous_status or before_status)
+    return {
+        "refill_capacity_mode": _refill_capacity_mode(before_status),
+        "refill_capacity_before": before_count,
+        "refill_capacity_after": after_count,
+        "refill_capacity_delta": after_count - before_count,
+        "refill_capacity_delta_from_previous": after_count - previous_count,
+    }
+
+
+def _refill_capacity_satisfied(status: dict[str, Any], minimum_due: int) -> bool:
+    return _refill_capacity_count(status) >= minimum_due
+
+
+def _refill_created_send_capacity(result: Any) -> bool:
     if not isinstance(result, dict):
-        return 0
-    total = int(result.get("upserted") or 0)
+        return False
+    if int(result.get("refill_capacity_delta") or 0) > 0:
+        return True
     fallback = result.get("fallback_result")
-    if isinstance(fallback, dict):
-        total += int(fallback.get("upserted") or 0)
-    return total
+    if isinstance(fallback, dict) and int(fallback.get("refill_capacity_delta") or 0) > 0:
+        return True
+    fallback_attempts = result.get("fallback_attempts")
+    if isinstance(fallback_attempts, list) and any(
+        isinstance(item, dict) and int(item.get("refill_capacity_delta") or 0) > 0 for item in fallback_attempts
+    ):
+        return True
+    return False
 
 
 def _status_label(value: Any) -> str:
@@ -341,7 +381,16 @@ def _status_label(value: Any) -> str:
             for key in ("http_status", "apollo_primary_status", "apollo_fallback_status"):
                 if value.get(key) is not None:
                     details.append(f"{key}={value.get(key)}")
-            for key in ("source", "searched", "enriched_with_email", "missing_email_after_enrichment", "upserted"):
+            for key in (
+                "source",
+                "searched",
+                "enriched_with_email",
+                "missing_email_after_enrichment",
+                "upserted",
+                "sendable_upserted",
+                "refill_capacity_delta",
+                "refill_capacity_after",
+            ):
                 if value.get(key) is not None:
                     details.append(f"{key}={value.get(key)}")
             fallback = value.get("fallback_result")
@@ -349,6 +398,8 @@ def _status_label(value: Any) -> str:
                 fallback_status = str(fallback.get("status") or "").strip()
                 fallback_error_type = str(fallback.get("error_type") or "").strip()
                 upserted = fallback.get("upserted")
+                sendable = fallback.get("sendable_upserted")
+                capacity_delta = fallback.get("refill_capacity_delta")
                 searched = fallback.get("searched")
                 if fallback_status:
                     details.append(f"fallback={fallback_status}")
@@ -356,6 +407,10 @@ def _status_label(value: Any) -> str:
                     details.append(f"fallback_error_type={fallback_error_type}")
                 if upserted is not None:
                     details.append(f"upserted={upserted}")
+                if sendable is not None:
+                    details.append(f"sendable={sendable}")
+                if capacity_delta is not None:
+                    details.append(f"capacity_delta={capacity_delta}")
                 if searched is not None:
                     details.append(f"searched={searched}")
             if details:
@@ -512,9 +567,19 @@ def _compact_refill_attempt(result: dict[str, Any]) -> dict[str, Any]:
         "enriched_with_email": result.get("enriched_with_email"),
         "missing_email_after_enrichment": result.get("missing_email_after_enrichment"),
         "upserted": result.get("upserted"),
+        "prospects_with_email": result.get("prospects_with_email"),
+        "sendable_upserted": result.get("sendable_upserted"),
+        "direct_sendable_upserted": result.get("direct_sendable_upserted"),
+        "missing_email_count": result.get("missing_email_count"),
+        "rejected_or_unsendable_count": result.get("rejected_or_unsendable_count"),
         "skipped_missing_email": result.get("skipped_missing_email"),
         "skipped_bad_emails": result.get("skipped_bad_emails"),
         "skipped_generic_inboxes": result.get("skipped_generic_inboxes"),
+        "refill_capacity_mode": result.get("refill_capacity_mode"),
+        "refill_capacity_before": result.get("refill_capacity_before"),
+        "refill_capacity_after": result.get("refill_capacity_after"),
+        "refill_capacity_delta": result.get("refill_capacity_delta"),
+        "refill_capacity_delta_from_previous": result.get("refill_capacity_delta_from_previous"),
         "apollo_endpoint": result.get("apollo_endpoint"),
         "apollo_primary_error_status": result.get("apollo_primary_error_status"),
         "enrich_errors": result.get("enrich_errors"),
@@ -868,6 +933,7 @@ async def _relay_money_loop_tick(
         refill_active_experiment_new_due if refill_active_experiment_needs_sample else refill_direct_due
     )
 
+    latest_refill_status = status_for_refill
     refill_result: dict[str, Any] = {"status": "skipped", "reason": "direct_due_ok"}
     if not settings.apollo_api_key:
         refill_result = {"status": "skipped", "reason": "missing_apollo_api_key"}
@@ -886,11 +952,20 @@ async def _relay_money_loop_tick(
                 )
                 if isinstance(attempt, dict):
                     attempt.setdefault("q_keywords", attempt_query)
+                    previous_refill_status = latest_refill_status
+                    latest_refill_status = await asyncio.to_thread(outreach.outreach_status)
+                    attempt.update(
+                        _refill_capacity_fields(
+                            status_for_refill,
+                            latest_refill_status,
+                            previous_status=previous_refill_status,
+                        )
+                    )
                     refill_attempts.append(_compact_refill_attempt(attempt))
                     refill_result = attempt
-                    if int(attempt.get("upserted") or 0) > 0:
+                    if _refill_capacity_satisfied(latest_refill_status, min_direct_due):
                         break
-                    if not refill_active_experiment_needs_sample:
+                    if not refill_active_experiment_needs_sample and _refill_created_send_capacity(attempt):
                         break
                 else:
                     refill_result = {"status": "error", "reason": "unexpected_refill_result"}
@@ -909,7 +984,7 @@ async def _relay_money_loop_tick(
         if refill_attempts and isinstance(refill_result, dict):
             refill_result["attempts"] = refill_attempts
 
-        if last_exc is not None and not any(int(attempt.get("upserted") or 0) > 0 for attempt in refill_attempts):
+        if last_exc is not None and not any(_refill_created_send_capacity(attempt) for attempt in refill_attempts):
             exc = last_exc
             refill_result = {
                 "status": "error",
@@ -920,28 +995,72 @@ async def _relay_money_loop_tick(
                 **_exception_refill_fields(exc),
             }
             if _original_apollo_search is not None:
+                fallback_attempts: list[dict[str, Any]] = []
+                fallback_result: dict[str, Any] = {}
                 try:
-                    fallback_result = await _original_apollo_search({"q_keywords": query, "source": "apify"})
-                    refill_result = {
-                        "status": "degraded_ok",
-                        "reason": "apollo_refill_failed_apify_fallback_ran",
-                        "error": str(exc),
-                        "q_keywords": query,
-                        "attempts": refill_attempts,
-                        "fallback_result": fallback_result,
-                        **_exception_refill_fields(exc),
-                    }
-                except Exception as fallback_exc:
-                    refill_result["fallback_result"] = {
-                        "status": "error",
-                        "reason": "apify_fallback_failed",
-                        "error_type": type(fallback_exc).__name__,
-                        "error": str(fallback_exc),
-                    }
+                    fallback_limit = max(int(os.getenv("AO_RELAY_APIFY_FALLBACK_QUERY_ATTEMPTS", "2") or 2), 1)
+                except Exception:
+                    fallback_limit = 2
+                for fallback_query in _refill_query_candidates(query)[:fallback_limit]:
+                    previous_refill_status = latest_refill_status
+                    try:
+                        fallback_attempt = await _original_apollo_search(
+                            {"q_keywords": fallback_query, "source": "apify"}
+                        )
+                        if isinstance(fallback_attempt, dict):
+                            fallback_attempt.setdefault("q_keywords", fallback_query)
+                            latest_refill_status = await asyncio.to_thread(outreach.outreach_status)
+                            fallback_attempt.update(
+                                _refill_capacity_fields(
+                                    status_for_refill,
+                                    latest_refill_status,
+                                    previous_status=previous_refill_status,
+                                )
+                            )
+                            fallback_attempts.append(_compact_refill_attempt(fallback_attempt))
+                            fallback_result = fallback_attempt
+                            if _refill_capacity_satisfied(latest_refill_status, min_direct_due):
+                                break
+                            if not refill_active_experiment_needs_sample and _refill_created_send_capacity(
+                                fallback_attempt
+                            ):
+                                break
+                        else:
+                            fallback_result = {
+                                "status": "error",
+                                "reason": "unexpected_apify_fallback_result",
+                                "q_keywords": fallback_query,
+                            }
+                            fallback_attempts.append(fallback_result)
+                    except Exception as fallback_exc:
+                        fallback_result = {
+                            "status": "error",
+                            "reason": "apify_fallback_failed",
+                            "q_keywords": fallback_query,
+                            "error_type": type(fallback_exc).__name__,
+                            "error": str(fallback_exc),
+                        }
+                        fallback_attempts.append(fallback_result)
+
+                refill_result = {
+                    "status": "degraded_ok" if fallback_attempts else "error",
+                    "reason": "apollo_refill_failed_apify_fallback_ran"
+                    if fallback_attempts
+                    else "apollo_refill_failed_apify_fallback_failed",
+                    "error": str(exc),
+                    "q_keywords": query,
+                    "attempts": refill_attempts,
+                    "fallback_result": fallback_result,
+                    "fallback_attempts": fallback_attempts,
+                    **_exception_refill_fields(exc),
+                }
+
+    if isinstance(refill_result, dict):
+        refill_result.update(_refill_capacity_fields(status_for_refill, latest_refill_status))
 
     if outreach_result is not None:
         post_refill_outreach_result = None
-        if send_live and _refill_upserted_count(refill_result) > 0:
+        if send_live and _refill_created_send_capacity(refill_result):
             status_after_refill = await asyncio.to_thread(outreach.outreach_status)
             if (
                 status_after_refill.get("send_window_is_open")
