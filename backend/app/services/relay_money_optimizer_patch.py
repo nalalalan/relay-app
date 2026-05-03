@@ -488,6 +488,14 @@ def _active_generic_sample_cap() -> int:
         return 2
 
 
+def _fill_remaining_cap_after_active_sample() -> bool:
+    return os.getenv("RELAY_FILL_REMAINING_CAP_AFTER_ACTIVE_SAMPLE", "true").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+    }
+
+
 def _effective_daily_cap(experiment: dict[str, Any] | None = None) -> int:
     configured_cap = max(int(settings.buyer_acq_daily_send_cap or 0), 1)
     try:
@@ -942,11 +950,21 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
         active_generic_first_touch = [candidate for candidate in generic_due if candidate[3]]
         generic_sample_cap = _active_generic_sample_cap()
         generic_active_sample_fallback_count = 0
+        money_fill_after_active_sample_count = 0
+        fill_remaining_after_active_sample = _fill_remaining_cap_after_active_sample()
         if active_sample_needed > 0 and (active_direct_first_touch or active_generic_first_touch):
             generic_slots = max(min(active_sample_needed - len(active_direct_first_touch), generic_sample_cap), 0)
             generic_active_sample_fallback = active_generic_first_touch[:generic_slots]
             generic_active_sample_fallback_count = len(generic_active_sample_fallback)
-            candidates = (active_direct_first_touch + generic_active_sample_fallback)[:active_sample_needed]
+            active_sample_candidates = (active_direct_first_touch + generic_active_sample_fallback)[:active_sample_needed]
+            active_sample_ids = {candidate[0].external_id for candidate in active_sample_candidates}
+            money_fill_candidates = (
+                [candidate for candidate in direct_due if candidate[0].external_id not in active_sample_ids]
+                if fill_remaining_after_active_sample
+                else []
+            )
+            money_fill_after_active_sample_count = len(money_fill_candidates)
+            candidates = active_sample_candidates + money_fill_candidates
             active_sample_reserved_only = True
         else:
             active_sample_reserved_only = False
@@ -1034,6 +1052,8 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
             "active_experiment_generic_sample_daily_cap": generic_sample_cap,
             "active_generic_sample_fallback_count": generic_active_sample_fallback_count,
             "active_sample_reserved_only": active_sample_reserved_only,
+            "fill_remaining_cap_after_active_sample": fill_remaining_after_active_sample,
+            "money_fill_after_active_sample_count": money_fill_after_active_sample_count,
             "blocked_bad_email_count": blocked_bad_email,
             "blocked_duplicate_email_count": duplicate_email_blocked,
             "paused_weak_decision_maker_count": weak_decision_maker_blocked,
