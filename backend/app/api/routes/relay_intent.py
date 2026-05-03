@@ -414,6 +414,91 @@ def _success_governor_contract(
     }
 
 
+def _owner_absence_contract(
+    *,
+    success_governor: dict[str, Any],
+    launch_readiness: dict[str, Any],
+    reply_autonomy: dict[str, Any],
+    conversion_ladder: dict[str, Any],
+    revenue_objective: dict[str, Any],
+) -> dict[str, Any]:
+    governor_state = str(success_governor.get("state") or "").strip()
+    reply_state = str(reply_autonomy.get("state") or "").strip()
+    ladder_stage = str(conversion_ladder.get("active_stage") or conversion_ladder.get("state") or "").strip()
+    audit_at = success_governor.get("audit_at") or launch_readiness.get("next_window_audit_at") or ""
+    blockers = launch_readiness.get("blockers") if isinstance(launch_readiness.get("blockers"), list) else []
+    manual_input_required = (
+        reply_state == "attention_required"
+        or governor_state in {"interrupt_required", "fix_execution"}
+        or (governor_state == "remove_blocker" and bool(blockers))
+    )
+
+    if manual_input_required:
+        state = "owner_needed"
+        reason = success_governor.get("next_step") or "; ".join(str(item) for item in blockers) or "operator interrupt required"
+        autonomous_until = ""
+        next_owner_interrupt = reason
+    elif governor_state == "run_next_send_window":
+        state = "owner_out_of_loop"
+        reason = "autonomous send proof is pending"
+        autonomous_until = audit_at
+        next_owner_interrupt = "interrupt only for buyer signal, payment, health failure, or failed send-window proof"
+    elif governor_state == "wait_for_payment":
+        state = "owner_out_of_loop"
+        reason = "reply was handled and Relay is waiting for checkout or payment"
+        autonomous_until = "checkout, payment, unhandled reply, or reply-system health failure"
+        next_owner_interrupt = "interrupt only if a human reply cannot be auto-closed or payment needs fulfillment"
+    elif governor_state == "rotate_experiment":
+        state = "owner_out_of_loop"
+        reason = "completed sample needs one controlled autonomous rotation"
+        autonomous_until = "next experiment plan is created or rotation fails"
+        next_owner_interrupt = "interrupt only if rotation cannot be created or buyer signal appears"
+    elif governor_state == "target_met_stabilize":
+        state = "owner_out_of_loop"
+        reason = "weekly target is met"
+        autonomous_until = "fulfillment, system health failure, or next weekly target"
+        next_owner_interrupt = "interrupt only for fulfillment or system health"
+    else:
+        state = "owner_out_of_loop"
+        reason = success_governor.get("human_policy") or "Relay is monitoring the money loop"
+        autonomous_until = audit_at or "next buyer signal, payment, execution miss, or health change"
+        next_owner_interrupt = "interrupt only for buyer signal, payment, execution miss, or system health"
+
+    if ladder_stage == "send":
+        permitted_action = "send queued active leads inside the approved cap and window"
+    elif ladder_stage in {"reply", "auto_reply"}:
+        permitted_action = "auto-close buyer replies toward checkout when safe"
+    elif ladder_stage == "checkout":
+        permitted_action = "follow up checkout intent until payment or no-signal timeout"
+    elif ladder_stage == "payment":
+        permitted_action = "fulfill paid buyer and keep the winning lane stable"
+    else:
+        permitted_action = "review evidence and rotate one controlled variable only when the sample is complete"
+
+    return {
+        "state": state,
+        "manual_input_required": manual_input_required,
+        "reason": reason,
+        "autonomous_until": autonomous_until,
+        "next_owner_interrupt": next_owner_interrupt,
+        "current_stage": ladder_stage,
+        "permitted_action": permitted_action,
+        "blocked_actions": [
+            "do not ask Alan to choose copy, target, price, or volume before the proof deadline",
+            "do not increase volume until buyer signal or completed review justifies it",
+            "do not judge demand from an execution miss",
+        ],
+        "decision_rules": {
+            "buyer_signal": "close to the paid test and keep the current lane stable",
+            "payment": "fulfill the buyer and keep the lane stable",
+            "send_window_success": "continue collecting the active sample without changing variables",
+            "send_window_failure": "fix execution before judging demand",
+            "sample_complete_no_signal": "rotate exactly one controlled copy or targeting variable",
+        },
+        "weekly_success_condition": revenue_objective.get("success_condition") or "collect paid tests",
+    }
+
+
 def _parse_contract_datetime(value: Any) -> datetime | None:
     if not value:
         return None
@@ -1852,6 +1937,13 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 launch_readiness=launch_readiness,
                 operator_mode=operator_mode,
             )
+            owner_absence_contract = _owner_absence_contract(
+                success_governor=success_governor,
+                launch_readiness=launch_readiness,
+                reply_autonomy=reply_autonomy_contract,
+                conversion_ladder=conversion_ladder,
+                revenue_objective=revenue_objective,
+            )
             checks["money_system"] = {
                 "state": money_state,
                 "gross_usd": money.get("gross_usd", 0),
@@ -1863,6 +1955,7 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 "reply_autonomy_contract": reply_autonomy_contract,
                 "conversion_ladder": conversion_ladder,
                 "success_governor": success_governor,
+                "owner_absence_contract": owner_absence_contract,
                 "revenue_ladder": revenue_ladder,
                 "close_path": {
                     "replies": replies,
