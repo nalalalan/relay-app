@@ -690,6 +690,7 @@ def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
             _event_count(session, "custom_outreach_reply_seen", since=since)
             + _event_count(session, "smartlead_reply", since=since)
         )
+        auto_replies = _event_count(session, "custom_outreach_auto_reply_sent", since=since)
         fulfilled = _event_count(session, "autopilot_paid_relay_notes_fulfilled", since=since)
         onboarding = _event_count(session, "autopilot_paid_onboarding_sent", since=since)
         inbound_followups = (
@@ -742,6 +743,8 @@ def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
             "send_failures_today": send_failures_today,
             "latest_send_failure": latest_send_failure,
             "replies": replies,
+            "auto_replies": auto_replies,
+            "reply_to_payment_gap": max(replies - int(money.get("payments") or 0), 0),
             "reply_rate": round(replies / sends, 4) if sends else 0,
             "due_now": due_now,
             "sent_today": sent_today,
@@ -815,6 +818,8 @@ def _bottleneck(snapshot: dict[str, Any]) -> str:
         return "checkout_to_payment"
     if int(intent.get("checkout_clicks") or 0) > int(money.get("payments") or 0):
         return "checkout_to_payment"
+    if int(outreach.get("replies") or 0) > int(money.get("payments") or 0):
+        return "reply_to_payment"
     if (
         int(outreach.get("send_failures_today") or 0) > 0
         and int(outreach.get("sent_today") or 0) == 0
@@ -847,6 +852,7 @@ def _next_action(bottleneck: str) -> str:
         "messy_notes_to_payment": "Send the notes-to-checkout follow-up.",
         "sample_to_notes": "Send the sample-to-notes follow-up.",
         "checkout_to_payment": "Keep notes-first friction low and make the paid test obvious after interest.",
+        "reply_to_payment": "Close real replies through the paid next step before changing traffic or copy.",
         "outbound_send_failed": (
             "Sender failed today before any email was sent; use SMTP failover details "
             "and fix the sending lane before judging demand."

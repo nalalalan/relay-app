@@ -1155,11 +1155,25 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 "conversion": success_snapshot.get("conversion") or {},
             }
             money = success_snapshot.get("money") or {}
+            success_intent = success_snapshot.get("intent") or {}
+            success_outreach = success_snapshot.get("outreach") or {}
+            payments = _safe_int(money.get("payments"))
+            replies = _safe_int(success_outreach.get("replies"))
+            auto_replies = _safe_int(success_outreach.get("auto_replies"))
+            checkout_clicks = _safe_int(success_intent.get("checkout_clicks"))
             checks["money_system"] = {
                 "state": success.get("bottleneck") or "unknown",
                 "gross_usd": money.get("gross_usd", 0),
-                "payments": money.get("payments", 0),
+                "payments": payments,
                 "revenue_ladder": revenue_ladder,
+                "close_path": {
+                    "replies": replies,
+                    "auto_replies": auto_replies,
+                    "checkout_clicks": checkout_clicks,
+                    "reply_to_payment_gap": max(replies - payments, 0),
+                    "auto_reply_to_payment_gap": max(auto_replies - payments, 0),
+                    "checkout_to_payment_gap": max(checkout_clicks - payments, 0),
+                },
                 "active_experiment_progress": f"{active_sends}/{active_target}" if active_target else "",
                 "active_experiment_sends_remaining": active_remaining,
                 "queued_direct_leads": outreach.get("direct_due_count"),
