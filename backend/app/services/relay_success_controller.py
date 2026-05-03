@@ -23,6 +23,7 @@ from app.services.relay_performance import relay_performance_status, run_weekly_
 SUCCESS_TICK_EVENT = "relay_success_control_tick"
 INTAKE_SMOKE_EVENT = "relay_intake_smoke_test"
 DELIVERY_SMOKE_EVENT = "relay_delivery_smoke_test"
+OUTBOUND_SMOKE_EVENT = "relay_outbound_smoke_test"
 EXPERIMENT_PLAN_EVENT = "relay_experiment_plan"
 DEFAULT_EXPERIMENT_VARIANT = "control_sample_ask"
 HARD_PAID_TEST_VARIANT = "hard_paid_test_direct"
@@ -659,6 +660,10 @@ def _delivery_smoke_interval_hours() -> int:
     return max(_int_env("RELAY_DELIVERY_SMOKE_INTERVAL_HOURS", 24), 1)
 
 
+def _outbound_smoke_interval_hours() -> int:
+    return max(_int_env("RELAY_OUTBOUND_SMOKE_INTERVAL_HOURS", 6), 1)
+
+
 def _run_intake_smoke_check_if_needed() -> dict[str, Any]:
     now = _now()
     interval_hours = _intake_smoke_interval_hours()
@@ -716,6 +721,152 @@ def _run_intake_smoke_check_if_needed() -> dict[str, Any]:
             "summary": summary,
             "missing": missing,
             "interval_hours": interval_hours,
+        }
+
+
+def _outbound_smoke_urls(outreach_service: Any) -> dict[str, str]:
+    landing_page_url = (
+        getattr(outreach_service, "_landing_page_url", lambda: "")()
+        or os.getenv("LANDING_PAGE_URL", "").strip()
+        or getattr(settings, "landing_page_url", "").strip()
+        or "https://relay.aolabs.io"
+    ).rstrip("/")
+    packet_checkout_url = str(settings.packet_checkout_url or "").strip()
+    return {
+        "packet_checkout_url": packet_checkout_url,
+        "packet_5_pack_url": (
+            os.getenv("PACKET_5_PACK_URL", "").strip()
+            or getattr(settings, "packet_5_pack_url", "")
+            or packet_checkout_url
+        ),
+        "weekly_sprint_url": (
+            os.getenv("WEEKLY_SPRINT_URL", "").strip()
+            or getattr(settings, "weekly_sprint_url", "")
+            or packet_checkout_url
+        ),
+        "monthly_autopilot_url": (
+            os.getenv("MONTHLY_AUTOPILOT_URL", "").strip()
+            or getattr(settings, "monthly_autopilot_url", "")
+            or packet_checkout_url
+        ),
+        "landing_page_url": landing_page_url,
+        "sample_url": getattr(outreach_service, "_sample_url", lambda: landing_page_url + "/sample.pdf")(),
+        "notes_url": landing_page_url + "/#send-notes",
+    }
+
+
+def _active_outbound_preflight() -> dict[str, Any]:
+    now = _now()
+    missing: list[str] = []
+    detail: dict[str, Any] = {
+        "did_not_send_email": True,
+        "did_not_create_payment": True,
+        "checked_at": now.isoformat(),
+    }
+    try:
+        import app.services.custom_outreach as outreach_service
+        from app.services.relay_performance import active_relay_experiment
+
+        experiment = active_relay_experiment()
+        variant = str(experiment.get("experiment_variant") or DEFAULT_EXPERIMENT_VARIANT).strip()
+        templates_by_variant = getattr(outreach_service, "STEP_TEMPLATE_VARIANTS", {}) or {}
+        templates = templates_by_variant.get(variant) or []
+        detail.update(
+            {
+                "active_variant": variant,
+                "active_label": str(experiment.get("experiment_label") or ""),
+                "template_count": len(templates),
+                "known_variants": sorted(str(key) for key in templates_by_variant.keys()),
+                "checkout_configured": bool(settings.packet_checkout_url),
+            }
+        )
+        if not templates:
+            missing.append("ACTIVE_OUTBOUND_TEMPLATE")
+        if not settings.packet_checkout_url:
+            missing.append("PACKET_CHECKOUT_URL")
+        if templates:
+            first = templates[0]
+            urls = _outbound_smoke_urls(outreach_service)
+            body = first.body.format(
+                company_name="Example Agency",
+                contact_name="Example Buyer",
+                packet_offer_name=getattr(settings, "packet_offer_name", "Relay"),
+                **urls,
+            ).strip()
+            detail.update(
+                {
+                    "subject": str(first.subject or ""),
+                    "body_preview": body[:500],
+                    "body_length": len(body),
+                    "contains_checkout_url": bool(
+                        settings.packet_checkout_url and settings.packet_checkout_url in body
+                    ),
+                    "contains_price": "$40" in body,
+                    "contains_sample_url": urls["sample_url"] in body,
+                    "contains_notes_url": urls["notes_url"] in body,
+                }
+            )
+            if not str(first.subject or "").strip():
+                missing.append("ACTIVE_OUTBOUND_SUBJECT")
+            if not body:
+                missing.append("ACTIVE_OUTBOUND_BODY")
+            if variant in ESCALATED_MONEY_VARIANTS:
+                if not detail["contains_checkout_url"]:
+                    missing.append("ESCALATED_OUTBOUND_CHECKOUT_LINK")
+                if not detail["contains_price"]:
+                    missing.append("ESCALATED_OUTBOUND_PRICE_COPY")
+    except Exception as exc:
+        missing.append("ACTIVE_OUTBOUND_PREFLIGHT_EXCEPTION")
+        detail["error_type"] = type(exc).__name__
+        detail["error"] = str(exc)[:500]
+
+    missing = sorted(set(missing))
+    return {
+        "status": "ok" if not missing else "error",
+        "summary": "outbound_smoke_config_ok" if not missing else "outbound_smoke_missing_config",
+        "missing": missing,
+        **detail,
+    }
+
+
+def _run_outbound_smoke_check_if_needed() -> dict[str, Any]:
+    now = _now()
+    interval_hours = _outbound_smoke_interval_hours()
+    with _session() as session:
+        latest = session.execute(
+            select(AcquisitionEvent)
+            .where(AcquisitionEvent.event_type == OUTBOUND_SMOKE_EVENT)
+            .order_by(AcquisitionEvent.created_at.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if latest is not None and latest.created_at is not None:
+            age_seconds = max(int((now - latest.created_at.replace(tzinfo=None)).total_seconds()), 0)
+            latest_payload = _safe_json(latest.payload_json)
+            if latest_payload.get("status") != "error" and age_seconds < interval_hours * 3600:
+                return {
+                    "status": "skipped",
+                    "summary": "recent_outbound_smoke_check_exists",
+                    "latest_at": latest.created_at.isoformat(),
+                    "age_seconds": age_seconds,
+                    "interval_hours": interval_hours,
+                }
+
+        payload = _active_outbound_preflight()
+        session.add(
+            AcquisitionEvent(
+                event_type=OUTBOUND_SMOKE_EVENT,
+                prospect_external_id="relay-outbound-smoke",
+                summary=str(payload.get("summary") or "outbound_smoke_checked"),
+                payload_json=json.dumps(payload, ensure_ascii=False),
+            )
+        )
+        session.commit()
+        return {
+            "status": payload.get("status"),
+            "summary": payload.get("summary"),
+            "missing": payload.get("missing", []),
+            "interval_hours": interval_hours,
+            "active_variant": payload.get("active_variant", ""),
         }
 
 
@@ -1016,11 +1167,14 @@ def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
     )
     window_execution_contract = _outbound_window_execution_contract(outreach)
     env = _env_snapshot()
+    outbound_preflight = _active_outbound_preflight()
     critical_missing = [
         name
         for name in ["DATABASE_URL", "RESEND_API_KEY", "PACKET_CHECKOUT_URL", "FROM_EMAIL_FULFILLMENT"]
         if not env.get(name)
     ]
+    if outbound_preflight.get("status") == "error":
+        critical_missing.append("ACTIVE_OUTBOUND_PREFLIGHT")
 
     return {
         "status": "ok",
@@ -1028,6 +1182,7 @@ def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
         "since": since.isoformat(),
         "env": env,
         "critical_missing": critical_missing,
+        "outbound_preflight": outbound_preflight,
         "money": money,
         "intent": {
             "page_views": page_views,
@@ -1250,7 +1405,7 @@ def _bottleneck(snapshot: dict[str, Any]) -> str:
 
 def _next_action(bottleneck: str) -> str:
     actions = {
-        "infrastructure_blocked": "Fix missing production credentials before trying to scale.",
+        "infrastructure_blocked": "Fix missing production credentials or outbound preflight blockers before trying to scale.",
         "paid_fulfillment": "Fulfill paid buyers and keep reminders active until delivery is complete.",
         "paid_signal_keep_stable": "Keep the paid lane stable; continue only controlled tests that do not disturb fulfillment.",
         "messy_notes_to_payment": "Send the notes-to-checkout follow-up.",
@@ -1326,7 +1481,7 @@ def _money_proof_mandate(snapshot: dict[str, Any], bottleneck: str) -> dict[str,
 
     if snapshot.get("critical_missing"):
         state = "restore_revenue_loop"
-        primary_action = "fix missing production credentials before trying to scale"
+        primary_action = "fix missing production credentials or outbound preflight blockers before trying to scale"
         owner_policy = "manual_input_required"
     elif payments > fulfilled:
         state = "fulfill_paid_buyer"
@@ -1627,6 +1782,7 @@ def run_relay_success_control_tick() -> dict[str, Any]:
     actions: dict[str, Any] = {}
     actions["intake_smoke_check"] = _run_intake_smoke_check_if_needed()
     actions["delivery_smoke_check"] = _run_delivery_smoke_check_if_needed()
+    actions["outbound_smoke_check"] = _run_outbound_smoke_check_if_needed()
     actions["inbound_conversion"] = run_inbound_conversion_sweep()
     actions["paid_intake_reminders"] = run_paid_intake_reminder_sweep(
         hours=int(os.getenv("OPS_INTAKE_REMINDER_HOURS", "12") or "12")
