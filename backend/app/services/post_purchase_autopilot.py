@@ -57,7 +57,12 @@ def _monthly_url() -> str:
 
 
 def _find_prospect_by_email(session: Session, email: str) -> AcquisitionProspect | None:
-    stmt = select(AcquisitionProspect).where(AcquisitionProspect.contact_email == email)
+    stmt = (
+        select(AcquisitionProspect)
+        .where(AcquisitionProspect.contact_email == email)
+        .order_by(AcquisitionProspect.created_at.desc())
+        .limit(1)
+    )
     return session.execute(stmt).scalar_one_or_none()
 
 

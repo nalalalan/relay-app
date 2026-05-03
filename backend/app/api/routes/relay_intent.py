@@ -442,8 +442,19 @@ def _latest_action(db, *action_terms: str) -> dict[str, Any] | None:
     }
 
 
-def _latest_lead(db) -> dict[str, Any] | None:
-    lead = db.query(RelayIntentLead).order_by(RelayIntentLead.created_at.desc()).first()
+def _latest_lead(
+    db,
+    source_term: str | None = None,
+    *,
+    exclude_internal: bool = False,
+) -> dict[str, Any] | None:
+    query = db.query(RelayIntentLead)
+    if source_term:
+        query = query.filter(RelayIntentLead.source.ilike(f"%{source_term}%"))
+    if exclude_internal:
+        query = query.filter(RelayIntentLead.email.notin_(_internal_emails()))
+
+    lead = query.order_by(RelayIntentLead.created_at.desc()).first()
     if not lead:
         return None
     return {
@@ -480,6 +491,8 @@ def _ready_label(checks: dict[str, Any]) -> str:
     if not recent.get("last_stripe_event"):
         return "needs_stripe_live_test"
     if not recent.get("last_tally_event") and not recent.get("last_paid_relay_notes_fulfillment"):
+        if recent.get("last_real_notes_intake_lead") or recent.get("last_notes_intake_lead"):
+            return "notes_intake_ready_needs_paid_buyer"
         return "needs_intake_live_test"
     if not recent.get("last_delivery_or_sent_action") and not recent.get("last_paid_relay_notes_fulfillment"):
         return "needs_delivery_live_test"
@@ -838,6 +851,9 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
             "last_production_transition": _latest_production_transition(db),
             "last_delivery_or_sent_action": _latest_action(db, "delivery") or _latest_action(db, "send") or _latest_action(db, "email"),
             "last_relay_intent_lead": _latest_lead(db),
+            "last_notes_intake_lead": _latest_lead(db, "messy_notes"),
+            "last_real_notes_intake_lead": _latest_lead(db, "messy_notes", exclude_internal=True),
+            "last_checkout_intent_lead": _latest_lead(db, "checkout_intent", exclude_internal=True),
         }
 
         checks = {
@@ -870,9 +886,11 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
         }
         try:
             from app.services.relay_performance import relay_performance_status
+            from app.services.relay_success_controller import relay_success_status
             from app.services.custom_outreach import outreach_status
 
             performance = relay_performance_status()
+            success = relay_success_status()
             active_experiment = performance.get("active_experiment") or {}
             outreach = outreach_status()
             checks["relay_performance"] = {
@@ -895,6 +913,14 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                     "send_window_is_open": outreach.get("send_window_is_open"),
                     "next_money_move": outreach.get("next_money_move"),
                 },
+            }
+            success_snapshot = success.get("snapshot") or {}
+            checks["relay_success"] = {
+                "bottleneck": success.get("bottleneck"),
+                "next_action": success.get("next_action"),
+                "money": success_snapshot.get("money") or {},
+                "intent": success_snapshot.get("intent") or {},
+                "conversion": success_snapshot.get("conversion") or {},
             }
         except Exception as exc:
             checks["relay_performance"] = {
