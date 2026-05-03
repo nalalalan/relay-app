@@ -375,6 +375,7 @@ def _compact_money_loop_payload(payload: dict[str, Any] | None) -> dict[str, Any
         "refill_reason": refill.get("reason"),
         "refill_error_type": refill.get("error_type"),
         "refill_http_status": refill.get("http_status"),
+        "refill_timeout_seconds": refill.get("timeout_seconds"),
         "apollo_primary_status": refill.get("apollo_primary_status"),
         "apollo_fallback_status": refill.get("apollo_fallback_status"),
         "refill_error_present": bool(refill.get("error")),
@@ -401,6 +402,7 @@ def _compact_money_loop_payload(payload: dict[str, Any] | None) -> dict[str, Any
         "refill_attempts": refill.get("attempts"),
         "fallback_status": fallback.get("status"),
         "fallback_error_type": fallback.get("error_type"),
+        "fallback_timeout_seconds": fallback.get("timeout_seconds"),
         "fallback_upserted": fallback.get("upserted"),
         "fallback_sendable_upserted": fallback.get("sendable_upserted"),
         "fallback_direct_sendable_upserted": fallback.get("direct_sendable_upserted"),
@@ -448,10 +450,21 @@ def _current_money_loop_runtime() -> dict[str, Any]:
 
     last_result = state.get("last_result") if isinstance(state.get("last_result"), dict) else None
     manual_result = state.get("last_manual_result") if isinstance(state.get("last_manual_result"), dict) else None
+    running_seconds = None
+    last_tick_at = state.get("last_tick_at") or ""
+    if state.get("running") and last_tick_at:
+        try:
+            started = datetime.fromisoformat(str(last_tick_at).replace("Z", "+00:00"))
+            if started.tzinfo is not None:
+                started = started.astimezone().replace(tzinfo=None)
+            running_seconds = max(int((datetime.now() - started).total_seconds()), 0)
+        except Exception:
+            running_seconds = None
     return {
         "enabled": bool(state.get("enabled")),
         "running": bool(state.get("running")),
-        "last_tick_at": state.get("last_tick_at") or "",
+        "last_tick_at": last_tick_at,
+        "running_seconds": running_seconds,
         "last_error": state.get("last_error") or "",
         "next_sleep_seconds": state.get("next_sleep_seconds"),
         "next_wake_reason": state.get("next_wake_reason") or "",

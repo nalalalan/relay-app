@@ -114,6 +114,30 @@ def _body_int(body: dict[str, Any], key: str, default: int, *, minimum: int = 1,
     return max(minimum, min(value, maximum))
 
 
+def _env_float(name: str, default: float, *, minimum: float = 0.05) -> float:
+    try:
+        value = float(os.getenv(name, str(default)) or default)
+    except Exception:
+        value = default
+    return max(value, minimum)
+
+
+def _apollo_refill_timeout_seconds() -> float:
+    return _env_float("AO_RELAY_APOLLO_REFILL_TIMEOUT_SECONDS", 45.0)
+
+
+def _apify_fallback_timeout_seconds() -> float:
+    return _env_float("AO_RELAY_APIFY_FALLBACK_TIMEOUT_SECONDS", 180.0)
+
+
+def _timeout_refill_fields(source: str, timeout_seconds: float) -> dict[str, Any]:
+    return {
+        "error_type": "TimeoutError",
+        "timeout_seconds": timeout_seconds,
+        "source": source,
+    }
+
+
 def _landing_page_url() -> str:
     url = os.getenv("LANDING_PAGE_URL", "").strip() or settings.landing_page_url.strip()
     if not url or "nalalalan.github.io/alan-operator-site" in url:
@@ -382,7 +406,7 @@ def _status_label(value: Any) -> str:
                 details.append(f"error_type={error_type}")
             elif value.get("error"):
                 details.append("error_present=1")
-            for key in ("http_status", "apollo_primary_status", "apollo_fallback_status"):
+            for key in ("http_status", "apollo_primary_status", "apollo_fallback_status", "timeout_seconds"):
                 if value.get(key) is not None:
                     details.append(f"{key}={value.get(key)}")
             for key in (
@@ -595,6 +619,7 @@ def _compact_refill_attempt(result: dict[str, Any]) -> dict[str, Any]:
         "generic_sendable_upserted": result.get("generic_sendable_upserted"),
         "missing_email_count": result.get("missing_email_count"),
         "rejected_or_unsendable_count": result.get("rejected_or_unsendable_count"),
+        "timeout_seconds": result.get("timeout_seconds"),
         "skipped_missing_email": result.get("skipped_missing_email"),
         "skipped_bad_emails": result.get("skipped_bad_emails"),
         "skipped_generic_inboxes": result.get("skipped_generic_inboxes"),
@@ -975,11 +1000,15 @@ async def _relay_money_loop_tick(
         last_exc: Exception | None = None
         for attempt_query in _refill_query_candidates(query):
             try:
-                attempt = await importer(
-                    {
-                        "q_keywords": attempt_query,
-                        "per_page": refill_per_page or int(os.getenv("AO_RELAY_REFILL_PER_PAGE", "50") or 50),
-                    }
+                apollo_timeout = _apollo_refill_timeout_seconds()
+                attempt = await asyncio.wait_for(
+                    importer(
+                        {
+                            "q_keywords": attempt_query,
+                            "per_page": refill_per_page or int(os.getenv("AO_RELAY_REFILL_PER_PAGE", "50") or 50),
+                        }
+                    ),
+                    timeout=apollo_timeout,
                 )
                 if isinstance(attempt, dict):
                     attempt.setdefault("q_keywords", attempt_query)
@@ -1002,12 +1031,20 @@ async def _relay_money_loop_tick(
                     refill_result = {"status": "error", "reason": "unexpected_refill_result"}
             except Exception as exc:
                 last_exc = exc
+                timeout_fields = (
+                    _timeout_refill_fields("apollo_people", _apollo_refill_timeout_seconds())
+                    if isinstance(exc, asyncio.TimeoutError)
+                    else {}
+                )
                 refill_attempts.append(
                     {
                         "status": "error",
-                        "reason": "apollo_refill_failed",
+                        "reason": "apollo_refill_timeout"
+                        if isinstance(exc, asyncio.TimeoutError)
+                        else "apollo_refill_failed",
                         "q_keywords": attempt_query,
                         **_exception_refill_fields(exc),
+                        **timeout_fields,
                     }
                 )
                 continue
@@ -1019,11 +1056,18 @@ async def _relay_money_loop_tick(
             exc = last_exc
             refill_result = {
                 "status": "error",
-                "reason": "apollo_refill_failed",
+                "reason": "apollo_refill_timeout"
+                if isinstance(exc, asyncio.TimeoutError)
+                else "apollo_refill_failed",
                 "error": str(exc),
                 "q_keywords": query,
                 "attempts": refill_attempts,
                 **_exception_refill_fields(exc),
+                **(
+                    _timeout_refill_fields("apollo_people", _apollo_refill_timeout_seconds())
+                    if isinstance(exc, asyncio.TimeoutError)
+                    else {}
+                ),
             }
             if _original_apollo_search is not None:
                 fallback_attempts: list[dict[str, Any]] = []
@@ -1035,8 +1079,10 @@ async def _relay_money_loop_tick(
                 for fallback_query in _refill_query_candidates(query)[:fallback_limit]:
                     previous_refill_status = latest_refill_status
                     try:
-                        fallback_attempt = await _run_original_apollo_search(
-                            {"q_keywords": fallback_query, "source": "apify"}
+                        apify_timeout = _apify_fallback_timeout_seconds()
+                        fallback_attempt = await asyncio.wait_for(
+                            _run_original_apollo_search({"q_keywords": fallback_query, "source": "apify"}),
+                            timeout=apify_timeout,
                         )
                         if isinstance(fallback_attempt, dict):
                             fallback_attempt.setdefault("q_keywords", fallback_query)
@@ -1064,14 +1110,22 @@ async def _relay_money_loop_tick(
                             }
                             fallback_attempts.append(fallback_result)
                     except Exception as fallback_exc:
+                        fallback_timeout = isinstance(fallback_exc, asyncio.TimeoutError)
                         fallback_result = {
                             "status": "error",
-                            "reason": "apify_fallback_failed",
+                            "reason": "apify_fallback_timeout" if fallback_timeout else "apify_fallback_failed",
                             "q_keywords": fallback_query,
                             "error_type": type(fallback_exc).__name__,
                             "error": str(fallback_exc),
+                            **(
+                                _timeout_refill_fields("apify", _apify_fallback_timeout_seconds())
+                                if fallback_timeout
+                                else {}
+                            ),
                         }
                         fallback_attempts.append(fallback_result)
+                        if fallback_timeout:
+                            break
 
                 refill_result = {
                     "status": "degraded_ok" if fallback_attempts else "error",
