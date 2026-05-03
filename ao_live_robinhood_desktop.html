@@ -859,6 +859,9 @@
       const proofTarget = launch.proof_target || plan.summary || "";
       const successMetric = launch.success_metric || "";
       const interruptRule = launch.interrupt_rule || "";
+      const expectedNextWindowSends = Number(launch.expected_next_window_sends || moneySystem.expected_next_window_sends || plan.expected_next_window_sends || 0);
+      const expectedProgressAfterNextWindow = launch.expected_progress_after_next_window || moneySystem.expected_progress_after_next_window || plan.expected_progress_after_next_window || "";
+      const nextWindowSuccessCriterion = launch.next_window_success_criterion || moneySystem.next_window_success_criterion || plan.next_window_success_criterion || "";
       const blockers = Array.isArray(launch.blockers) ? launch.blockers : [];
 
       if (mode) {
@@ -871,6 +874,9 @@
           doNotInterrupt: doNotInterrupt && launch.ready !== false,
           nextWindow,
           activeProgress: launch.active_experiment_progress || moneySystem.active_experiment_progress || plan.active_experiment_progress || "",
+          expectedNextWindowSends,
+          expectedProgressAfterNextWindow,
+          nextWindowSuccessCriterion,
           planSummary: proofTarget,
           successMetric,
           interruptRule,
@@ -890,6 +896,9 @@
           doNotInterrupt: false,
           nextWindow,
           activeProgress: "",
+          expectedNextWindowSends: 0,
+          expectedProgressAfterNextWindow: "",
+          nextWindowSuccessCriterion: "",
           planSummary: "",
           successMetric: "",
           interruptRule: "",
@@ -905,6 +914,9 @@
         doNotInterrupt: true,
         nextWindow,
         activeProgress: plan.active_experiment_progress || "",
+        expectedNextWindowSends: Number(plan.expected_next_window_sends || 0),
+        expectedProgressAfterNextWindow: plan.expected_progress_after_next_window || "",
+        nextWindowSuccessCriterion: plan.next_window_success_criterion || "",
         planSummary: plan.summary || "",
         successMetric: "",
         interruptRule: "",
@@ -1050,8 +1062,10 @@
         headline = "Stay out. Relay is handling it.";
         const next = fmtMoment(operator.nextWindow);
         const progress = operator.activeProgress ? ` Active sample: ${operator.activeProgress}.` : "";
-        const proof = operator.planSummary ? ` Proof target: ${operator.planSummary}.` : "";
-        const success = operator.successMetric ? ` Success metric: ${operator.successMetric}.` : "";
+        const proof = operator.nextWindowSuccessCriterion
+          ? ` Next proof: ${operator.nextWindowSuccessCriterion}.`
+          : operator.planSummary ? ` Proof target: ${operator.planSummary}.` : "";
+        const success = !operator.nextWindowSuccessCriterion && operator.successMetric ? ` Success metric: ${operator.successMetric}.` : "";
         copy = `${operator.reason}${next ? ` Next autonomous window: ${next}.` : ""}${progress}${proof}${success}`;
       } else if (operator && !operator.doNotInterrupt) {
         headline = "Attention needed.";

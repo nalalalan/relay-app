@@ -211,6 +211,7 @@ def _launch_readiness_contract(
     active_remaining: int,
     active_due: int,
     cap_remaining: int,
+    next_window_send_capacity: int,
     sample_windows_to_complete: int,
     next_window: str | None,
     experiment_decision_state: str,
@@ -258,6 +259,27 @@ def _launch_readiness_contract(
         proof_target = "judge the completed active sample"
         success_metric = "active replies/payments decide whether to keep stable or rotate one variable"
 
+    expected_next_window_sends = (
+        min(active_remaining, active_due, next_window_send_capacity)
+        if active_remaining > 0 and active_due > 0 and next_window_send_capacity > 0
+        else 0
+    )
+    expected_sends_after_next_window = min(active_sends + expected_next_window_sends, active_target) if active_target else active_sends
+    expected_progress_after_next_window = (
+        f"{expected_sends_after_next_window}/{active_target}"
+        if active_target
+        else ""
+    )
+    if active_remaining > 0 and expected_next_window_sends > 0:
+        next_window_success_criterion = (
+            f"send {expected_next_window_sends} active leads and move progress "
+            f"from {active_sends}/{active_target} to {expected_progress_after_next_window}"
+        )
+    elif active_remaining > 0:
+        next_window_success_criterion = "make queued active leads and send capacity available"
+    else:
+        next_window_success_criterion = "review the completed active sample and keep or rotate one variable"
+
     return {
         "ready": not blockers,
         "blockers": blockers,
@@ -270,6 +292,9 @@ def _launch_readiness_contract(
         "active_experiment_progress": f"{active_sends}/{active_target}" if active_target else "",
         "active_experiment_sends_remaining": active_remaining,
         "active_experiment_due_now": active_due,
+        "expected_next_window_sends": expected_next_window_sends,
+        "expected_progress_after_next_window": expected_progress_after_next_window,
+        "next_window_success_criterion": next_window_success_criterion,
         "estimated_windows_remaining": sample_windows_to_complete,
         "next_autonomous_window": next_window,
     }
@@ -1384,6 +1409,7 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 active_remaining=active_remaining,
                 active_due=active_due,
                 cap_remaining=cap_remaining,
+                next_window_send_capacity=send_capacity_per_window,
                 sample_windows_to_complete=sample_windows_to_complete,
                 next_window=outreach.get("send_window_next_open_local"),
                 experiment_decision_state=experiment_decision_state,
@@ -1411,6 +1437,9 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 },
                 "active_experiment_progress": f"{active_sends}/{active_target}" if active_target else "",
                 "active_experiment_sends_remaining": active_remaining,
+                "expected_next_window_sends": launch_readiness.get("expected_next_window_sends"),
+                "expected_progress_after_next_window": launch_readiness.get("expected_progress_after_next_window"),
+                "next_window_success_criterion": launch_readiness.get("next_window_success_criterion"),
                 "active_experiment_windows_to_complete_at_current_cap": sample_windows_to_complete,
                 "active_experiment_queued_sample_covers_remaining": queued_sample_covers_remaining,
                 "active_experiment_decision_state": experiment_decision_state,

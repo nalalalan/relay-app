@@ -126,6 +126,26 @@ def _autonomous_plan(status: dict, operator: dict, success: dict) -> dict:
     daily_cap = _safe_int(status.get("daily_send_cap"))
     capacity = max(min(cap_remaining or daily_cap, daily_cap or cap_remaining or 1), 1)
     windows_remaining = _ceil_div(active_remaining, capacity)
+    expected_next_window_sends = (
+        min(active_remaining, active_due, capacity)
+        if active_remaining > 0 and active_due > 0 and capacity > 0
+        else 0
+    )
+    expected_sends_after_next_window = min(active_sends + expected_next_window_sends, active_target) if active_target else active_sends
+    expected_progress_after_next_window = (
+        f"{expected_sends_after_next_window}/{active_target}"
+        if active_target
+        else ""
+    )
+    if active_remaining > 0 and expected_next_window_sends > 0:
+        next_window_success_criterion = (
+            f"send {expected_next_window_sends} active leads and move progress "
+            f"from {active_sends}/{active_target} to {expected_progress_after_next_window}"
+        )
+    elif active_remaining > 0:
+        next_window_success_criterion = "make queued active leads and send capacity available"
+    else:
+        next_window_success_criterion = "review the completed active sample and keep or rotate one variable"
     next_window = str(status.get("send_window_next_open_local") or "").strip()
     mode = str(operator.get("mode") or "").strip()
 
@@ -149,6 +169,9 @@ def _autonomous_plan(status: dict, operator: dict, success: dict) -> dict:
         "active_experiment_progress": f"{active_sends}/{active_target}" if active_target else "",
         "active_experiment_remaining": active_remaining,
         "active_experiment_due_now": active_due,
+        "expected_next_window_sends": expected_next_window_sends,
+        "expected_progress_after_next_window": expected_progress_after_next_window,
+        "next_window_success_criterion": next_window_success_criterion,
         "estimated_windows_remaining": windows_remaining,
         "next_autonomous_window": next_window,
         "review_rule": "do not judge the offer until the active sample is complete or real buyer signal appears",
