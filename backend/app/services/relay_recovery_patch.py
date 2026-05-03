@@ -1737,8 +1737,7 @@ def _money_loop_sleep_seconds(result: dict[str, Any] | None, default_interval: i
             return max(min(seconds_until_open + 5, default_interval), 5), "align_with_send_window"
         if seconds_until_open <= 3600:
             return min(default_interval, 300), "pre_send_window_ready"
-        if seconds_until_open <= 86400:
-            return min(default_interval, 900), "next_window_ready"
+        return min(default_interval, 900), "next_window_ready"
 
     proof_state = str((result or {}).get("active_sample_tick_proof_state") or "").strip()
     if proof_state in {"missed", "partial"}:
