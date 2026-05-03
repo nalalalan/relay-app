@@ -882,8 +882,6 @@ def _run_outbound_experiment_review_if_needed(bottleneck: str, snapshot: dict[st
     payments = int(snapshot.get("money", {}).get("payments") or 0)
     if sends < failure_sample:
         return {"status": "skipped", "summary": "outbound sample is not large enough to rotate yet"}
-    if replies > 0 or payments > 0:
-        return {"status": "skipped", "summary": "signal exists; keep the current outbound lane stable"}
 
     performance = relay_performance_status()
     active_plan = performance.get("active_experiment") or {}
@@ -907,6 +905,8 @@ def _run_outbound_experiment_review_if_needed(bottleneck: str, snapshot: dict[st
             "active_experiment_sends": active_sends,
             "active_experiment_replies": active_replies,
             "aggregate_sends": sends,
+            "aggregate_replies": replies,
+            "aggregate_payments": payments,
             "failure_sample": failure_sample,
         }
     if active_replies > 0 or active_payments > 0:
@@ -917,6 +917,8 @@ def _run_outbound_experiment_review_if_needed(bottleneck: str, snapshot: dict[st
             "active_experiment_sends": active_sends,
             "active_experiment_replies": active_replies,
             "active_experiment_payments": active_payments,
+            "aggregate_replies": replies,
+            "aggregate_payments": payments,
         }
 
     review = run_weekly_performance_review(force=True, fetch_research=False)
@@ -928,6 +930,8 @@ def _run_outbound_experiment_review_if_needed(bottleneck: str, snapshot: dict[st
         "previous_experiment_variant": active_variant,
         "previous_experiment_sends": active_sends,
         "previous_experiment_replies": active_replies,
+        "aggregate_replies": replies,
+        "aggregate_payments": payments,
         "failure_sample": failure_sample,
         "experiment_variant": plan.get("experiment_variant"),
         "experiment_label": plan.get("experiment_label"),

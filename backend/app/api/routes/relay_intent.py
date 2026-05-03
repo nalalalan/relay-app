@@ -1109,6 +1109,18 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
             active_target = _safe_int(outreach.get("active_experiment_sample_target"))
             active_due = _safe_int(outreach.get("active_experiment_new_due_count"))
             active_remaining = max(active_target - active_sends, 0) if active_target else 0
+            active_signal = performance.get("active_experiment_signal") or {}
+            active_signal_replies = _safe_int(active_signal.get("replies"))
+            active_signal_payments = _safe_int(active_signal.get("payments"))
+            if active_remaining > 0:
+                experiment_decision_state = "collecting_sample"
+                experiment_decision_next = "Keep sending until the active experiment reaches its sample target."
+            elif active_signal_replies > 0 or active_signal_payments > 0:
+                experiment_decision_state = "signal_exists_keep_stable"
+                experiment_decision_next = "Keep the current lane stable and focus on closing real signal."
+            else:
+                experiment_decision_state = "ready_to_review_or_rotate"
+                experiment_decision_next = "Run the outbound experiment review and rotate one controlled variable."
             cap_remaining = _safe_int(outreach.get("cap_remaining"))
             effective_daily_cap = _safe_int(outreach.get("effective_daily_cap") or outreach.get("daily_send_cap"))
             positive_caps = [value for value in [cap_remaining, effective_daily_cap] if value > 0]
@@ -1126,7 +1138,7 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                     "source": active_experiment.get("source"),
                     "week_start_date": active_experiment.get("week_start_date"),
                 },
-                "active_experiment_signal": performance.get("active_experiment_signal") or {},
+                "active_experiment_signal": active_signal,
                 "rolling_7_day": performance.get("rolling_7_day") or {},
                 "active_experiment_queue": {
                     "active_experiment_variant": outreach.get("active_experiment_variant"),
@@ -1158,6 +1170,15 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                     "active_experiment_queue_ready": active_queue_ready,
                     "active_experiment_autonomous_send_ready": active_autonomous_ready,
                     "next_money_move": outreach.get("next_money_move"),
+                },
+                "active_experiment_decision": {
+                    "state": experiment_decision_state,
+                    "next": experiment_decision_next,
+                    "active_experiment_sends": active_sends,
+                    "active_experiment_sample_target": active_target,
+                    "active_experiment_sends_remaining": active_remaining,
+                    "active_experiment_replies": active_signal_replies,
+                    "active_experiment_payments": active_signal_payments,
                 },
             }
             success_snapshot = success.get("snapshot") or {}
@@ -1193,6 +1214,7 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 "active_experiment_sends_remaining": active_remaining,
                 "active_experiment_windows_to_complete_at_current_cap": sample_windows_to_complete,
                 "active_experiment_queued_sample_covers_remaining": queued_sample_covers_remaining,
+                "active_experiment_decision_state": experiment_decision_state,
                 "queued_direct_leads": outreach.get("direct_due_count"),
                 "cap_remaining": cap_remaining,
                 "loop_status": checks.get("money_loop_runtime", {}).get("status"),
