@@ -425,6 +425,7 @@ def _compact_money_loop_payload(payload: dict[str, Any] | None) -> dict[str, Any
         "refill_due_before": payload.get("refill_due_before"),
         "refill_due_for_decision": payload.get("refill_due_for_decision"),
         "refill_due_target": payload.get("refill_due_target"),
+        "active_sample_understocked": payload.get("active_sample_understocked"),
         "refill_backoff_active": refill_backoff.get("active"),
         "refill_backoff_reason": refill_backoff.get("timeout_reason") or refill_backoff.get("reason"),
         "refill_backoff_age_seconds": refill_backoff.get("age_seconds"),

@@ -1226,14 +1226,16 @@ async def _relay_money_loop_tick(
             int(send_window_ready.get("active_needed_for_window") or 0),
             min_direct_due,
         )
+    active_sample_understocked = refill_active_experiment_needs_sample and refill_due_for_decision < refill_due_target
     refill_result: dict[str, Any] = {"status": "skipped", "reason": "direct_due_ok"}
     if not settings.apollo_api_key:
         refill_result = {"status": "skipped", "reason": "missing_apollo_api_key"}
-    elif refill_cap_remaining <= 0 and not force_refill:
+    elif refill_cap_remaining <= 0 and not force_refill and not active_sample_understocked:
         refill_result = {
             "status": "skipped",
             "reason": "cap_remaining_zero",
             "cap_remaining": refill_cap_remaining,
+            "active_sample_understocked": active_sample_understocked,
         }
     elif send_window_ready["active"] and not force_refill:
         refill_result = {
@@ -1439,6 +1441,7 @@ async def _relay_money_loop_tick(
         "refill_due_before": refill_due,
         "refill_due_for_decision": refill_due_for_decision,
         "refill_due_target": refill_due_target,
+        "active_sample_understocked": active_sample_understocked,
         "refill_timeout_backoff": backoff_status,
         "send_window_ready_without_refill": send_window_ready,
         "send_window_open_before": send_window_open,
