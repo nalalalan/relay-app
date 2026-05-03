@@ -296,6 +296,10 @@ def _compact_status_for_loop(status: dict[str, Any]) -> dict[str, Any]:
         "active_experiment_sample_target",
         "active_experiment_needs_sample",
         "active_experiment_new_due_count",
+        "active_experiment_direct_new_due_count",
+        "active_experiment_generic_new_due_count",
+        "active_experiment_allowed_generic_new_due_count",
+        "active_experiment_generic_sample_daily_cap",
         "effective_daily_cap",
         "blocked_bad_email_count",
         "reply_autoclose_mode",
@@ -388,6 +392,8 @@ def _status_label(value: Any) -> str:
                 "missing_email_after_enrichment",
                 "upserted",
                 "sendable_upserted",
+                "direct_sendable_upserted",
+                "generic_sendable_upserted",
                 "refill_capacity_delta",
                 "refill_capacity_after",
             ):
@@ -399,6 +405,8 @@ def _status_label(value: Any) -> str:
                 fallback_error_type = str(fallback.get("error_type") or "").strip()
                 upserted = fallback.get("upserted")
                 sendable = fallback.get("sendable_upserted")
+                direct_sendable = fallback.get("direct_sendable_upserted")
+                generic_sendable = fallback.get("generic_sendable_upserted")
                 capacity_delta = fallback.get("refill_capacity_delta")
                 searched = fallback.get("searched")
                 if fallback_status:
@@ -409,6 +417,10 @@ def _status_label(value: Any) -> str:
                     details.append(f"upserted={upserted}")
                 if sendable is not None:
                     details.append(f"sendable={sendable}")
+                if direct_sendable is not None:
+                    details.append(f"direct_sendable={direct_sendable}")
+                if generic_sendable is not None:
+                    details.append(f"generic_sendable={generic_sendable}")
                 if capacity_delta is not None:
                     details.append(f"capacity_delta={capacity_delta}")
                 if searched is not None:
@@ -570,6 +582,7 @@ def _compact_refill_attempt(result: dict[str, Any]) -> dict[str, Any]:
         "prospects_with_email": result.get("prospects_with_email"),
         "sendable_upserted": result.get("sendable_upserted"),
         "direct_sendable_upserted": result.get("direct_sendable_upserted"),
+        "generic_sendable_upserted": result.get("generic_sendable_upserted"),
         "missing_email_count": result.get("missing_email_count"),
         "rejected_or_unsendable_count": result.get("rejected_or_unsendable_count"),
         "skipped_missing_email": result.get("skipped_missing_email"),

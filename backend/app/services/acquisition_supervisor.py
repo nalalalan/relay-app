@@ -106,6 +106,21 @@ BLOCKED_EXACT_EMAILS = {
     "jeff@amazon.com",
 }
 
+GENERIC_INBOX_LOCAL_PARTS = {
+    "admin",
+    "contact",
+    "hello",
+    "hi",
+    "info",
+    "inquiries",
+    "mail",
+    "marketing",
+    "office",
+    "sales",
+    "support",
+    "team",
+}
+
 
 def _session() -> Session:
     return SessionLocal()
@@ -120,6 +135,16 @@ def _clean_domain(raw: str) -> str:
 
 def _normalize_email(email: str) -> str:
     return (email or "").strip().lower()
+
+
+def _is_generic_inbox(email: str) -> bool:
+    local = (email or "").split("@", 1)[0].strip().lower()
+    if not local:
+        return True
+    local_base = local.replace(".", "").replace("-", "").replace("_", "")
+    if local in GENERIC_INBOX_LOCAL_PARTS or local_base in GENERIC_INBOX_LOCAL_PARTS:
+        return True
+    return local.startswith(("info", "hello", "contact", "admin", "support", "sales"))
 
 
 def _looks_fake_or_low_value_email(email: str, business_domain: str = "") -> bool:
@@ -418,6 +443,8 @@ async def import_from_apollo_search(payload: Dict[str, Any]) -> Dict[str, Any]:
         count = 0
         prospects_with_email = 0
         sendable_upserted = 0
+        direct_sendable_upserted = 0
+        generic_sendable_upserted = 0
         missing_email = 0
         rejected_or_unsendable = 0
 
@@ -449,6 +476,10 @@ async def import_from_apollo_search(payload: Dict[str, Any]) -> Dict[str, Any]:
                 "sent_to_smartlead",
             }:
                 sendable_upserted += 1
+                if _is_generic_inbox(prospect.contact_email):
+                    generic_sendable_upserted += 1
+                else:
+                    direct_sendable_upserted += 1
             else:
                 rejected_or_unsendable += 1
 
@@ -461,6 +492,8 @@ async def import_from_apollo_search(payload: Dict[str, Any]) -> Dict[str, Any]:
         "upserted": count,
         "prospects_with_email": prospects_with_email,
         "sendable_upserted": sendable_upserted,
+        "direct_sendable_upserted": direct_sendable_upserted,
+        "generic_sendable_upserted": generic_sendable_upserted,
         "missing_email_count": missing_email,
         "rejected_or_unsendable_count": rejected_or_unsendable,
     }

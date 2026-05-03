@@ -481,6 +481,13 @@ def _experiment_sample_target() -> int:
         return 20
 
 
+def _active_generic_sample_cap() -> int:
+    try:
+        return max(int(os.getenv("RELAY_ACTIVE_GENERIC_SAMPLE_DAILY_CAP", "2") or 2), 0)
+    except Exception:
+        return 2
+
+
 def _effective_daily_cap(experiment: dict[str, Any] | None = None) -> int:
     configured_cap = max(int(settings.buyer_acq_daily_send_cap or 0), 1)
     try:
@@ -564,7 +571,8 @@ def _quality_snapshot(session) -> dict[str, Any]:
     active_variant = str(active_experiment.get("experiment_variant") or "control_sample_ask")
     active_variant_sends = _active_variant_send_count(session, active_variant)
     experiment_sample_target = _experiment_sample_target()
-    active_experiment_new_due = 0
+    active_experiment_direct_new_due = 0
+    active_experiment_generic_new_due = 0
 
     for prospect in prospects:
         if _is_placeholder_email(prospect.contact_email):
@@ -594,10 +602,12 @@ def _quality_snapshot(session) -> dict[str, Any]:
         is_active_experiment_new = prospect_variant == active_variant and not sent_events and step.step_number == 1
         if is_generic:
             generic_due += 1
+            if is_active_experiment_new:
+                active_experiment_generic_new_due += 1
         else:
             direct_due += 1
             if is_active_experiment_new:
-                active_experiment_new_due += 1
+                active_experiment_direct_new_due += 1
 
     policy = _generic_policy()
     if policy == "include":
@@ -612,6 +622,9 @@ def _quality_snapshot(session) -> dict[str, Any]:
 
     daily_cap = _effective_daily_cap(_active_experiment())
     sent_today = int(outreach._daily_send_count(session) or 0)
+    generic_sample_cap = _active_generic_sample_cap()
+    active_experiment_allowed_generic_new_due = min(active_experiment_generic_new_due, generic_sample_cap)
+    active_experiment_new_due = active_experiment_direct_new_due + active_experiment_allowed_generic_new_due
 
     return {
         "direct_inbox_count": direct_active,
@@ -633,6 +646,10 @@ def _quality_snapshot(session) -> dict[str, Any]:
         "active_experiment_sample_target": experiment_sample_target,
         "active_experiment_needs_sample": active_variant_sends < experiment_sample_target,
         "active_experiment_new_due_count": active_experiment_new_due,
+        "active_experiment_direct_new_due_count": active_experiment_direct_new_due,
+        "active_experiment_generic_new_due_count": active_experiment_generic_new_due,
+        "active_experiment_allowed_generic_new_due_count": active_experiment_allowed_generic_new_due,
+        "active_experiment_generic_sample_daily_cap": generic_sample_cap,
     }
 
 
@@ -652,6 +669,13 @@ def _next_money_move(status: dict[str, Any]) -> str:
             if status.get("send_window_is_open"):
                 return f"Build {variant} sample now: send fresh first-touch leads before old follow-ups."
             return f"{variant} needs sample {active_sends}/{target}; {_send_window_wait_text(status)}."
+        generic_due = int(status.get("active_experiment_generic_new_due_count") or 0)
+        generic_allowed = int(status.get("active_experiment_allowed_generic_new_due_count") or 0)
+        if generic_due > 0 and generic_allowed == 0:
+            return (
+                f"{variant} has {generic_due} generic first-touch leads, but the generic fallback cap is 0. "
+                "Refill named direct buyers before using more volume."
+            )
         direct_due = int(status.get("direct_due_count") or 0)
         if direct_due > 0 and int(status.get("cap_remaining") or 0) > 0:
             if status.get("send_window_is_open"):
@@ -736,6 +760,10 @@ def _fallback_quality(status: dict[str, Any], error: Exception) -> dict[str, Any
         "active_experiment_sample_target": _experiment_sample_target(),
         "active_experiment_needs_sample": bool(status.get("active_experiment_needs_sample") or False),
         "active_experiment_new_due_count": int(status.get("active_experiment_new_due_count") or 0),
+        "active_experiment_direct_new_due_count": int(status.get("active_experiment_direct_new_due_count") or 0),
+        "active_experiment_generic_new_due_count": int(status.get("active_experiment_generic_new_due_count") or 0),
+        "active_experiment_allowed_generic_new_due_count": int(status.get("active_experiment_allowed_generic_new_due_count") or 0),
+        "active_experiment_generic_sample_daily_cap": _active_generic_sample_cap(),
         "quality_snapshot_warning": type(error).__name__,
     }
 
@@ -910,9 +938,15 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
             paused_generic = len(generic_due)
 
         active_sample_needed = max(experiment_sample_target - active_variant_sends, 0)
-        active_first_touch = [candidate for candidate in candidates if candidate[3]]
-        if active_sample_needed > 0 and active_first_touch:
-            candidates = active_first_touch[:active_sample_needed]
+        active_direct_first_touch = [candidate for candidate in direct_due if candidate[3]]
+        active_generic_first_touch = [candidate for candidate in generic_due if candidate[3]]
+        generic_sample_cap = _active_generic_sample_cap()
+        generic_active_sample_fallback_count = 0
+        if active_sample_needed > 0 and (active_direct_first_touch or active_generic_first_touch):
+            generic_slots = max(min(active_sample_needed - len(active_direct_first_touch), generic_sample_cap), 0)
+            generic_active_sample_fallback = active_generic_first_touch[:generic_slots]
+            generic_active_sample_fallback_count = len(generic_active_sample_fallback)
+            candidates = (active_direct_first_touch + generic_active_sample_fallback)[:active_sample_needed]
             active_sample_reserved_only = True
         else:
             active_sample_reserved_only = False
@@ -993,7 +1027,12 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
             "active_experiment_variant": active_variant,
             "active_experiment_sends_before": active_variant_sends,
             "active_experiment_sample_target": experiment_sample_target,
-            "active_experiment_new_due_count": len(active_first_touch),
+            "active_experiment_new_due_count": len(active_direct_first_touch) + generic_active_sample_fallback_count,
+            "active_experiment_direct_new_due_count": len(active_direct_first_touch),
+            "active_experiment_generic_new_due_count": len(active_generic_first_touch),
+            "active_experiment_allowed_generic_new_due_count": generic_active_sample_fallback_count,
+            "active_experiment_generic_sample_daily_cap": generic_sample_cap,
+            "active_generic_sample_fallback_count": generic_active_sample_fallback_count,
             "active_sample_reserved_only": active_sample_reserved_only,
             "blocked_bad_email_count": blocked_bad_email,
             "blocked_duplicate_email_count": duplicate_email_blocked,

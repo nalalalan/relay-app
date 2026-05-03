@@ -485,6 +485,18 @@ def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
             "active_experiment_sample_target": int(outreach.get("active_experiment_sample_target") or 0),
             "active_experiment_needs_sample": bool(outreach.get("active_experiment_needs_sample") or False),
             "active_experiment_new_due_count": int(outreach.get("active_experiment_new_due_count") or 0),
+            "active_experiment_direct_new_due_count": int(
+                outreach.get("active_experiment_direct_new_due_count") or 0
+            ),
+            "active_experiment_generic_new_due_count": int(
+                outreach.get("active_experiment_generic_new_due_count") or 0
+            ),
+            "active_experiment_allowed_generic_new_due_count": int(
+                outreach.get("active_experiment_allowed_generic_new_due_count") or 0
+            ),
+            "active_experiment_generic_sample_daily_cap": int(
+                outreach.get("active_experiment_generic_sample_daily_cap") or 0
+            ),
             "send_window_is_open": bool(outreach.get("send_window_is_open") or False),
             "send_window_reason": outreach.get("send_window_reason", ""),
             "send_window_next_open_local": outreach.get("send_window_next_open_local", ""),
