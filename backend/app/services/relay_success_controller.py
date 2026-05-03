@@ -665,6 +665,17 @@ def _outbound_send_stalled(outreach: dict[str, Any]) -> bool:
     return int(outreach.get("send_window_seconds_open") or 0) >= _send_window_stall_grace_seconds()
 
 
+def _outbound_send_window_missed(outreach: dict[str, Any]) -> bool:
+    if str(outreach.get("send_window_reason") or "") != "after_window":
+        return False
+    if int(outreach.get("sent_today") or 0) > 0:
+        return False
+    if int(outreach.get("cap_remaining") or 0) <= 0:
+        return False
+    due = int(outreach.get("active_experiment_new_due_count") or outreach.get("due_now") or 0)
+    return due > 0
+
+
 def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
     days = max(1, min(int(days), 90))
     now = _now()
@@ -853,6 +864,8 @@ def _bottleneck(snapshot: dict[str, Any]) -> str:
         return "outbound_send_failed"
     if _outbound_send_stalled(outreach):
         return "outbound_send_stalled"
+    if _outbound_send_window_missed(outreach):
+        return "outbound_window_missed"
     if outreach.get("active_experiment_needs_sample"):
         if int(outreach.get("active_experiment_new_due_count") or 0) > 0:
             return "active_experiment_sample"
@@ -885,6 +898,10 @@ def _next_action(bottleneck: str) -> str:
         "outbound_send_stalled": (
             "Send window is open with queued leads and capacity, but zero sends; "
             "retry sender and inspect the latest outreach failure."
+        ),
+        "outbound_window_missed": (
+            "Send window closed with queued leads and capacity but zero sends; "
+            "treat it as an execution miss and inspect the money loop before waiting another day."
         ),
         "active_experiment_sample": "Collect the active outbound experiment sample before judging the offer.",
         "active_experiment_refill": "Refill fresh first-touch leads for the active outbound experiment.",

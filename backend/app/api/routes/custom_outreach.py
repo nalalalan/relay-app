@@ -67,6 +67,7 @@ def _operator_mode(status: dict, success: dict) -> dict:
         "reply_to_payment",
         "outbound_send_failed",
         "outbound_send_stalled",
+        "outbound_window_missed",
     }
     followup = {"messy_notes_to_payment", "sample_to_notes"}
 
