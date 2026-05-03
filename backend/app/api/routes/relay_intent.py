@@ -1,4 +1,5 @@
 import json
+import math
 import os
 import re
 import uuid
@@ -82,6 +83,13 @@ def _safe_int(value: Any, default: int = 0) -> int:
         return default
 
 
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except Exception:
+        return default
+
+
 def _ceil_div(numerator: int, denominator: int) -> int:
     if numerator <= 0 or denominator <= 0:
         return 0
@@ -120,6 +128,86 @@ def _revenue_ladder_status() -> dict[str, Any]:
         "configured_offers": configured,
         "entry_offer_ready": bool(entry_url),
         "higher_offers_ready": higher_offer_count > 0,
+    }
+
+
+def _money_objective_status(*, money: dict[str, Any], outreach: dict[str, Any], payments: int) -> dict[str, Any]:
+    target = outreach.get("money_target") if isinstance(outreach.get("money_target"), dict) else {}
+    weekly_target_usd = _safe_float(
+        target.get("weekly_target_usd") or os.getenv("RELAY_WEEKLY_TARGET_USD", "100"),
+        100.0,
+    )
+    test_price_usd = max(
+        _safe_float(target.get("test_price_usd") or os.getenv("RELAY_PACKET_PRICE_USD", "40"), 40.0),
+        1.0,
+    )
+    paid_tests_needed = max(
+        1,
+        _safe_int(target.get("paid_tests_needed_weekly"), math.ceil(weekly_target_usd / test_price_usd)),
+    )
+    current_gross_usd = round(_safe_float(money.get("gross_usd"), 0.0), 2)
+    revenue_gap_usd = round(max(weekly_target_usd - current_gross_usd, 0.0), 2)
+    paid_tests_remaining = max(paid_tests_needed - payments, 0)
+    daily_cap = _safe_int(
+        target.get("current_daily_send_cap")
+        or outreach.get("effective_daily_cap")
+        or outreach.get("daily_send_cap")
+    )
+    business_week_send_capacity = _safe_int(target.get("business_week_send_capacity"), daily_cap * 5)
+
+    return {
+        "state": "weekly_target_met" if revenue_gap_usd <= 0 else "needs_paid_tests",
+        "weekly_target_usd": weekly_target_usd,
+        "entry_test_price_usd": test_price_usd,
+        "current_week_gross_usd": current_gross_usd,
+        "revenue_gap_usd": revenue_gap_usd,
+        "paid_tests_needed_weekly": paid_tests_needed,
+        "paid_tests_remaining_weekly": paid_tests_remaining,
+        "current_week_payments": payments,
+        "current_daily_send_cap": daily_cap,
+        "business_week_send_capacity": business_week_send_capacity,
+        "success_condition": (
+            "weekly revenue target met"
+            if revenue_gap_usd <= 0
+            else f"collect {paid_tests_remaining} more paid tests or ${revenue_gap_usd:.2f} this week"
+        ),
+        "operating_mode": target.get("operating_mode") or "direct decision-maker inboxes first",
+    }
+
+
+def _money_decision_contract(
+    *,
+    active_sends: int,
+    active_target: int,
+    active_remaining: int,
+    active_signal_replies: int,
+    active_signal_payments: int,
+    unhandled_replies: int,
+    checkout_clicks: int,
+    payments: int,
+    experiment_decision_next: str,
+) -> dict[str, Any]:
+    if active_signal_payments > 0:
+        state = "paid_signal_keep_stable"
+        next_action = "Keep the current lane stable and fulfill the paid buyer."
+    elif unhandled_replies > 0 or checkout_clicks > payments or active_signal_replies > 0:
+        state = "buyer_signal_close"
+        next_action = "Close real buyer signal through the paid test before changing the experiment."
+    elif active_remaining > 0:
+        state = "collect_sample"
+        next_action = experiment_decision_next
+    else:
+        state = "rotate_one_variable"
+        next_action = "Rotate one controlled targeting or copy variable before sending the next sample."
+
+    return {
+        "state": state,
+        "next_action": next_action,
+        "sample_progress": f"{active_sends}/{active_target}" if active_target else "",
+        "keep_condition": "payment from the active lane",
+        "close_condition": "unhandled reply or checkout intent before payment",
+        "rotate_condition": "completed active sample with zero real replies and zero payments",
+        "do_not_scale_condition": "do not increase volume until the active sample has buyer signal or a completed review",
     }
 
 
@@ -1471,6 +1559,22 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 else max(replies - auto_replies - payments, 0)
             )
             checkout_clicks = _safe_int(success_intent.get("checkout_clicks"))
+            revenue_objective = _money_objective_status(
+                money=money,
+                outreach=outreach,
+                payments=payments,
+            )
+            money_decision_contract = _money_decision_contract(
+                active_sends=active_sends,
+                active_target=active_target,
+                active_remaining=active_remaining,
+                active_signal_replies=active_signal_replies,
+                active_signal_payments=active_signal_payments,
+                unhandled_replies=unhandled_replies,
+                checkout_clicks=checkout_clicks,
+                payments=payments,
+                experiment_decision_next=experiment_decision_next,
+            )
             money_state = str(success.get("bottleneck") or "unknown")
             loop_status = str(checks.get("money_loop_runtime", {}).get("status") or "unknown")
             sent_today = _safe_int(outreach.get("sent_today"))
@@ -1521,6 +1625,8 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 "payments": payments,
                 "operator_mode": operator_mode,
                 "launch_readiness": launch_readiness,
+                "revenue_objective": revenue_objective,
+                "money_decision_contract": money_decision_contract,
                 "revenue_ladder": revenue_ladder,
                 "close_path": {
                     "replies": replies,

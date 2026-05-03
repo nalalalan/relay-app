@@ -864,6 +864,8 @@
       const nextWindowSuccessCriterion = launch.next_window_success_criterion || moneySystem.next_window_success_criterion || plan.next_window_success_criterion || "";
       const nextWindowAuditAt = launch.next_window_audit_at || moneySystem.next_window_audit_at || plan.next_window_audit_at || "";
       const windowExecutionState = launch.window_execution_state || moneySystem.window_execution_state || plan.window_execution_state || "";
+      const revenueObjective = moneySystem.revenue_objective || status.money_target || {};
+      const moneyDecisionContract = moneySystem.money_decision_contract || {};
       const blockers = Array.isArray(launch.blockers) ? launch.blockers : [];
 
       if (mode) {
@@ -881,6 +883,8 @@
           nextWindowSuccessCriterion,
           nextWindowAuditAt,
           windowExecutionState,
+          revenueObjective,
+          moneyDecisionContract,
           planSummary: proofTarget,
           successMetric,
           interruptRule,
@@ -905,6 +909,8 @@
           nextWindowSuccessCriterion: "",
           nextWindowAuditAt: "",
           windowExecutionState: "",
+          revenueObjective,
+          moneyDecisionContract,
           planSummary: "",
           successMetric: "",
           interruptRule: "",
@@ -925,6 +931,8 @@
         nextWindowSuccessCriterion: plan.next_window_success_criterion || "",
         nextWindowAuditAt: plan.next_window_audit_at || "",
         windowExecutionState: plan.window_execution_state || "",
+        revenueObjective,
+        moneyDecisionContract,
         planSummary: plan.summary || "",
         successMetric: "",
         interruptRule: "",
@@ -1074,8 +1082,13 @@
           ? ` Next proof: ${operator.nextWindowSuccessCriterion}.`
           : operator.planSummary ? ` Proof target: ${operator.planSummary}.` : "";
         const audit = operator.nextWindowAuditAt ? ` Audit after: ${fmtMoment(operator.nextWindowAuditAt)}.` : "";
+        const objective = operator.revenueObjective || {};
+        const paidLeft = objective.paid_tests_remaining_weekly ?? objective.paid_tests_needed_weekly;
+        const moneyTarget = objective.weekly_target_usd
+          ? ` Money target: ${fmtMoney(objective.weekly_target_usd)} week${paidLeft !== undefined ? `; ${paidLeft} paid tests left` : ""}.`
+          : "";
         const success = !operator.nextWindowSuccessCriterion && operator.successMetric ? ` Success metric: ${operator.successMetric}.` : "";
-        copy = `${operator.reason}${next ? ` Next autonomous window: ${next}.` : ""}${progress}${proof}${audit}${success}`;
+        copy = `${operator.reason}${next ? ` Next autonomous window: ${next}.` : ""}${progress}${proof}${audit}${moneyTarget}${success}`;
       } else if (operator && !operator.doNotInterrupt) {
         headline = "Attention needed.";
         copy = operator.reason || operator.planSummary || "There is a real signal worth handling before the system keeps scaling.";
