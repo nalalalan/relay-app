@@ -184,19 +184,39 @@ def _refill_timeout_backoff_status(*, force_refill: bool = False) -> dict[str, A
 
 def _send_window_ready_without_refill(status: dict[str, Any]) -> dict[str, Any]:
     active_new_due = int(status.get("active_experiment_new_due_count") or 0)
+    active_sends = int(status.get("active_experiment_sends") or 0)
+    active_target = int(status.get("active_experiment_sample_target") or 0)
+    active_needs_sample = bool(status.get("active_experiment_needs_sample"))
     direct_due = int(status.get("direct_due_count") or 0)
     cap_remaining = int(status.get("cap_remaining") or 0)
     effective_cap = int(status.get("effective_daily_cap") or status.get("daily_send_cap") or settings.buyer_acq_daily_send_cap or 0)
     needed_for_window = max(min(effective_cap, cap_remaining or effective_cap), 1)
+    active_sample_remaining = max(active_target - active_sends, 0) if active_target > 0 else needed_for_window
+    active_needed_for_window = min(needed_for_window, max(active_sample_remaining, 1))
+    enough_active_sample = active_new_due >= active_needed_for_window
+    enough_total_window_capacity = active_new_due + direct_due >= needed_for_window
+
+    if active_needs_sample:
+        is_ready = enough_active_sample and enough_total_window_capacity
+        reason = "active_sample_ready" if is_ready else "active_sample_needs_refill"
+    else:
+        is_ready = direct_due >= needed_for_window
+        reason = "direct_due_ready" if is_ready else "direct_due_needs_refill"
+
     is_ready = (
         not bool(status.get("send_window_is_open"))
         and cap_remaining > 0
-        and active_new_due > 0
-        and direct_due >= needed_for_window
+        and is_ready
     )
     return {
         "active": is_ready,
+        "reason": reason,
+        "active_experiment_needs_sample": active_needs_sample,
+        "active_experiment_sends": active_sends,
+        "active_experiment_sample_target": active_target,
+        "active_experiment_sample_remaining": active_sample_remaining,
         "active_experiment_new_due_count": active_new_due,
+        "active_needed_for_window": active_needed_for_window,
         "direct_due_count": direct_due,
         "needed_for_window": needed_for_window,
         "send_window_next_open_local": status.get("send_window_next_open_local") or "",
