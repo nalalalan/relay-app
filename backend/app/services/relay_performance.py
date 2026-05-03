@@ -339,11 +339,23 @@ def _choose_variant(
     *,
     current_week: dict[str, Any],
     prior_week: dict[str, Any],
+    rolling_window: dict[str, Any] | None = None,
     latest_plan: dict[str, Any] | None,
 ) -> tuple[str, list[str]]:
     min_sample = int(os.getenv("RELAY_EXPERIMENT_MIN_SAMPLE", "20"))
-    evidence = prior_week if int(prior_week.get("sends", 0)) >= min_sample else current_week
-    evidence_name = "prior week" if evidence is prior_week else "current week"
+    evidence_candidates = [
+        ("prior week", prior_week),
+        ("rolling 7-day window", rolling_window or {}),
+        ("current week", current_week),
+    ]
+    evidence_name, evidence = next(
+        (
+            (name, metrics)
+            for name, metrics in evidence_candidates
+            if int(metrics.get("sends", 0)) >= min_sample
+        ),
+        ("current week", current_week),
+    )
     sends = int(evidence.get("sends", 0))
     replies = int(evidence.get("replies", 0))
     payments = int(evidence.get("payments", 0))
@@ -368,7 +380,7 @@ def _choose_variant(
         reasons.append(f"Reply signal exists in the {evidence_name} without payments; make the paid test clearer.")
         return "paid_test_explicit", reasons
 
-    reasons.append(f"No reply signal after a measurable {evidence_name} send window; rotate one controlled copy/targeting variable.")
+    reasons.append(f"No reply signal after measurable sends in the {evidence_name}; rotate one controlled copy/targeting variable.")
     if previous_variant not in sequence:
         return sequence[0], reasons
     return sequence[(sequence.index(previous_variant) + 1) % len(sequence)], reasons
@@ -394,12 +406,19 @@ def _plan_payload(
     variant: str,
     current_week: dict[str, Any],
     prior_week: dict[str, Any],
+    rolling_window: dict[str, Any],
     latest_plan: dict[str, Any] | None,
     research_inputs: list[dict[str, Any]],
     reasons: list[str],
 ) -> dict[str, Any]:
     experiment = EXPERIMENTS.get(variant, EXPERIMENTS[DEFAULT_EXPERIMENT_VARIANT])
-    evidence_for_cap = prior_week if int(prior_week.get("sends", 0)) else current_week
+    evidence_for_cap = (
+        prior_week
+        if int(prior_week.get("sends", 0))
+        else rolling_window
+        if int(rolling_window.get("sends", 0))
+        else current_week
+    )
     return {
         "version": CURRENT_VERSION,
         "week_start": week_start.isoformat(),
@@ -413,6 +432,7 @@ def _plan_payload(
         "decision_reasons": reasons,
         "current_week_metrics": current_week,
         "prior_week_metrics": prior_week,
+        "rolling_7_day_metrics": rolling_window,
         "previous_experiment_variant": (latest_plan or {}).get("experiment_variant"),
         "knowledge_takeaways": _knowledge_takeaways(),
         "online_research_inputs": research_inputs,
@@ -433,6 +453,7 @@ def run_weekly_performance_review(*, force: bool = False, fetch_research: bool =
     current_end = now
     prior_start = week_start - timedelta(days=7)
     prior_end = week_start
+    rolling_start = now - timedelta(days=7)
 
     with _session() as session:
         existing = _current_week_plan_payload(session, week_start)
@@ -446,6 +467,7 @@ def run_weekly_performance_review(*, force: bool = False, fetch_research: bool =
 
         current_week = _metrics_for_window(session, start=current_start, end=current_end)
         prior_week = _metrics_for_window(session, start=prior_start, end=prior_end)
+        rolling_window = _metrics_for_window(session, start=rolling_start, end=now)
         current_week["prospect_health"] = _prospect_health(session)
         latest_plan = _latest_plan_payload(session)
 
@@ -453,6 +475,7 @@ def run_weekly_performance_review(*, force: bool = False, fetch_research: bool =
     variant, reasons = _choose_variant(
         current_week=current_week,
         prior_week=prior_week,
+        rolling_window=rolling_window,
         latest_plan=latest_plan,
     )
     plan = _plan_payload(
@@ -460,6 +483,7 @@ def run_weekly_performance_review(*, force: bool = False, fetch_research: bool =
         variant=variant,
         current_week=current_week,
         prior_week=prior_week,
+        rolling_window=rolling_window,
         latest_plan=latest_plan,
         research_inputs=research_inputs,
         reasons=reasons,
@@ -488,6 +512,7 @@ def run_weekly_performance_review(*, force: bool = False, fetch_research: bool =
                         "week_start": week_start.isoformat(),
                         "current_week_metrics": current_week,
                         "prior_week_metrics": prior_week,
+                        "rolling_7_day_metrics": rolling_window,
                         "selected_plan": plan,
                     },
                     ensure_ascii=False,
@@ -581,6 +606,7 @@ def relay_performance_status() -> dict[str, Any]:
             start=week_start - timedelta(days=7),
             end=week_start,
         )
+        rolling_window = _metrics_for_window(session, start=now - timedelta(days=7), end=now)
         all_time_sends = _event_count(session, "custom_outreach_sent_step_%", like=True)
         all_time_replies = (
             _event_count(session, "custom_outreach_reply_seen")
@@ -597,6 +623,7 @@ def relay_performance_status() -> dict[str, Any]:
         "version": CURRENT_VERSION,
         "current_week": current_week,
         "prior_week": prior_week,
+        "rolling_7_day": rolling_window,
         "all_time": {
             "sends": all_time_sends,
             "replies": all_time_replies,

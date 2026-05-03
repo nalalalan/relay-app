@@ -18,6 +18,7 @@ from app.services.post_purchase_autopilot import (
     run_paid_intake_reminder_sweep,
     run_post_delivery_upsell_sweep,
 )
+from app.services.relay_performance import relay_performance_status, run_weekly_performance_review
 
 
 SUCCESS_TICK_EVENT = "relay_success_control_tick"
@@ -405,6 +406,13 @@ def _env_snapshot() -> dict[str, bool]:
     }
 
 
+def _int_env(name: str, default: int) -> int:
+    try:
+        return int(os.getenv(name, str(default)) or str(default))
+    except Exception:
+        return default
+
+
 def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
     days = max(1, min(int(days), 90))
     now = _now()
@@ -534,6 +542,70 @@ def _next_action(bottleneck: str) -> str:
     return actions.get(bottleneck, actions["running"])
 
 
+def _current_week_key(now: datetime | None = None) -> str:
+    now = now or _now()
+    start = now - timedelta(days=now.weekday())
+    return start.date().isoformat()
+
+
+def _plan_evidence_sends(plan: dict[str, Any]) -> int:
+    sends = 0
+    for key in ["prior_week_metrics", "rolling_7_day_metrics", "current_week_metrics"]:
+        metrics = plan.get(key)
+        if isinstance(metrics, dict):
+            try:
+                sends = max(sends, int(metrics.get("sends") or 0))
+            except Exception:
+                continue
+    return sends
+
+
+def _run_outbound_experiment_review_if_needed(bottleneck: str, snapshot: dict[str, Any]) -> dict[str, Any]:
+    if bottleneck != "outbound_targeting_or_copy":
+        return {"status": "skipped", "summary": "outbound experiment review not needed for this bottleneck"}
+
+    min_sample = _int_env("RELAY_EXPERIMENT_MIN_SAMPLE", 20)
+    sends = int(snapshot.get("outreach", {}).get("sends") or 0)
+    replies = int(snapshot.get("outreach", {}).get("replies") or 0)
+    payments = int(snapshot.get("money", {}).get("payments") or 0)
+    if sends < max(30, min_sample):
+        return {"status": "skipped", "summary": "outbound sample is not large enough to rotate yet"}
+    if replies > 0 or payments > 0:
+        return {"status": "skipped", "summary": "signal exists; keep the current outbound lane stable"}
+
+    performance = relay_performance_status()
+    active_plan = performance.get("active_experiment") or {}
+    if active_plan.get("source") == "env":
+        return {
+            "status": "skipped",
+            "summary": "outbound variant is pinned by environment",
+            "active_variant": active_plan.get("experiment_variant"),
+        }
+
+    current_week = _current_week_key()
+    plan_week = str(active_plan.get("week_start_date") or "")
+    plan_sends = _plan_evidence_sends(active_plan)
+    if plan_week == current_week and plan_sends >= min_sample:
+        return {
+            "status": "skipped",
+            "summary": "current experiment plan already used measurable evidence",
+            "active_variant": active_plan.get("experiment_variant"),
+            "evidence_sends": plan_sends,
+        }
+
+    review = run_weekly_performance_review(force=True, fetch_research=False)
+    plan = review.get("plan") or {}
+    return {
+        "status": review.get("status", "ok"),
+        "summary": "created bottleneck-driven outbound experiment review",
+        "created": bool(review.get("created")),
+        "experiment_variant": plan.get("experiment_variant"),
+        "experiment_label": plan.get("experiment_label"),
+        "decision_reasons": plan.get("decision_reasons", []),
+        "daily_cap_recommendation": plan.get("daily_cap_recommendation"),
+    }
+
+
 def run_relay_success_control_tick() -> dict[str, Any]:
     before = relay_success_snapshot(days=7)
     bottleneck = _bottleneck(before)
@@ -546,6 +618,7 @@ def run_relay_success_control_tick() -> dict[str, Any]:
     actions["post_delivery_upsell"] = run_post_delivery_upsell_sweep(
         hours=int(os.getenv("OPS_UPSELL_DELAY_HOURS", "24") or "24")
     )
+    actions["outbound_experiment_review"] = _run_outbound_experiment_review_if_needed(bottleneck, before)
 
     after = relay_success_snapshot(days=7)
     result = {
