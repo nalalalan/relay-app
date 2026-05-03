@@ -1174,7 +1174,7 @@ def outreach_status() -> dict[str, Any]:
         replies_today = int(
             session.execute(
                 select(func.count(AcquisitionEvent.id))
-                .where(AcquisitionEvent.event_type == "custom_outreach_reply_seen")
+                .where(AcquisitionEvent.event_type.in_(["custom_outreach_reply_seen", "smartlead_reply"]))
                 .where(AcquisitionEvent.created_at >= _today_start())
             ).scalar()
             or 0
