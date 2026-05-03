@@ -432,6 +432,8 @@ def _compact_money_loop_payload(payload: dict[str, Any] | None) -> dict[str, Any
         "send_window_ready_reason": send_window_ready.get("reason"),
         "send_window_ready_needed_for_window": send_window_ready.get("needed_for_window"),
         "send_window_ready_active_needed_for_window": send_window_ready.get("active_needed_for_window"),
+        "send_window_ready_active_buffer_windows": send_window_ready.get("active_sample_buffer_windows"),
+        "send_window_ready_active_buffer_target": send_window_ready.get("active_sample_buffer_target"),
         "send_window_ready_active_sample_remaining": send_window_ready.get("active_experiment_sample_remaining"),
         "send_window_ready_next_open_local": send_window_ready.get("send_window_next_open_local"),
         "direct_due_before": payload.get("direct_due_before"),

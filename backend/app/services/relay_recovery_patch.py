@@ -134,6 +134,13 @@ def _refill_timeout_backoff_seconds() -> float:
     return _env_float("AO_RELAY_REFILL_TIMEOUT_BACKOFF_SECONDS", 3600.0, minimum=60.0)
 
 
+def _active_sample_buffer_windows() -> int:
+    try:
+        return max(int(os.getenv("AO_RELAY_ACTIVE_SAMPLE_BUFFER_WINDOWS", "2") or 2), 1)
+    except Exception:
+        return 2
+
+
 def _timeout_refill_fields(source: str, timeout_seconds: float) -> dict[str, Any]:
     return {
         "error_type": "TimeoutError",
@@ -192,7 +199,9 @@ def _send_window_ready_without_refill(status: dict[str, Any]) -> dict[str, Any]:
     effective_cap = int(status.get("effective_daily_cap") or status.get("daily_send_cap") or settings.buyer_acq_daily_send_cap or 0)
     needed_for_window = max(min(effective_cap, cap_remaining or effective_cap), 1)
     active_sample_remaining = max(active_target - active_sends, 0) if active_target > 0 else needed_for_window
-    active_needed_for_window = min(needed_for_window, max(active_sample_remaining, 1))
+    active_buffer_windows = _active_sample_buffer_windows()
+    active_buffer_target = max(needed_for_window * active_buffer_windows, needed_for_window)
+    active_needed_for_window = min(active_buffer_target, max(active_sample_remaining, 1))
     enough_active_sample = active_new_due >= active_needed_for_window
     enough_total_window_capacity = active_new_due + direct_due >= needed_for_window
 
@@ -216,6 +225,8 @@ def _send_window_ready_without_refill(status: dict[str, Any]) -> dict[str, Any]:
         "active_experiment_sample_target": active_target,
         "active_experiment_sample_remaining": active_sample_remaining,
         "active_experiment_new_due_count": active_new_due,
+        "active_sample_buffer_windows": active_buffer_windows,
+        "active_sample_buffer_target": active_buffer_target,
         "active_needed_for_window": active_needed_for_window,
         "direct_due_count": direct_due,
         "needed_for_window": needed_for_window,
