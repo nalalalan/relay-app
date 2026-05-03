@@ -182,6 +182,27 @@ def _refill_timeout_backoff_status(*, force_refill: bool = False) -> dict[str, A
     }
 
 
+def _send_window_ready_without_refill(status: dict[str, Any]) -> dict[str, Any]:
+    active_new_due = int(status.get("active_experiment_new_due_count") or 0)
+    direct_due = int(status.get("direct_due_count") or 0)
+    cap_remaining = int(status.get("cap_remaining") or 0)
+    effective_cap = int(status.get("effective_daily_cap") or status.get("daily_send_cap") or settings.buyer_acq_daily_send_cap or 0)
+    needed_for_window = max(min(effective_cap, cap_remaining or effective_cap), 1)
+    is_ready = (
+        not bool(status.get("send_window_is_open"))
+        and cap_remaining > 0
+        and active_new_due > 0
+        and direct_due >= needed_for_window
+    )
+    return {
+        "active": is_ready,
+        "active_experiment_new_due_count": active_new_due,
+        "direct_due_count": direct_due,
+        "needed_for_window": needed_for_window,
+        "send_window_next_open_local": status.get("send_window_next_open_local") or "",
+    }
+
+
 def _landing_page_url() -> str:
     url = os.getenv("LANDING_PAGE_URL", "").strip() or settings.landing_page_url.strip()
     if not url or "nalalalan.github.io/alan-operator-site" in url:
@@ -1036,6 +1057,7 @@ async def _relay_money_loop_tick(
 
     latest_refill_status = status_for_refill
     backoff_status = _refill_timeout_backoff_status(force_refill=force_refill)
+    send_window_ready = _send_window_ready_without_refill(status_for_refill)
     refill_result: dict[str, Any] = {"status": "skipped", "reason": "direct_due_ok"}
     if not settings.apollo_api_key:
         refill_result = {"status": "skipped", "reason": "missing_apollo_api_key"}
@@ -1044,6 +1066,12 @@ async def _relay_money_loop_tick(
             "status": "skipped",
             "reason": "cap_remaining_zero",
             "cap_remaining": refill_cap_remaining,
+        }
+    elif send_window_ready["active"] and not force_refill:
+        refill_result = {
+            "status": "skipped",
+            "reason": "send_window_ready_without_refill",
+            **send_window_ready,
         }
     elif backoff_status["active"]:
         refill_result = {
@@ -1236,6 +1264,7 @@ async def _relay_money_loop_tick(
         "refill_due_before": refill_due,
         "refill_due_for_decision": refill_due_for_decision,
         "refill_timeout_backoff": backoff_status,
+        "send_window_ready_without_refill": send_window_ready,
         "send_window_open_before": send_window_open,
         "outreach_phase": outreach_phase,
         "cap_remaining_before": cap_remaining,

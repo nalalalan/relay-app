@@ -375,6 +375,11 @@ def _compact_money_loop_payload(payload: dict[str, Any] | None) -> dict[str, Any
         if isinstance(payload.get("refill_timeout_backoff"), dict)
         else {}
     )
+    send_window_ready = (
+        payload.get("send_window_ready_without_refill")
+        if isinstance(payload.get("send_window_ready_without_refill"), dict)
+        else {}
+    )
     return {
         "refill_status": refill.get("status"),
         "refill_reason": refill.get("reason"),
@@ -423,6 +428,9 @@ def _compact_money_loop_payload(payload: dict[str, Any] | None) -> dict[str, Any
         "refill_backoff_reason": refill_backoff.get("timeout_reason") or refill_backoff.get("reason"),
         "refill_backoff_age_seconds": refill_backoff.get("age_seconds"),
         "refill_backoff_remaining_seconds": refill_backoff.get("remaining_seconds"),
+        "send_window_ready_without_refill": send_window_ready.get("active"),
+        "send_window_ready_needed_for_window": send_window_ready.get("needed_for_window"),
+        "send_window_ready_next_open_local": send_window_ready.get("send_window_next_open_local"),
         "direct_due_before": payload.get("direct_due_before"),
         "send_window_open_before": payload.get("send_window_open_before"),
         "outreach_phase": payload.get("outreach_phase"),
