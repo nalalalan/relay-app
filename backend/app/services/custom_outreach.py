@@ -387,6 +387,7 @@ def _send_window_status() -> dict[str, Any]:
         reason = "after_window"
 
     seconds_until_open = max(int((next_open_local - now_local).total_seconds()), 0)
+    seconds_open = max(int((now_local - start_local).total_seconds()), 0) if is_open else 0
 
     return {
         "timezone": str(tz),
@@ -398,6 +399,7 @@ def _send_window_status() -> dict[str, Any]:
         "is_business_day": is_business_day,
         "next_open_local": next_open_local.isoformat(),
         "seconds_until_open": seconds_until_open,
+        "seconds_open": seconds_open,
         "reason": reason,
     }
 
@@ -1244,6 +1246,7 @@ def outreach_status() -> dict[str, Any]:
         "send_window_is_business_day": window["is_business_day"],
         "send_window_next_open_local": window["next_open_local"],
         "send_window_seconds_until_open": window["seconds_until_open"],
+        "send_window_seconds_open": window["seconds_open"],
         "send_window_reason": window["reason"],
     }
 

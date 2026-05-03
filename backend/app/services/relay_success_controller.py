@@ -417,6 +417,50 @@ def _experiment_failure_sample() -> int:
     return max(1, _int_env("RELAY_EXPERIMENT_FAILURE_SAMPLE", min_sample))
 
 
+def _parse_iso_datetime(value: Any) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value))
+    except Exception:
+        return None
+
+
+def _send_window_stall_grace_seconds() -> int:
+    return max(_int_env("RELAY_SEND_WINDOW_STALL_GRACE_MINUTES", 10), 1) * 60
+
+
+def _send_window_seconds_open(outreach: dict[str, Any]) -> int:
+    if not bool(outreach.get("send_window_is_open")):
+        return 0
+    raw_seconds_open = outreach.get("send_window_seconds_open")
+    if raw_seconds_open is not None:
+        try:
+            return max(int(raw_seconds_open), 0)
+        except Exception:
+            pass
+    now_local = _parse_iso_datetime(outreach.get("send_window_now_local"))
+    start_local = _parse_iso_datetime(outreach.get("send_window_start_local"))
+    if now_local is None or start_local is None:
+        return 0
+    try:
+        return max(int((now_local - start_local).total_seconds()), 0)
+    except Exception:
+        return 0
+
+
+def _outbound_send_stalled(outreach: dict[str, Any]) -> bool:
+    if not bool(outreach.get("send_window_is_open")):
+        return False
+    if int(outreach.get("sent_today") or 0) > 0:
+        return False
+    if int(outreach.get("cap_remaining") or 0) <= 0:
+        return False
+    if int(outreach.get("due_now") or 0) <= 0:
+        return False
+    return int(outreach.get("send_window_seconds_open") or 0) >= _send_window_stall_grace_seconds()
+
+
 def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
     days = max(1, min(int(days), 90))
     now = _now()
@@ -450,6 +494,18 @@ def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
         )
         due_followups = _due_followup_counts(session, now=now)
 
+    send_window_seconds_open = _send_window_seconds_open(outreach)
+    due_now = int(outreach.get("due_now_count") or outreach.get("queued_count") or 0)
+    sent_today = int(outreach.get("sent_today") or 0)
+    cap_remaining = int(outreach.get("cap_remaining") or 0)
+    send_window_stall_grace_seconds = _send_window_stall_grace_seconds()
+    outbound_send_stalled = (
+        bool(outreach.get("send_window_is_open") or False)
+        and sent_today <= 0
+        and cap_remaining > 0
+        and due_now > 0
+        and send_window_seconds_open >= send_window_stall_grace_seconds
+    )
     env = _env_snapshot()
     critical_missing = [
         name
@@ -476,10 +532,10 @@ def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
             "sends": sends,
             "replies": replies,
             "reply_rate": round(replies / sends, 4) if sends else 0,
-            "due_now": int(outreach.get("due_now_count") or outreach.get("queued_count") or 0),
-            "sent_today": int(outreach.get("sent_today") or 0),
+            "due_now": due_now,
+            "sent_today": sent_today,
             "daily_send_cap": int(outreach.get("daily_send_cap") or 0),
-            "cap_remaining": int(outreach.get("cap_remaining") or 0),
+            "cap_remaining": cap_remaining,
             "active_experiment_variant": outreach.get("active_experiment_variant", ""),
             "active_experiment_sends": int(outreach.get("active_experiment_sends") or 0),
             "active_experiment_sample_target": int(outreach.get("active_experiment_sample_target") or 0),
@@ -499,7 +555,14 @@ def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
             ),
             "send_window_is_open": bool(outreach.get("send_window_is_open") or False),
             "send_window_reason": outreach.get("send_window_reason", ""),
+            "send_window_now_local": outreach.get("send_window_now_local", ""),
+            "send_window_start_local": outreach.get("send_window_start_local", ""),
+            "send_window_end_local": outreach.get("send_window_end_local", ""),
             "send_window_next_open_local": outreach.get("send_window_next_open_local", ""),
+            "send_window_seconds_until_open": int(outreach.get("send_window_seconds_until_open") or 0),
+            "send_window_seconds_open": send_window_seconds_open,
+            "send_window_stall_grace_seconds": send_window_stall_grace_seconds,
+            "outbound_send_stalled": outbound_send_stalled,
             "next_money_move": outreach.get("next_money_move", ""),
         },
         "conversion": {
@@ -541,6 +604,8 @@ def _bottleneck(snapshot: dict[str, Any]) -> str:
         return "checkout_to_payment"
     if int(intent.get("checkout_clicks") or 0) > int(money.get("payments") or 0):
         return "checkout_to_payment"
+    if _outbound_send_stalled(outreach):
+        return "outbound_send_stalled"
     if outreach.get("active_experiment_needs_sample"):
         if int(outreach.get("active_experiment_new_due_count") or 0) > 0:
             return "active_experiment_sample"
@@ -563,6 +628,10 @@ def _next_action(bottleneck: str) -> str:
         "messy_notes_to_payment": "Send the notes-to-checkout follow-up.",
         "sample_to_notes": "Send the sample-to-notes follow-up.",
         "checkout_to_payment": "Keep notes-first friction low and make the paid test obvious after interest.",
+        "outbound_send_stalled": (
+            "Send window is open with queued leads and capacity, but zero sends; "
+            "retry sender and inspect the latest outreach failure."
+        ),
         "active_experiment_sample": "Collect the active outbound experiment sample before judging the offer.",
         "active_experiment_refill": "Refill fresh first-touch leads for the active outbound experiment.",
         "page_to_lead": "Improve the first-screen ask before changing the backend.",
