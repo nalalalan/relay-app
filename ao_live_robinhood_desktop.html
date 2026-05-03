@@ -850,10 +850,11 @@
     function operatorState(ops, status, rhythm) {
       const moneySystem = ops?.money_system || {};
       const op = moneySystem.operator_mode || status.operator_mode || {};
+      const plan = status.autonomous_plan || {};
       const mode = String(op.mode || "");
       const doNotInterrupt = op.do_not_interrupt_user === true;
       const reason = String(op.reason || "");
-      const nextWindow = moneySystem.next_autonomous_window || status.send_window_next_open_local || "";
+      const nextWindow = moneySystem.next_autonomous_window || plan.next_autonomous_window || status.send_window_next_open_local || "";
 
       if (mode) {
         return {
@@ -862,7 +863,9 @@
           mode,
           doNotInterrupt,
           nextWindow,
-          activeProgress: moneySystem.active_experiment_progress || ""
+          activeProgress: moneySystem.active_experiment_progress || plan.active_experiment_progress || "",
+          planSummary: plan.summary || "",
+          reviewRule: plan.review_rule || ""
         };
       }
 
@@ -875,7 +878,9 @@
           mode: "reply_signal",
           doNotInterrupt: false,
           nextWindow,
-          activeProgress: ""
+          activeProgress: "",
+          planSummary: "",
+          reviewRule: ""
         };
       }
       return {
@@ -884,7 +889,9 @@
         mode: "local_read",
         doNotInterrupt: true,
         nextWindow,
-        activeProgress: ""
+        activeProgress: plan.active_experiment_progress || "",
+        planSummary: plan.summary || "",
+        reviewRule: plan.review_rule || ""
       };
     }
 
@@ -1024,10 +1031,11 @@
         headline = "Stay out. Relay is handling it.";
         const next = fmtMoment(operator.nextWindow);
         const progress = operator.activeProgress ? ` Active sample: ${operator.activeProgress}.` : "";
-        copy = `${operator.reason}${next ? ` Next autonomous window: ${next}.` : ""}${progress}`;
+        const plan = operator.planSummary ? ` ${operator.planSummary}` : "";
+        copy = `${operator.reason}${next ? ` Next autonomous window: ${next}.` : ""}${progress}${plan}`;
       } else if (operator && !operator.doNotInterrupt) {
         headline = "Attention needed.";
-        copy = operator.reason || "There is a real signal worth handling before the system keeps scaling.";
+        copy = operator.reason || operator.planSummary || "There is a real signal worth handling before the system keeps scaling.";
       } else if (moneyToday > 0) {
         headline = "Money landed today.";
         copy = `${fmtExactMoney(moneyToday)} came in today. The weekly total is ${fmtMoney(moneyWeek, moneyWeek < 100 ? 2 : 0)}.`;

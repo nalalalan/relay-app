@@ -103,13 +103,59 @@ def _operator_mode(status: dict, success: dict) -> dict:
     }
 
 
+def _ceil_div(numerator: int, denominator: int) -> int:
+    if numerator <= 0:
+        return 0
+    return (numerator + max(denominator, 1) - 1) // max(denominator, 1)
+
+
+def _autonomous_plan(status: dict, operator: dict, success: dict) -> dict:
+    active_sends = _safe_int(status.get("active_experiment_sends"))
+    active_target = _safe_int(status.get("active_experiment_sample_target"))
+    active_due = _safe_int(status.get("active_experiment_new_due_count"))
+    active_remaining = max(active_target - active_sends, 0) if active_target else 0
+    cap_remaining = _safe_int(status.get("cap_remaining"))
+    daily_cap = _safe_int(status.get("daily_send_cap"))
+    capacity = max(min(cap_remaining or daily_cap, daily_cap or cap_remaining or 1), 1)
+    windows_remaining = _ceil_div(active_remaining, capacity)
+    next_window = str(status.get("send_window_next_open_local") or "").strip()
+    mode = str(operator.get("mode") or "").strip()
+
+    if mode == "attention_required":
+        phase = "human_signal"
+        summary = str(operator.get("reason") or "Handle the real signal before changing volume.")
+    elif active_target and active_remaining > 0:
+        phase = "collect_active_sample"
+        summary = (
+            f"Collect {active_remaining} more active-variant sends before judging. "
+            f"At the current cap, that is about {windows_remaining} send window"
+            f"{'' if windows_remaining == 1 else 's'}."
+        )
+    else:
+        phase = "judge_or_rotate"
+        summary = str(success.get("next_action") or "Review reply and payment signal before changing volume.")
+
+    return {
+        "phase": phase,
+        "summary": summary,
+        "active_experiment_progress": f"{active_sends}/{active_target}" if active_target else "",
+        "active_experiment_remaining": active_remaining,
+        "active_experiment_due_now": active_due,
+        "estimated_windows_remaining": windows_remaining,
+        "next_autonomous_window": next_window,
+        "review_rule": "do not judge the offer until the active sample is complete or real buyer signal appears",
+    }
+
+
 def _status_with_operator_mode() -> dict:
     status = outreach_status()
     try:
         success = relay_success_status()
     except Exception as error:
         success = {"status": "error", "bottleneck": "status_unavailable", "next_action": str(error)}
-    status["operator_mode"] = _operator_mode(status, success)
+    operator = _operator_mode(status, success)
+    status["operator_mode"] = operator
+    status["autonomous_plan"] = _autonomous_plan(status, operator, success)
     status["relay_success_bottleneck"] = success.get("bottleneck")
     status["relay_success_next_action"] = success.get("next_action")
     return status
