@@ -1191,6 +1191,10 @@ def _payment_webhook_preflight() -> dict[str, Any]:
         )
         env = _env_snapshot()
         handler_available = callable(getattr(acquisition_supervisor, "handle_stripe_purchase_webhook", None))
+        unmatched_buyer_attach_available = callable(
+            getattr(acquisition_supervisor, "_ensure_stripe_paid_prospect", None)
+        )
+        duplicate_guard_available = callable(getattr(acquisition_supervisor, "_stripe_paid_event_for_session", None))
         onboarding_available = callable(getattr(post_purchase_autopilot, "send_paid_onboarding_for_email", None))
 
         detail.update(
@@ -1207,8 +1211,12 @@ def _payment_webhook_preflight() -> dict[str, Any]:
                 "reply_to_configured": bool(settings.reply_to_email),
                 "intake_url_configured": bool(intake_url),
                 "handler_available": handler_available,
+                "unmatched_buyer_attach_available": unmatched_buyer_attach_available,
+                "duplicate_guard_available": duplicate_guard_available,
                 "paid_onboarding_available": onboarding_available,
                 "would_record_stripe_paid": bool(email and amount_total > 0 and currency),
+                "would_attach_paid_buyer_record": bool(email and unmatched_buyer_attach_available),
+                "would_ignore_duplicate_checkout_session": bool(duplicate_guard_available),
                 "would_start_paid_onboarding": bool(email and onboarding_available),
             }
         )
@@ -1243,6 +1251,10 @@ def _payment_webhook_preflight() -> dict[str, Any]:
             missing.append("PAID_INTAKE_URL")
         if not handler_available:
             missing.append("STRIPE_WEBHOOK_HANDLER")
+        if not unmatched_buyer_attach_available:
+            missing.append("STRIPE_UNMATCHED_BUYER_ATTACH")
+        if not duplicate_guard_available:
+            missing.append("STRIPE_DUPLICATE_PAYMENT_GUARD")
         if not onboarding_available:
             missing.append("PAID_ONBOARDING_HANDLER")
     except Exception as exc:

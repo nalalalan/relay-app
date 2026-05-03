@@ -97,6 +97,7 @@ def _ensure_paid_prospect(session: Session, email: str) -> AcquisitionProspect:
             source="stripe",
             status="paid",
             stripe_status="paid",
+            intake_status="not_started",
             fit_score=100,
             fit_band="paid",
         )
@@ -104,6 +105,7 @@ def _ensure_paid_prospect(session: Session, email: str) -> AcquisitionProspect:
     else:
         prospect.status = "paid"
         prospect.stripe_status = "paid"
+        prospect.intake_status = prospect.intake_status or "not_started"
     return prospect
 
 
@@ -115,6 +117,18 @@ def _safe_json(raw: str | None) -> dict[str, Any]:
         return parsed if isinstance(parsed, dict) else {}
     except Exception:
         return {}
+
+
+def _stripe_event_email(payload: dict[str, Any]) -> str:
+    raw_object = payload.get("raw", {}).get("data", {}).get("object", {})
+    return str(
+        payload.get("email")
+        or payload.get("customer_email")
+        or payload.get("customer_details", {}).get("email")
+        or raw_object.get("customer_email")
+        or raw_object.get("customer_details", {}).get("email")
+        or ""
+    ).strip().lower()
 
 
 def _latest_relay_notes_lead(session: Session, email: str) -> RelayIntentLead | None:
@@ -375,6 +389,11 @@ def run_paid_intake_reminder_sweep(hours: int = 12) -> dict[str, Any]:
         for event in paid_events:
             stmt = select(AcquisitionProspect).where(AcquisitionProspect.external_id == event.prospect_external_id)
             prospect = session.execute(stmt).scalar_one_or_none()
+            if prospect is None:
+                email = _stripe_event_email(_safe_json(event.payload_json))
+                prospect = _find_prospect_by_email(session, email) if email else None
+                if prospect is None and email:
+                    prospect = _ensure_paid_prospect(session, email)
             if prospect is None:
                 skipped += 1
                 continue

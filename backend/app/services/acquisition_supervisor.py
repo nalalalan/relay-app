@@ -294,6 +294,16 @@ def _log_event(
     )
 
 
+def _safe_json(raw: str | None) -> dict[str, Any]:
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        return {}
+
+
 def _upsert_prospect(session: Session, row: Dict[str, Any]) -> AcquisitionProspect:
     external_id = str(
         row.get("id")
@@ -685,6 +695,71 @@ def _find_prospect_by_email(session: Session, email: str) -> AcquisitionProspect
     return session.execute(stmt).scalar_one_or_none()
 
 
+def _stripe_buyer_external_id(email: str, session_id: str) -> str:
+    return f"stripe:{email or session_id or 'unknown'}"
+
+
+def _ensure_stripe_paid_prospect(
+    session: Session,
+    *,
+    email: str,
+    session_id: str,
+    event_payload: dict[str, Any],
+) -> AcquisitionProspect:
+    external_id = _stripe_buyer_external_id(email, session_id)
+    prospect = _find_prospect_by_email(session, email) if email else None
+    if prospect is None:
+        prospect = session.execute(
+            select(AcquisitionProspect)
+            .where(AcquisitionProspect.external_id == external_id)
+            .limit(1)
+        ).scalar_one_or_none()
+    if prospect is None:
+        prospect = AcquisitionProspect(
+            external_id=external_id,
+            contact_email=email,
+            company_name="paid Relay buyer",
+            source="stripe",
+            fit_score=100,
+            fit_band="paid",
+            segment="paid_checkout",
+            intake_status="not_started",
+        )
+        session.add(prospect)
+
+    prospect.status = "paid"
+    prospect.stripe_status = "paid"
+    prospect.intake_status = prospect.intake_status or "not_started"
+    if email and not prospect.contact_email:
+        prospect.contact_email = email
+    if not prospect.company_name:
+        prospect.company_name = "paid Relay buyer"
+    prospect.source = prospect.source or "stripe"
+    prospect.fit_score = max(int(prospect.fit_score or 0), 100)
+    prospect.fit_band = prospect.fit_band or "paid"
+    prospect.segment = prospect.segment or "paid_checkout"
+    prospect.payload_json = json.dumps(event_payload, ensure_ascii=False)
+    return prospect
+
+
+def _stripe_paid_event_for_session(session: Session, session_id: str) -> AcquisitionEvent | None:
+    session_id = (session_id or "").strip()
+    if not session_id:
+        return None
+    events = session.execute(
+        select(AcquisitionEvent)
+        .where(AcquisitionEvent.event_type == "stripe_paid")
+        .order_by(AcquisitionEvent.created_at.desc())
+        .limit(500)
+    ).scalars().all()
+    for event in events:
+        payload = _safe_json(event.payload_json)
+        raw_object = payload.get("raw", {}).get("data", {}).get("object", {})
+        if session_id == str(payload.get("session_id") or raw_object.get("id") or "").strip():
+            return event
+    return None
+
+
 def _reply_checkout_url() -> str:
     return (
         getattr(settings, "packet_checkout_url", "")
@@ -926,41 +1001,51 @@ def handle_stripe_purchase_webhook(payload: Dict[str, Any]) -> Dict[str, Any]:
             "raw": payload,
         }
 
+        was_unmatched = prospect is None
         if prospect is None:
-            session.add(
-                AcquisitionEvent(
-                    event_type="stripe_paid",
-                    prospect_external_id=f"stripe:{email or session_id or 'unknown'}",
-                    summary="stripe checkout completed (unmatched buyer)",
-                    payload_json=json.dumps(event_payload, ensure_ascii=False),
-                )
+            prospect = _ensure_stripe_paid_prospect(
+                session,
+                email=email,
+                session_id=session_id,
+                event_payload=event_payload,
             )
+        else:
+            prospect.stripe_status = "paid"
+            prospect.status = "paid"
+            prospect.payload_json = json.dumps(event_payload, ensure_ascii=False)
+
+        duplicate_event = _stripe_paid_event_for_session(session, session_id)
+        if duplicate_event is not None:
             session.commit()
             return {
                 "status": "processed",
-                "summary": "stripe payment recorded (unmatched buyer)",
+                "summary": "stripe payment already recorded",
+                "prospect_external_id": prospect.external_id,
                 "email": email,
                 "amount_total": amount_total,
                 "currency": currency,
+                "created_paid_prospect": was_unmatched,
+                "duplicate": True,
+                "existing_event_id": duplicate_event.id,
             }
 
-        prospect.stripe_status = "paid"
-        prospect.status = "paid"
         _log_event(
             session,
             "stripe_paid",
             prospect.external_id,
-            "stripe checkout completed",
+            "stripe checkout completed (new paid buyer)" if was_unmatched else "stripe checkout completed",
             event_payload,
         )
         session.commit()
         return {
             "status": "processed",
-            "summary": "prospect marked paid",
+            "summary": "paid buyer prospect created" if was_unmatched else "prospect marked paid",
             "prospect_external_id": prospect.external_id,
             "email": email,
             "amount_total": amount_total,
             "currency": currency,
+            "created_paid_prospect": was_unmatched,
+            "duplicate": False,
         }
 
 
