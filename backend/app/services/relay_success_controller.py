@@ -24,6 +24,7 @@ SUCCESS_TICK_EVENT = "relay_success_control_tick"
 INTAKE_SMOKE_EVENT = "relay_intake_smoke_test"
 DELIVERY_SMOKE_EVENT = "relay_delivery_smoke_test"
 EXPERIMENT_PLAN_EVENT = "relay_experiment_plan"
+HARD_PAID_TEST_VARIANT = "hard_paid_test_direct"
 
 
 def _session() -> Session:
@@ -1035,6 +1036,13 @@ def _bottleneck(snapshot: dict[str, Any]) -> str:
     performance = snapshot.get("performance") if isinstance(snapshot.get("performance"), dict) else {}
     performance_ok = performance.get("status") == "ok"
     active_signal = performance.get("active_experiment_signal") if isinstance(performance.get("active_experiment_signal"), dict) else {}
+    active_plan = performance.get("active_experiment") if isinstance(performance.get("active_experiment"), dict) else {}
+    active_variant = str(
+        active_plan.get("experiment_variant")
+        or outreach.get("active_experiment_variant")
+        or active_signal.get("variant")
+        or ""
+    ).strip()
     active_sends = int(active_signal.get("sends") or outreach.get("active_experiment_sends") or 0)
     active_target = int(outreach.get("active_experiment_sample_target") or _experiment_failure_sample())
     active_replies = int(active_signal.get("replies") or 0)
@@ -1048,6 +1056,15 @@ def _bottleneck(snapshot: dict[str, Any]) -> str:
     )
     no_signal_rotation_count = _safe_int(experiment_history.get("zero_signal_rotation_count"))
     no_signal_rotation_threshold = max(_safe_int(experiment_history.get("zero_signal_rotation_threshold")), 1)
+    zero_signal_escalated = no_signal_rotation_count >= no_signal_rotation_threshold
+    preempt_weak_zero_signal_lane = (
+        performance_ok
+        and zero_signal_escalated
+        and active_variant != HARD_PAID_TEST_VARIANT
+        and active_replies <= 0
+        and active_payments <= 0
+        and int(money.get("payments") or 0) <= 0
+    )
     repeated_no_signal = active_sample_complete_without_signal and no_signal_rotation_count + 1 >= no_signal_rotation_threshold
     unhandled_replies = int(
         outreach.get("unhandled_replies")
@@ -1101,6 +1118,8 @@ def _bottleneck(snapshot: dict[str, Any]) -> str:
         return "outbound_window_missed"
     if _outbound_send_window_underfilled(outreach):
         return "outbound_window_underfilled"
+    if preempt_weak_zero_signal_lane:
+        return "offer_market_rebuild_required"
     if outreach.get("active_experiment_needs_sample"):
         if int(outreach.get("active_experiment_new_due_count") or 0) > 0:
             return "active_experiment_sample"
@@ -1187,7 +1206,14 @@ def _money_proof_mandate(snapshot: dict[str, Any], bottleneck: str) -> dict[str,
     fulfilled = int(conversion.get("paid_notes_fulfilled") or 0)
     zero_signal_rotations = _safe_int(experiment_history.get("zero_signal_rotation_count"))
     zero_signal_threshold = max(_safe_int(experiment_history.get("zero_signal_rotation_threshold")), 1)
-    zero_signal_effective_count = zero_signal_rotations + (1 if bottleneck == "offer_market_rebuild_required" else 0)
+    current_completed_no_signal_sample = (
+        bottleneck == "offer_market_rebuild_required"
+        and active_target > 0
+        and active_sends >= active_target
+        and payments <= 0
+        and unhandled_replies <= 0
+    )
+    zero_signal_effective_count = zero_signal_rotations + (1 if current_completed_no_signal_sample else 0)
 
     if snapshot.get("critical_missing"):
         state = "restore_revenue_loop"
@@ -1223,6 +1249,10 @@ def _money_proof_mandate(snapshot: dict[str, Any], bottleneck: str) -> dict[str,
         state = "restore_send_execution"
         primary_action = _next_action(bottleneck)
         owner_policy = "manual_input_required"
+    elif bottleneck == "offer_market_rebuild_required":
+        state = "rebuild_offer_or_market_proof"
+        primary_action = "switch from routine rotations to a harder paid-offer and market proof before another full sample"
+        owner_policy = "owner_out_of_loop"
     elif active_remaining > 0 and expected_sends > 0:
         state = "prove_active_sample"
         expected_progress = window_contract.get("expected_progress") or f"{min(active_sends + expected_sends, active_target)}/{active_target}"
@@ -1231,10 +1261,6 @@ def _money_proof_mandate(snapshot: dict[str, Any], bottleneck: str) -> dict[str,
     elif bottleneck in {"active_experiment_refill", "lead_refill", "traffic"}:
         state = "refill_direct_buyer_leads"
         primary_action = _next_action(bottleneck)
-        owner_policy = "owner_out_of_loop"
-    elif bottleneck == "offer_market_rebuild_required":
-        state = "rebuild_offer_or_market_proof"
-        primary_action = "switch from routine rotations to a harder paid-offer and market proof before another full sample"
         owner_policy = "owner_out_of_loop"
     elif bottleneck == "outbound_targeting_or_copy":
         state = "rotate_one_variable"

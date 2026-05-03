@@ -265,6 +265,46 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
             delay_after_prev_days=2,
         ),
     ],
+    "hard_paid_test_direct": [
+        StepTemplate(
+            step_number=1,
+            subject="one-call follow-up cleanup",
+            body=(
+                "Hey - quick question.\n\n"
+                "If {company_name} has one sales or client call where the follow-up is stuck in rough notes, I can turn it into the client-ready recap, follow-up draft, next steps, and CRM-ready update for $40.\n\n"
+                "The paid test is here:\n"
+                "{packet_checkout_url}\n\n"
+                "If you want me to look at fit first, send the rough note here:\n"
+                "{notes_url}\n\n"
+                "- Alan"
+            ),
+            delay_after_prev_days=0,
+        ),
+        StepTemplate(
+            step_number=2,
+            subject="re: one-call follow-up cleanup",
+            body=(
+                "Following up once.\n\n"
+                "This is not a software rollout. It is one messy call turned into a finished handoff for $40.\n\n"
+                "If delayed follow-up is costing time, the smallest test is here:\n"
+                "{packet_checkout_url}\n\n"
+                "- Alan"
+            ),
+            delay_after_prev_days=1,
+        ),
+        StepTemplate(
+            step_number=3,
+            subject="re: one-call follow-up cleanup",
+            body=(
+                "Last note from me.\n\n"
+                "If this is not a real problem, no worries.\n\n"
+                "If one stuck call is worth cleaning up, the paid test is here:\n"
+                "{packet_checkout_url}\n\n"
+                "- Alan"
+            ),
+            delay_after_prev_days=2,
+        ),
+    ],
 }
 
 _applied = False

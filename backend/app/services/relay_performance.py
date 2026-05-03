@@ -557,8 +557,10 @@ def _choose_variant(
 
     reasons.append(f"No reply signal after measurable sends in the {evidence_name}; rotate one controlled copy/targeting variable.")
     if zero_signal_rotation_count + 1 >= _zero_signal_rotation_threshold():
-        reasons.append("Repeated no-reply/no-payment rotations reached the escalation threshold; test the harder paid-offer lane.")
-        return "hard_paid_test_direct", reasons
+        if previous_variant != "hard_paid_test_direct":
+            reasons.append("Repeated no-reply/no-payment rotations reached the escalation threshold; test the harder paid-offer lane.")
+            return "hard_paid_test_direct", reasons
+        reasons.append("The hard paid-offer lane is already active; rotate the next controlled variable instead of repeating it.")
     if previous_variant not in sequence:
         return sequence[0], reasons
     return sequence[(sequence.index(previous_variant) + 1) % len(sequence)], reasons
