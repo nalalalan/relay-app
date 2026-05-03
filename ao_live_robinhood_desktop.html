@@ -933,6 +933,7 @@
       const successGovernor = moneySystem.success_governor || {};
       const ownerAbsenceContract = moneySystem.owner_absence_contract || {};
       const autonomousMoneyMandate = moneySystem.autonomous_money_mandate || {};
+      const moneyProofHealth = moneySystem.money_proof_health || {};
       const blockers = Array.isArray(launch.blockers) ? launch.blockers : [];
 
       if (mode) {
@@ -959,6 +960,7 @@
           successGovernor,
           ownerAbsenceContract,
           autonomousMoneyMandate,
+          moneyProofHealth,
           planSummary: proofTarget,
           successMetric,
           interruptRule,
@@ -990,6 +992,7 @@
           successGovernor,
           ownerAbsenceContract,
           autonomousMoneyMandate,
+          moneyProofHealth,
           planSummary: "",
           successMetric: "",
           interruptRule: "",
@@ -1017,6 +1020,7 @@
         successGovernor,
         ownerAbsenceContract,
         autonomousMoneyMandate,
+        moneyProofHealth,
         planSummary: plan.summary || "",
         successMetric: "",
         interruptRule: "",
@@ -1213,8 +1217,12 @@
       $("todayReplies").textContent = String(status.replies_today ?? 0);
       $("sendRhythm").textContent = operator.label;
       const mandate = operator.autonomousMoneyMandate || {};
+      const proofHealth = operator.moneyProofHealth || {};
+      const proofAction = proofHealth.state && proofHealth.state !== "waiting_for_proof_deadline"
+        ? proofHealth.autonomous_recovery_action
+        : "";
       $("rhythmCopy").textContent = operator.doNotInterrupt
-        ? (mandate.primary_action || "No manual move is useful right now. Let the next window run.")
+        ? (proofAction || mandate.primary_action || "No manual move is useful right now. Let the next window run.")
         : "Handle the real signal first. Do not tune volume until that is done.";
       if (!operator.reason) {
         $("rhythmCopy").textContent = rhythm.label === "Moving"

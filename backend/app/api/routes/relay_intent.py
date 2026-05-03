@@ -3,7 +3,7 @@ import math
 import os
 import re
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from html import escape
 from typing import Any
 
@@ -591,6 +591,107 @@ def _parse_contract_datetime(value: Any) -> datetime | None:
         return datetime.fromisoformat(str(value))
     except Exception:
         return None
+
+
+def _to_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _progress_current(value: Any) -> int:
+    text = str(value or "").strip()
+    if "/" not in text:
+        return 0
+    try:
+        return _safe_int(text.split("/", 1)[0])
+    except Exception:
+        return 0
+
+
+def _money_proof_health(
+    *,
+    money_proof_mandate: dict[str, Any],
+    autonomous_money_mandate: dict[str, Any],
+    launch_readiness: dict[str, Any],
+    active_sends: int,
+    active_remaining: int,
+    payments: int,
+    replies: int,
+    checkout_clicks: int,
+) -> dict[str, Any]:
+    mandate = money_proof_mandate if money_proof_mandate else autonomous_money_mandate
+    proof_state = str(mandate.get("state") or "").strip()
+    deadline = (
+        mandate.get("proof_deadline")
+        or autonomous_money_mandate.get("proof_deadline")
+        or launch_readiness.get("next_window_audit_at")
+        or ""
+    )
+    deadline_utc = _to_utc(_parse_contract_datetime(deadline))
+    now_utc = datetime.now(timezone.utc)
+    overdue = deadline_utc is not None and now_utc > deadline_utc
+    seconds_until_deadline = (
+        int((deadline_utc - now_utc).total_seconds())
+        if deadline_utc is not None
+        else None
+    )
+    expected_next_sends = _safe_int(launch_readiness.get("expected_next_window_sends"))
+    expected_progress = str(launch_readiness.get("expected_progress_after_next_window") or "").strip()
+    expected_active_sends = _progress_current(expected_progress)
+    if expected_active_sends <= 0 and expected_next_sends > 0:
+        expected_active_sends = active_sends + expected_next_sends
+    window_state = str(launch_readiness.get("window_execution_state") or "").strip()
+
+    if payments > 0:
+        state = "money_proof_satisfied"
+        reason = "payment exists"
+        autonomous_recovery_action = "fulfill the paid buyer and keep the current lane stable"
+    elif checkout_clicks > payments or replies > 0:
+        state = "buyer_signal_open"
+        reason = "buyer signal is ahead of payment"
+        autonomous_recovery_action = "close buyer signal through the paid test before changing the experiment"
+    elif proof_state == "prove_active_sample" and expected_active_sends > 0 and active_sends >= expected_active_sends:
+        state = "execution_proof_satisfied"
+        reason = f"active sends reached {active_sends}, meeting the expected proof of {expected_active_sends}"
+        autonomous_recovery_action = "continue the active sample without changing variables"
+    elif proof_state == "prove_active_sample" and overdue:
+        state = "execution_proof_missed"
+        reason = f"proof deadline passed before active sends reached {expected_active_sends}"
+        autonomous_recovery_action = "treat this as an execution miss, run recovery, and do not judge demand"
+    elif window_state in {"window_missed", "window_underfilled"}:
+        state = "execution_proof_at_risk"
+        reason = f"send window state is {window_state}"
+        autonomous_recovery_action = "fix send execution before judging targeting, copy, or price"
+    elif proof_state in {"restore_revenue_loop", "restore_send_execution"}:
+        state = "recovery_required"
+        reason = mandate.get("primary_action") or "revenue loop needs recovery"
+        autonomous_recovery_action = mandate.get("allowed_autonomous_action") or mandate.get("primary_action") or "restore the revenue loop"
+    elif deadline_utc is not None:
+        state = "waiting_for_proof_deadline"
+        reason = "proof deadline has not arrived"
+        autonomous_recovery_action = "stay out and let the approved autonomous action run"
+    else:
+        state = "watching_money_proof"
+        reason = mandate.get("primary_action") or "watch the current money proof"
+        autonomous_recovery_action = mandate.get("allowed_autonomous_action") or mandate.get("primary_action") or "continue the current money proof"
+
+    return {
+        "state": state,
+        "reason": reason,
+        "proof_state": proof_state,
+        "proof_deadline": deadline,
+        "seconds_until_deadline": seconds_until_deadline,
+        "expected_active_sends": expected_active_sends,
+        "actual_active_sends": active_sends,
+        "active_remaining": active_remaining,
+        "window_state": window_state,
+        "autonomous_recovery_action": autonomous_recovery_action,
+        "owner_interrupt": state in {"execution_proof_missed", "recovery_required"} or "buyer_signal" in state,
+        "do_not_judge_demand": state in {"execution_proof_missed", "execution_proof_at_risk", "recovery_required"},
+    }
 
 
 def _next_window_audit_at(
@@ -2130,6 +2231,18 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 owner_absence=owner_absence_contract,
                 launch_readiness=launch_readiness,
             )
+            money_proof_mandate = success.get("money_proof_mandate") or {}
+            money_proof_health = _money_proof_health(
+                money_proof_mandate=money_proof_mandate,
+                autonomous_money_mandate=autonomous_money_mandate,
+                launch_readiness=launch_readiness,
+                active_sends=active_sends,
+                active_remaining=active_remaining,
+                payments=payments,
+                replies=replies,
+                checkout_clicks=checkout_clicks,
+            )
+            checks["relay_success"]["money_proof_health"] = money_proof_health
             checks["money_system"] = {
                 "state": money_state,
                 "gross_usd": money.get("gross_usd", 0),
@@ -2143,7 +2256,8 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 "success_governor": success_governor,
                 "owner_absence_contract": owner_absence_contract,
                 "autonomous_money_mandate": autonomous_money_mandate,
-                "money_proof_mandate": success.get("money_proof_mandate") or {},
+                "money_proof_mandate": money_proof_mandate,
+                "money_proof_health": money_proof_health,
                 "revenue_ladder": revenue_ladder,
                 "close_path": {
                     "replies": replies,
