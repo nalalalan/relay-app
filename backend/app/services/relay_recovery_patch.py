@@ -15,6 +15,7 @@ from app.db.base import SessionLocal
 from app.integrations.apollo import ApolloClient
 from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect
 from app.services.custom_outreach import StepTemplate
+from app.services.relay_research_journal import log_money_loop_journal
 
 
 router = APIRouter()
@@ -660,6 +661,7 @@ def _log_money_loop_tick(result: dict[str, Any]) -> None:
                 )
             )
             session.commit()
+        log_money_loop_journal(result)
     except Exception as exc:
         _money_loop_state["last_error"] = f"money_loop_log_failed: {exc}"
 

@@ -22,6 +22,7 @@ from app.models.production_wiring import (
     ProductionTransition,
 )
 from app.models.relay_intent import RelayIntentEvent, RelayIntentLead
+from app.services.relay_research_journal import RELAY_RESEARCH_JOURNAL_EVENT
 
 
 router = APIRouter()
@@ -1875,6 +1876,50 @@ def relay_intent_summary(days: int = 7, limit: int = 20) -> dict[str, Any]:
         db.close()
 
 
+@router.get("/research-journal")
+def relay_research_journal(days: int = 30, limit: int = 50) -> dict[str, Any]:
+    days = max(1, min(days, 365))
+    limit = max(1, min(limit, 200))
+    since = datetime.utcnow() - timedelta(days=days)
+
+    db = SessionLocal()
+    try:
+        total_count = (
+            db.query(func.count(AcquisitionEvent.id))
+            .filter(AcquisitionEvent.event_type == RELAY_RESEARCH_JOURNAL_EVENT)
+            .filter(AcquisitionEvent.created_at >= since)
+            .scalar()
+            or 0
+        )
+        events = (
+            db.query(AcquisitionEvent)
+            .filter(AcquisitionEvent.event_type == RELAY_RESEARCH_JOURNAL_EVENT)
+            .filter(AcquisitionEvent.created_at >= since)
+            .order_by(AcquisitionEvent.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return {
+            "ok": True,
+            "days": days,
+            "limit": limit,
+            "event_type": RELAY_RESEARCH_JOURNAL_EVENT,
+            "count": int(total_count),
+            "entries": [
+                {
+                    "id": event.id,
+                    "created_at": event.created_at.isoformat() if event.created_at else "",
+                    "source": event.prospect_external_id.replace("relay-research:", "", 1),
+                    "summary": event.summary,
+                    "payload": _safe_payload(event.payload_json),
+                }
+                for event in events
+            ],
+        }
+    finally:
+        db.close()
+
+
 @router.get("/ops-check")
 def relay_ops_check(days: int = 14) -> dict[str, Any]:
     days = max(1, min(days, 90))
@@ -1906,6 +1951,7 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
             "autopilot_batch_route": "/autopilot/batch",
             "autopilot_digest_route": "/autopilot/digest",
             "intent_summary_route": "/api/relay/intent-summary",
+            "research_journal_route": "/api/relay/research-journal",
         }
 
         event_counts = (
@@ -1983,6 +2029,7 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
             "last_success_control_tick": _latest_acquisition_event(db, "relay_success_control_tick"),
             "last_money_loop_tick": _latest_acquisition_event(db, "relay_money_loop_tick"),
             "last_money_loop_detail": _compact_money_loop_payload(_latest_acquisition_payload(db, "relay_money_loop_tick")),
+            "last_research_journal_entry": _latest_acquisition_event(db, RELAY_RESEARCH_JOURNAL_EVENT),
             "last_outbound_experiment_plan": _latest_acquisition_event(db, "relay_experiment_plan"),
             "last_inbound_followup": _latest_acquisition_event(db, "autopilot_messy_notes_checkout_followup_sent")
             or _latest_acquisition_event(db, "autopilot_messy_notes_second_followup_sent")

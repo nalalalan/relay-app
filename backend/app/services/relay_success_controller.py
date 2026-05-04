@@ -23,6 +23,7 @@ from app.services.relay_performance import (
     relay_performance_status,
     run_weekly_performance_review,
 )
+from app.services.relay_research_journal import log_success_control_journal
 
 
 SUCCESS_TICK_EVENT = "relay_success_control_tick"
@@ -2463,6 +2464,7 @@ def run_relay_success_control_tick() -> dict[str, Any]:
         )
         session.commit()
 
+    log_success_control_journal(result)
     return result
 
 
