@@ -252,6 +252,8 @@ STEP_TEMPLATE_VARIANTS: dict[str, list[StepTemplate]] = {
                 "If {company_name} has one sales or client call where the follow-up is stuck in rough notes, I can turn it into the client-ready recap, follow-up draft, next steps, and CRM-ready update for $40.\n\n"
                 "The paid test is here:\n"
                 "{packet_checkout_url}\n\n"
+                "If you want me to look at fit first, send the rough note here:\n"
+                "{notes_url}\n\n"
                 "Sample format:\n"
                 "{sample_url}\n\n"
                 "- Alan"
@@ -572,6 +574,10 @@ def _sample_url() -> str:
     return _landing_page_url().rstrip("/") + "/sample.pdf"
 
 
+def _notes_url() -> str:
+    return _landing_page_url().rstrip("/") + "/#send-notes"
+
+
 def _is_generic_inbox(email_address: str) -> bool:
     local = (email_address or "").split("@", 1)[0].strip().lower()
     if not local:
@@ -592,6 +598,7 @@ def _render_body(template: StepTemplate, prospect: AcquisitionProspect) -> str:
         monthly_autopilot_url=_monthly_autopilot_url(),
         landing_page_url=_landing_page_url(),
         sample_url=_sample_url(),
+        notes_url=_notes_url(),
     )
 
 
