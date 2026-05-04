@@ -19,7 +19,12 @@ EXPERIMENT_PLAN_EVENT = "relay_experiment_plan"
 RESEARCH_INPUT_EVENT = "relay_optimizer_research_input"
 
 DEFAULT_EXPERIMENT_VARIANT = "control_sample_ask"
-CURRENT_VERSION = "relay_optimizer_v1"
+CURRENT_VERSION = "relay_optimizer_v2"
+ESCALATED_MONEY_EXPERIMENTS = {
+    "hard_paid_test_direct",
+    "stalled_opportunity_direct",
+    "revenue_leak_direct",
+}
 
 GENERIC_INBOX_LOCAL_PARTS = {
     "admin",
@@ -93,6 +98,17 @@ EXPERIMENTS: dict[str, dict[str, Any]] = {
             "sales operations agency owner",
         ],
         "change": "Lead with the concrete $40 paid test and the after-call follow-up outcome instead of a free sample ask.",
+    },
+    "stalled_opportunity_direct": {
+        "label": "Stalled opportunity",
+        "hypothesis": "A stalled-opportunity framing may reach buyers who ignore generic after-call cleanup language.",
+        "sample_target": 10,
+        "query_rotation": [
+            "agency owner proposal follow up",
+            "marketing agency sales operations founder",
+            "b2b agency founder client follow up",
+        ],
+        "change": "Frame the $40 test as finishing one stalled sales follow-up.",
     },
     "revenue_leak_direct": {
         "label": "Revenue leak angle",
@@ -671,18 +687,21 @@ def _choose_variant(
         return previous_variant, reasons
 
     reasons.append(f"No reply signal after measurable sends in the {evidence_name}; rotate one controlled copy/targeting variable.")
-    if latest_plan_sample_pending and previous_variant in {"hard_paid_test_direct", "revenue_leak_direct"}:
+    if latest_plan_sample_pending and previous_variant in ESCALATED_MONEY_EXPERIMENTS:
         reasons.append("The escalated paid-offer lane still needs its own sample; do not rotate before evidence.")
         return previous_variant, reasons
     if zero_signal_rotation_count + 1 >= _zero_signal_rotation_threshold():
+        if previous_variant == "stalled_opportunity_direct":
+            reasons.append("The stalled-opportunity lane completed without signal; test the revenue-leak angle before returning to softer sample copy.")
+            return "revenue_leak_direct", reasons
         if previous_variant == "revenue_leak_direct":
             reasons.append("The revenue-leak lane completed without signal; return to explicit paid-test copy before trying softer sample copy.")
             return "paid_test_explicit", reasons
         if previous_variant != "hard_paid_test_direct":
             reasons.append("Repeated no-reply/no-payment rotations reached the escalation threshold; test the harder paid-offer lane.")
             return "hard_paid_test_direct", reasons
-        reasons.append("The hard paid-offer lane completed without signal; test a revenue-leak angle before returning to softer sample copy.")
-        return "revenue_leak_direct", reasons
+        reasons.append("The hard paid-offer lane completed without signal; test a stalled-opportunity offer before returning to softer sample copy.")
+        return "stalled_opportunity_direct", reasons
     if previous_variant not in sequence:
         return sequence[0], reasons
     return sequence[(sequence.index(previous_variant) + 1) % len(sequence)], reasons
@@ -716,7 +735,7 @@ def _plan_payload(
     zero_signal_rotation_threshold: int,
 ) -> dict[str, Any]:
     experiment = EXPERIMENTS.get(variant, EXPERIMENTS[DEFAULT_EXPERIMENT_VARIANT])
-    zero_signal_effective_count = zero_signal_rotation_count + (1 if variant == "hard_paid_test_direct" else 0)
+    zero_signal_effective_count = zero_signal_rotation_count + (1 if variant in ESCALATED_MONEY_EXPERIMENTS else 0)
     evidence_for_cap = (
         prior_week
         if int(prior_week.get("sends", 0))

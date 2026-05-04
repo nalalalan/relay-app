@@ -305,6 +305,48 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
             delay_after_prev_days=2,
         ),
     ],
+    "stalled_opportunity_direct": [
+        StepTemplate(
+            step_number=1,
+            subject="proposal follow-up cleanup",
+            body=(
+                "Hey - quick question.\n\n"
+                "If {company_name} has one sales call where the next step is stuck in notes instead of getting sent, I can turn the rough notes into the follow-up email, recap, open questions, and CRM-ready update for $40.\n\n"
+                "This is for one stalled opportunity, not a software rollout.\n\n"
+                "Start the paid test:\n"
+                "{packet_checkout_url}\n\n"
+                "If you want me to check fit first, send the rough notes:\n"
+                "{notes_url}\n\n"
+                "- Alan"
+            ),
+            delay_after_prev_days=0,
+        ),
+        StepTemplate(
+            step_number=2,
+            subject="re: proposal follow-up cleanup",
+            body=(
+                "Following up once.\n\n"
+                "The offer is simple: one stalled follow-up becomes a finished client-ready handoff.\n\n"
+                "If the deal is worth more than $40, cleanup should not be the bottleneck.\n\n"
+                "Paid test:\n"
+                "{packet_checkout_url}\n\n"
+                "- Alan"
+            ),
+            delay_after_prev_days=1,
+        ),
+        StepTemplate(
+            step_number=3,
+            subject="re: proposal follow-up cleanup",
+            body=(
+                "Last note from me.\n\n"
+                "If every follow-up is already fast, ignore this.\n\n"
+                "If one opportunity is stuck because the notes are not cleaned up, the $40 test is here:\n"
+                "{packet_checkout_url}\n\n"
+                "- Alan"
+            ),
+            delay_after_prev_days=2,
+        ),
+    ],
     "revenue_leak_direct": [
         StepTemplate(
             step_number=1,

@@ -36,7 +36,11 @@ PAYMENT_WEBHOOK_SMOKE_EVENT = "relay_payment_webhook_smoke_test"
 EXPERIMENT_PLAN_EVENT = "relay_experiment_plan"
 DEFAULT_EXPERIMENT_VARIANT = "control_sample_ask"
 HARD_PAID_TEST_VARIANT = "hard_paid_test_direct"
-ESCALATED_MONEY_VARIANTS = {HARD_PAID_TEST_VARIANT, "revenue_leak_direct"}
+ESCALATED_MONEY_VARIANTS = {
+    HARD_PAID_TEST_VARIANT,
+    "stalled_opportunity_direct",
+    "revenue_leak_direct",
+}
 
 
 def _session() -> Session:
