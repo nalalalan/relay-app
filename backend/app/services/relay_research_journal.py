@@ -35,8 +35,16 @@ def _status_label(value: Any) -> str:
         return "none"
     if not isinstance(value, dict):
         return str(value)[:120]
-    status = str(value.get("status") or "").strip()
-    reason = str(value.get("reason") or value.get("summary") or "").strip()
+    raw_status = value.get("status")
+    raw_reason = value.get("reason") or value.get("summary")
+    if isinstance(raw_status, dict):
+        status = "snapshot"
+    else:
+        status = str(raw_status or "").strip()
+    if isinstance(raw_reason, dict):
+        reason = "snapshot"
+    else:
+        reason = str(raw_reason or "").strip()
     if status and reason:
         return f"{status}:{reason}"[:160]
     return (status or reason or "snapshot")[:160]
