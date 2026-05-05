@@ -2114,9 +2114,15 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 experiment_decision_next = "Run the outbound experiment review and rotate one controlled variable."
             cap_remaining = _safe_int(outreach.get("cap_remaining"))
             effective_daily_cap = _safe_int(outreach.get("effective_daily_cap") or outreach.get("daily_send_cap"))
-            window_cap = max(min(cap_remaining, effective_daily_cap or cap_remaining), 0)
-            send_capacity_per_window = min(active_due, window_cap) if active_remaining > 0 and active_due > 0 else 0
-            sample_windows_to_complete = _ceil_div(active_remaining, send_capacity_per_window)
+            current_window_cap = max(min(cap_remaining, effective_daily_cap or cap_remaining), 0)
+            future_window_cap = max(effective_daily_cap, current_window_cap)
+            send_capacity_per_window = min(active_due, current_window_cap) if active_remaining > 0 and active_due > 0 else 0
+            estimated_capacity_per_future_window = (
+                min(active_due, future_window_cap)
+                if active_remaining > 0 and active_due > 0 and future_window_cap > 0
+                else 0
+            )
+            sample_windows_to_complete = _ceil_div(active_remaining, estimated_capacity_per_future_window)
             queued_sample_covers_remaining = active_due >= active_remaining if active_remaining > 0 else True
             send_window_open = bool(outreach.get("send_window_is_open"))
             active_queue_ready = active_due > 0 and cap_remaining > 0
