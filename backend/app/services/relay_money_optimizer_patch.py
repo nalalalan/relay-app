@@ -682,6 +682,29 @@ def _event_variant(event: AcquisitionEvent) -> str:
     return str(payload.get("experiment_variant") or "control_sample_ask").strip() or "control_sample_ask"
 
 
+def _event_step_number(event: AcquisitionEvent) -> int:
+    payload = _safe_json(getattr(event, "payload_json", None))
+    try:
+        return int(payload.get("step_number") or 0)
+    except Exception:
+        pass
+    raw_type = str(getattr(event, "event_type", "") or "")
+    try:
+        return int(raw_type.rsplit("_", 1)[-1])
+    except Exception:
+        return 0
+
+
+def _event_is_first_touch_sample(event: AcquisitionEvent) -> bool:
+    payload = _safe_json(getattr(event, "payload_json", None))
+    marker = payload.get("active_experiment_first_touch")
+    if isinstance(marker, bool):
+        return marker
+    if marker is not None:
+        return str(marker).strip().lower() in {"1", "true", "yes", "y"}
+    return _event_step_number(event) == 1
+
+
 def _active_variant_send_count(session, active_variant: str, experiment: dict[str, Any] | None = None) -> int:
     since = _active_experiment_start(experiment or {})
     events = list(
@@ -692,6 +715,22 @@ def _active_variant_send_count(session, active_variant: str, experiment: dict[st
         ).scalars().all()
     )
     return sum(1 for event in events if _event_variant(event) == active_variant)
+
+
+def _active_variant_sample_send_count(session, active_variant: str, experiment: dict[str, Any] | None = None) -> int:
+    since = _active_experiment_start(experiment or {})
+    events = list(
+        session.execute(
+            select(AcquisitionEvent)
+            .where(AcquisitionEvent.event_type.like("custom_outreach_sent_step_%"))
+            .where(AcquisitionEvent.created_at >= since)
+        ).scalars().all()
+    )
+    return sum(
+        1
+        for event in events
+        if _event_variant(event) == active_variant and _event_is_first_touch_sample(event)
+    )
 
 
 def _render_body(template: StepTemplate, prospect: AcquisitionProspect) -> str:
@@ -741,7 +780,9 @@ def _quality_snapshot(session) -> dict[str, Any]:
     active_experiment = _active_experiment()
     active_variant = str(active_experiment.get("experiment_variant") or "control_sample_ask")
     active_variant_sends = _active_variant_send_count(session, active_variant, active_experiment)
+    active_variant_sample_sends = _active_variant_sample_send_count(session, active_variant, active_experiment)
     experiment_sample_target = _experiment_sample_target(active_experiment)
+    active_sample_complete = active_variant_sample_sends >= experiment_sample_target
     active_experiment_direct_new_due = 0
     active_experiment_generic_new_due = 0
 
@@ -795,7 +836,8 @@ def _quality_snapshot(session) -> dict[str, Any]:
     sent_today = int(outreach._daily_send_count(session) or 0)
     generic_sample_cap = _active_generic_sample_cap()
     active_experiment_allowed_generic_new_due = min(active_experiment_generic_new_due, generic_sample_cap)
-    active_experiment_new_due = active_experiment_direct_new_due + active_experiment_allowed_generic_new_due
+    active_experiment_new_due_raw = active_experiment_direct_new_due + active_experiment_allowed_generic_new_due
+    active_experiment_new_due = 0 if active_sample_complete else active_experiment_new_due_raw
 
     return {
         "direct_inbox_count": direct_active,
@@ -815,9 +857,13 @@ def _quality_snapshot(session) -> dict[str, Any]:
         "active_experiment_variant": active_variant,
         "active_experiment_started_at": _active_experiment_start(active_experiment).isoformat(),
         "active_experiment_sends": active_variant_sends,
+        "active_experiment_sample_sends": active_variant_sample_sends,
         "active_experiment_sample_target": experiment_sample_target,
-        "active_experiment_needs_sample": active_variant_sends < experiment_sample_target,
+        "active_experiment_needs_sample": not active_sample_complete,
         "active_experiment_new_due_count": active_experiment_new_due,
+        "active_experiment_blocked_after_sample_complete_count": active_experiment_new_due_raw
+        if active_sample_complete
+        else 0,
         "active_experiment_direct_new_due_count": active_experiment_direct_new_due,
         "active_experiment_generic_new_due_count": active_experiment_generic_new_due,
         "active_experiment_allowed_generic_new_due_count": active_experiment_allowed_generic_new_due,
@@ -834,7 +880,7 @@ def _next_money_move(status: dict[str, Any]) -> str:
         return "Bad placeholder emails are being blocked; keep capacity for real decision-maker inboxes."
     if status.get("active_experiment_needs_sample"):
         active_due = int(status.get("active_experiment_new_due_count") or 0)
-        active_sends = int(status.get("active_experiment_sends") or 0)
+        active_sends = int(status.get("active_experiment_sample_sends") or status.get("active_experiment_sends") or 0)
         active_experiment = status.get("active_experiment") if isinstance(status.get("active_experiment"), dict) else None
         target = int(status.get("active_experiment_sample_target") or _experiment_sample_target(active_experiment))
         variant = str(status.get("active_experiment_variant") or "active experiment")
@@ -931,9 +977,15 @@ def _fallback_quality(status: dict[str, Any], error: Exception) -> dict[str, Any
         "zero_reply_strict_mode": bool(status.get("zero_reply_strict_mode") or False),
         "active_experiment_variant": str(status.get("active_experiment_variant") or ""),
         "active_experiment_sends": int(status.get("active_experiment_sends") or 0),
+        "active_experiment_sample_sends": int(
+            status.get("active_experiment_sample_sends") or status.get("active_experiment_sends") or 0
+        ),
         "active_experiment_sample_target": _experiment_sample_target(active_experiment),
         "active_experiment_needs_sample": bool(status.get("active_experiment_needs_sample") or False),
         "active_experiment_new_due_count": int(status.get("active_experiment_new_due_count") or 0),
+        "active_experiment_blocked_after_sample_complete_count": int(
+            status.get("active_experiment_blocked_after_sample_complete_count") or 0
+        ),
         "active_experiment_direct_new_due_count": int(status.get("active_experiment_direct_new_due_count") or 0),
         "active_experiment_generic_new_due_count": int(status.get("active_experiment_generic_new_due_count") or 0),
         "active_experiment_allowed_generic_new_due_count": int(status.get("active_experiment_allowed_generic_new_due_count") or 0),
@@ -1012,6 +1064,7 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
         duplicate_email_blocked = 0
         weak_decision_maker_blocked = 0
         active_variant_sends = _active_variant_send_count(session, active_variant, active_experiment)
+        active_variant_sample_sends = _active_variant_sample_send_count(session, active_variant, active_experiment)
         experiment_sample_target = _experiment_sample_target(active_experiment)
         total_sends_all_time = int(outreach._total_send_count(session) or 0)
         total_replies_all_time = int(
@@ -1111,11 +1164,14 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
             candidates = direct_due
             paused_generic = len(generic_due)
 
-        active_sample_needed = max(experiment_sample_target - active_variant_sends, 0)
+        active_sample_needed = max(experiment_sample_target - active_variant_sample_sends, 0)
         active_sample_complete = active_sample_needed <= 0
         active_first_touch_candidates = [candidate for candidate in candidates if candidate[3]]
-        if active_sample_complete and active_first_touch_candidates:
-            candidates = [candidate for candidate in candidates if not candidate[3]]
+        active_variant_candidates = [candidate for candidate in candidates if candidate[2] == active_variant]
+        active_variant_paused_after_sample_complete = 0
+        if active_sample_complete and active_variant_candidates:
+            active_variant_paused_after_sample_complete = len(active_variant_candidates)
+            candidates = [candidate for candidate in candidates if candidate[2] != active_variant]
         active_direct_first_touch = [candidate for candidate in direct_due if candidate[3]]
         active_generic_first_touch = [candidate for candidate in generic_due if candidate[3]]
         generic_sample_cap = _active_generic_sample_cap()
@@ -1129,7 +1185,11 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
             active_sample_candidates = (active_direct_first_touch + generic_active_sample_fallback)[:active_sample_needed]
             active_sample_ids = {candidate[0].external_id for candidate in active_sample_candidates}
             money_fill_candidates = (
-                [candidate for candidate in direct_due if candidate[0].external_id not in active_sample_ids]
+                [
+                    candidate
+                    for candidate in direct_due
+                    if candidate[0].external_id not in active_sample_ids and candidate[2] != active_variant
+                ]
                 if fill_remaining_after_active_sample
                 else []
             )
@@ -1144,13 +1204,16 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
         for prospect, step, candidate_variant, is_active_experiment_new in candidates:
             if sent >= limit or remaining_cap <= 0:
                 break
-            if is_active_experiment_new and active_sample_complete:
+            if active_sample_complete and candidate_variant == active_variant:
                 skipped += 1
                 continue
 
             try:
                 sent_events = outreach._sent_events_for_prospect(session, prospect.external_id)
                 prospect_variant = _prospect_variant(sent_events, candidate_variant or active_variant)
+                if active_sample_complete and prospect_variant == active_variant:
+                    skipped += 1
+                    continue
                 plain_text = outreach._render_body(step, prospect)
                 html_body = plain_text.replace("\n", "<br>")
                 result = outreach._outbound_send(
@@ -1179,6 +1242,7 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
                         "active_experiment_label": active_experiment.get("experiment_label"),
                         "active_experiment_sample_target": experiment_sample_target,
                         "active_experiment_sends_before": active_variant_sends,
+                        "active_experiment_sample_sends_before": active_variant_sample_sends,
                         "active_experiment_first_touch": is_active_experiment_new,
                         "body_preview": outreach._preview_text(plain_text, limit=240),
                         "body_text": plain_text,
@@ -1206,7 +1270,7 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
         "status": "ok",
         "summary": "direct_decision_maker_quality_gate",
         "sent_count": sent,
-        "skipped_count": skipped + paused_generic,
+        "skipped_count": skipped + paused_generic + active_variant_paused_after_sample_complete,
         "failures": failures,
         "active_experiment": active_experiment,
         "effective_daily_cap": effective_daily_cap,
@@ -1217,8 +1281,11 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
             "generic_paused_count": paused_generic,
             "active_experiment_variant": active_variant,
             "active_experiment_sends_before": active_variant_sends,
+            "active_experiment_sample_sends_before": active_variant_sample_sends,
             "active_experiment_sample_target": experiment_sample_target,
-            "active_experiment_new_due_count": len(active_direct_first_touch) + generic_active_sample_fallback_count,
+            "active_experiment_new_due_count": 0
+            if active_sample_complete
+            else len(active_direct_first_touch) + generic_active_sample_fallback_count,
             "active_experiment_direct_new_due_count": len(active_direct_first_touch),
             "active_experiment_generic_new_due_count": len(active_generic_first_touch),
             "active_experiment_allowed_generic_new_due_count": generic_active_sample_fallback_count,
@@ -1227,6 +1294,7 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
             "active_first_touch_blocked_after_sample_complete": len(active_first_touch_candidates)
             if active_sample_complete
             else 0,
+            "active_variant_paused_after_sample_complete": active_variant_paused_after_sample_complete,
             "active_sample_reserved_only": active_sample_reserved_only,
             "fill_remaining_cap_after_active_sample": fill_remaining_after_active_sample,
             "money_fill_after_active_sample_count": money_fill_after_active_sample_count,

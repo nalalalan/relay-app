@@ -178,7 +178,7 @@ def build_money_loop_journal_entry(result: dict[str, Any]) -> dict[str, Any]:
     decision = _compact_decision(success)
     status_after = _as_dict(result.get("status_after"))
     active_progress = result.get("active_sample_progress_after") or (
-        f"{_safe_int(status_after.get('active_experiment_sends'))}/"
+        f"{_safe_int(status_after.get('active_experiment_sample_sends') or status_after.get('active_experiment_sends'))}/"
         f"{_safe_int(status_after.get('active_experiment_sample_target'))}"
         if status_after.get("active_experiment_sample_target") is not None
         else ""
@@ -219,6 +219,7 @@ def build_money_loop_journal_entry(result: dict[str, Any]) -> dict[str, Any]:
             "status_after": {
                 "active_experiment_variant": status_after.get("active_experiment_variant"),
                 "active_experiment_sends": status_after.get("active_experiment_sends"),
+                "active_experiment_sample_sends": status_after.get("active_experiment_sample_sends"),
                 "active_experiment_sample_target": status_after.get("active_experiment_sample_target"),
                 "active_experiment_new_due_count": status_after.get("active_experiment_new_due_count"),
                 "direct_due_count": status_after.get("direct_due_count"),

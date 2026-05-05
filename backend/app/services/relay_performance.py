@@ -318,6 +318,29 @@ def _event_variant(event: AcquisitionEvent) -> str:
     return DEFAULT_EXPERIMENT_VARIANT
 
 
+def _event_step_number(event: AcquisitionEvent) -> int:
+    payload = _safe_json(event.payload_json)
+    try:
+        return int(payload.get("step_number") or 0)
+    except Exception:
+        pass
+    raw_type = str(getattr(event, "event_type", "") or "")
+    try:
+        return int(raw_type.rsplit("_", 1)[-1])
+    except Exception:
+        return 0
+
+
+def _event_is_first_touch_sample(event: AcquisitionEvent) -> bool:
+    payload = _safe_json(event.payload_json)
+    marker = payload.get("active_experiment_first_touch")
+    if isinstance(marker, bool):
+        return marker
+    if marker is not None:
+        return str(marker).strip().lower() in {"1", "true", "yes", "y"}
+    return _event_step_number(event) == 1
+
+
 def _variant_metrics_for_window(
     session: Session,
     *,
@@ -333,7 +356,8 @@ def _variant_metrics_for_window(
         .where(AcquisitionEvent.created_at < end)
         .order_by(AcquisitionEvent.created_at.asc())
     ).scalars().all()
-    matching_sends = [event for event in sent_events if _event_variant(event) == variant]
+    variant_sends = [event for event in sent_events if _event_variant(event) == variant]
+    matching_sends = [event for event in variant_sends if _event_is_first_touch_sample(event)]
     prospect_ids = {
         str(event.prospect_external_id or "").strip()
         for event in matching_sends
@@ -369,15 +393,19 @@ def _variant_metrics_for_window(
         .where(AcquisitionEvent.created_at < end)
     ).scalars().all()
     failures = sum(1 for event in failed_events if _event_variant(event) == variant)
+    total_variant_sends = len(variant_sends)
     sends = len(matching_sends)
     first_sent = matching_sends[0].created_at.isoformat() if matching_sends else ""
     last_sent = matching_sends[-1].created_at.isoformat() if matching_sends else ""
+    last_variant_sent = variant_sends[-1].created_at.isoformat() if variant_sends else ""
 
     return {
         "variant": variant,
         "start": start.isoformat(),
         "end": end.isoformat(),
         "sends": sends,
+        "sample_sends": sends,
+        "total_variant_sends": total_variant_sends,
         "prospect_count": len(prospect_ids),
         "replies": replies,
         "reply_rate": round(replies / sends, 4) if sends else 0,
@@ -385,6 +413,7 @@ def _variant_metrics_for_window(
         "send_failures": failures,
         "first_sent_at": first_sent,
         "last_sent_at": last_sent,
+        "last_variant_sent_at": last_variant_sent,
     }
 
 

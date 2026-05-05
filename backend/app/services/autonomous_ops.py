@@ -2495,7 +2495,10 @@ def _ao_digest_launch_readiness(
     active_signal = _ao_digest_nested(performance, "active_experiment_signal")
     operator = operator or _ao_digest_operator_mode(summary, outreach_digest, success_status)
 
-    active_sends = _ao_digest_int(outreach_digest.get("active_experiment_sends"))
+    active_sends = _ao_digest_int(
+        outreach_digest.get("active_experiment_sample_sends")
+        or outreach_digest.get("active_experiment_sends")
+    )
     active_target = _ao_digest_int(outreach_digest.get("active_experiment_sample_target"))
     active_due = _ao_digest_int(outreach_digest.get("active_experiment_new_due_count"))
     active_remaining = max(active_target - active_sends, 0) if active_target else 0

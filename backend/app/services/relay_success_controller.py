@@ -487,6 +487,27 @@ def _event_experiment_variant(payload: dict[str, Any]) -> str:
     ).strip() or DEFAULT_EXPERIMENT_VARIANT
 
 
+def _event_step_number(event: AcquisitionEvent, payload: dict[str, Any]) -> int:
+    try:
+        return int(payload.get("step_number") or 0)
+    except Exception:
+        pass
+    raw_type = str(getattr(event, "event_type", "") or "")
+    try:
+        return int(raw_type.rsplit("_", 1)[-1])
+    except Exception:
+        return 0
+
+
+def _event_is_first_touch_sample(event: AcquisitionEvent, payload: dict[str, Any]) -> bool:
+    marker = payload.get("active_experiment_first_touch")
+    if isinstance(marker, bool):
+        return marker
+    if marker is not None:
+        return str(marker).strip().lower() in {"1", "true", "yes", "y"}
+    return _event_step_number(event, payload) == 1
+
+
 def _variant_metrics_since_plan(
     session: Session,
     *,
@@ -501,10 +522,15 @@ def _variant_metrics_since_plan(
         .where(AcquisitionEvent.created_at < until)
         .order_by(AcquisitionEvent.created_at.asc())
     ).scalars().all()
-    matching_sends = [
-        event
+    variant_sends = [
+        (event, _safe_json(event.payload_json))
         for event in sent_events
         if _event_experiment_variant(_safe_json(event.payload_json)) == variant
+    ]
+    matching_sends = [
+        event
+        for event, payload in variant_sends
+        if _event_is_first_touch_sample(event, payload)
     ]
     prospect_ids = {
         str(event.prospect_external_id or "").strip()
@@ -537,10 +563,13 @@ def _variant_metrics_since_plan(
     return {
         "window": "variant_since_plan",
         "sends": len(matching_sends),
+        "sample_sends": len(matching_sends),
+        "total_variant_sends": len(variant_sends),
         "replies": replies,
         "payments": payments,
         "first_sent_at": matching_sends[0].created_at.isoformat() if matching_sends else "",
         "last_sent_at": matching_sends[-1].created_at.isoformat() if matching_sends else "",
+        "last_variant_sent_at": variant_sends[-1][0].created_at.isoformat() if variant_sends else "",
     }
 
 
@@ -1570,7 +1599,7 @@ def _outbound_window_audit_at(outreach: dict[str, Any]) -> str:
 
 
 def _outbound_window_execution_contract(outreach: dict[str, Any]) -> dict[str, Any]:
-    active_sends = int(outreach.get("active_experiment_sends") or 0)
+    active_sends = int(outreach.get("active_experiment_sample_sends") or outreach.get("active_experiment_sends") or 0)
     active_target = int(outreach.get("active_experiment_sample_target") or 0)
     active_due = int(outreach.get("active_experiment_new_due_count") or outreach.get("due_now_count") or 0)
     active_remaining = max(active_target - active_sends, 0) if active_target else 0
@@ -1678,7 +1707,13 @@ def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
     active_reply_observation = _active_reply_observation_status(
         performance,
         active_target=int(outreach.get("active_experiment_sample_target") or _experiment_failure_sample()),
-        active_sends=int(active_signal.get("sends") or outreach.get("active_experiment_sends") or 0),
+        active_sends=int(
+            active_signal.get("sample_sends")
+            or active_signal.get("sends")
+            or outreach.get("active_experiment_sample_sends")
+            or outreach.get("active_experiment_sends")
+            or 0
+        ),
         active_replies=int(active_signal.get("replies") or 0),
         active_payments=int(active_signal.get("payments") or 0),
     )
@@ -1750,6 +1785,9 @@ def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
             "cap_remaining": cap_remaining,
             "active_experiment_variant": outreach.get("active_experiment_variant", ""),
             "active_experiment_sends": int(outreach.get("active_experiment_sends") or 0),
+            "active_experiment_sample_sends": int(
+                outreach.get("active_experiment_sample_sends") or outreach.get("active_experiment_sends") or 0
+            ),
             "active_experiment_sample_target": int(outreach.get("active_experiment_sample_target") or 0),
             "active_experiment_needs_sample": bool(outreach.get("active_experiment_needs_sample") or False),
             "active_experiment_new_due_count": int(outreach.get("active_experiment_new_due_count") or 0),
@@ -1849,7 +1887,13 @@ def _bottleneck(snapshot: dict[str, Any]) -> str:
         or active_signal.get("variant")
         or ""
     ).strip()
-    active_sends = int(active_signal.get("sends") or outreach.get("active_experiment_sends") or 0)
+    active_sends = int(
+        active_signal.get("sample_sends")
+        or active_signal.get("sends")
+        or outreach.get("active_experiment_sample_sends")
+        or outreach.get("active_experiment_sends")
+        or 0
+    )
     active_target = int(outreach.get("active_experiment_sample_target") or _experiment_failure_sample())
     active_replies = int(active_signal.get("replies") or 0)
     active_payments = int(active_signal.get("payments") or 0)
@@ -2022,7 +2066,7 @@ def _money_proof_mandate(snapshot: dict[str, Any], bottleneck: str) -> dict[str,
     gross_usd = round(_safe_float(money.get("gross_usd")), 2)
     payments = int(money.get("payments") or 0)
     weekly_target_usd = _safe_float(os.getenv("RELAY_WEEKLY_TARGET_USD", "100"), 100.0)
-    active_sends = int(outreach.get("active_experiment_sends") or 0)
+    active_sends = int(outreach.get("active_experiment_sample_sends") or outreach.get("active_experiment_sends") or 0)
     active_target = int(outreach.get("active_experiment_sample_target") or _experiment_failure_sample())
     active_remaining = max(active_target - active_sends, 0) if active_target else 0
     expected_sends = int(window_contract.get("expected_sends") or 0)
@@ -2263,7 +2307,7 @@ def _run_outbound_experiment_review_if_needed(bottleneck: str, snapshot: dict[st
         }
 
     failure_sample = experiment_sample_target(active_plan or active_variant)
-    active_sends = int(active_signal.get("sends") or 0)
+    active_sends = int(active_signal.get("sample_sends") or active_signal.get("sends") or 0)
     active_replies = int(active_signal.get("replies") or 0)
     active_payments = int(active_signal.get("payments") or 0)
     active_reply_observation = (

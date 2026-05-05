@@ -192,7 +192,7 @@ def _refill_timeout_backoff_status(*, force_refill: bool = False) -> dict[str, A
 
 def _send_window_ready_without_refill(status: dict[str, Any]) -> dict[str, Any]:
     active_new_due = int(status.get("active_experiment_new_due_count") or 0)
-    active_sends = int(status.get("active_experiment_sends") or 0)
+    active_sends = int(status.get("active_experiment_sample_sends") or status.get("active_experiment_sends") or 0)
     active_target = int(status.get("active_experiment_sample_target") or 0)
     active_needs_sample = bool(status.get("active_experiment_needs_sample"))
     direct_due = int(status.get("direct_due_count") or 0)
@@ -417,9 +417,11 @@ def _compact_status_for_loop(status: dict[str, Any]) -> dict[str, Any]:
         "money_target",
         "active_experiment_variant",
         "active_experiment_sends",
+        "active_experiment_sample_sends",
         "active_experiment_sample_target",
         "active_experiment_needs_sample",
         "active_experiment_new_due_count",
+        "active_experiment_blocked_after_sample_complete_count",
         "active_experiment_direct_new_due_count",
         "active_experiment_generic_new_due_count",
         "active_experiment_allowed_generic_new_due_count",
@@ -462,7 +464,7 @@ def _active_sample_expected_delta(status: dict[str, Any]) -> int:
         return 0
     if not bool(status.get("active_experiment_needs_sample")):
         return 0
-    active_sends = int(status.get("active_experiment_sends") or 0)
+    active_sends = int(status.get("active_experiment_sample_sends") or status.get("active_experiment_sends") or 0)
     active_target = int(status.get("active_experiment_sample_target") or 0)
     active_remaining = max(active_target - active_sends, 0) if active_target > 0 else 0
     sendable_due, _ = _sendable_due_for_current_goal(status)
@@ -1264,7 +1266,7 @@ async def _relay_money_loop_tick(
     status = await asyncio.to_thread(outreach.outreach_status)
     direct_due = int(status.get("direct_due_count") or 0)
     active_experiment_needs_sample = bool(status.get("active_experiment_needs_sample"))
-    active_sample_sends_before = int(status.get("active_experiment_sends") or 0)
+    active_sample_sends_before = int(status.get("active_experiment_sample_sends") or status.get("active_experiment_sends") or 0)
     active_sample_target_before = int(status.get("active_experiment_sample_target") or 0)
     active_experiment_new_due = int(status.get("active_experiment_new_due_count") or 0)
     refill_due = active_experiment_new_due if active_experiment_needs_sample else direct_due
@@ -1303,7 +1305,7 @@ async def _relay_money_loop_tick(
         status = await asyncio.to_thread(outreach.outreach_status)
         direct_due = int(status.get("direct_due_count") or 0)
         active_experiment_needs_sample = bool(status.get("active_experiment_needs_sample"))
-        active_sample_sends_before = int(status.get("active_experiment_sends") or 0)
+        active_sample_sends_before = int(status.get("active_experiment_sample_sends") or status.get("active_experiment_sends") or 0)
         active_sample_target_before = int(status.get("active_experiment_sample_target") or 0)
         active_experiment_new_due = int(status.get("active_experiment_new_due_count") or 0)
         refill_due = active_experiment_new_due if active_experiment_needs_sample else direct_due
@@ -1546,7 +1548,9 @@ async def _relay_money_loop_tick(
         post_refill_outreach_result = None
     sent_this_tick = _outreach_sent_count(outreach_result) + _outreach_sent_count(post_refill_outreach_result)
     final_status_after = _compact_status_for_loop(await asyncio.to_thread(outreach.outreach_status))
-    active_sample_sends_after = int(final_status_after.get("active_experiment_sends") or 0)
+    active_sample_sends_after = int(
+        final_status_after.get("active_experiment_sample_sends") or final_status_after.get("active_experiment_sends") or 0
+    )
     active_sample_target_after = int(
         final_status_after.get("active_experiment_sample_target") or active_sample_target_before or 0
     )
