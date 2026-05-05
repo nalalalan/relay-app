@@ -2504,7 +2504,7 @@ def _ao_digest_launch_readiness(
     active_remaining = max(active_target - active_sends, 0) if active_target else 0
     cap_remaining = _ao_digest_int(outreach_digest.get("cap_remaining"))
     daily_cap = _ao_digest_int(outreach_digest.get("effective_daily_cap") or outreach_digest.get("daily_send_cap"))
-    capacity = max(min(cap_remaining or daily_cap, daily_cap or cap_remaining or 1), 1)
+    capacity = max(min(cap_remaining, daily_cap or cap_remaining), 0)
     windows_remaining = _ao_digest_ceil_div(active_remaining, capacity)
     expected_next_window_sends = (
         min(active_remaining, active_due, capacity)
