@@ -347,6 +347,7 @@ def _variant_metrics_for_window(
     variant: str,
     start: datetime,
     end: datetime,
+    sample_target: int | None = None,
 ) -> dict[str, Any]:
     variant = variant if variant in EXPERIMENTS else DEFAULT_EXPERIMENT_VARIANT
     sent_events = session.execute(
@@ -358,6 +359,8 @@ def _variant_metrics_for_window(
     ).scalars().all()
     variant_sends = [event for event in sent_events if _event_variant(event) == variant]
     matching_sends = [event for event in variant_sends if _event_is_first_touch_sample(event)]
+    sample_target = max(_int_from(sample_target), 0)
+    evaluated_sends = matching_sends[:sample_target] if sample_target > 0 else matching_sends
     prospect_ids = {
         str(event.prospect_external_id or "").strip()
         for event in matching_sends
@@ -394,9 +397,11 @@ def _variant_metrics_for_window(
     ).scalars().all()
     failures = sum(1 for event in failed_events if _event_variant(event) == variant)
     total_variant_sends = len(variant_sends)
-    sends = len(matching_sends)
-    first_sent = matching_sends[0].created_at.isoformat() if matching_sends else ""
-    last_sent = matching_sends[-1].created_at.isoformat() if matching_sends else ""
+    sample_sends_observed = len(matching_sends)
+    sends = len(evaluated_sends)
+    first_sent = evaluated_sends[0].created_at.isoformat() if evaluated_sends else ""
+    last_sent = evaluated_sends[-1].created_at.isoformat() if evaluated_sends else ""
+    last_sample_observed = matching_sends[-1].created_at.isoformat() if matching_sends else ""
     last_variant_sent = variant_sends[-1].created_at.isoformat() if variant_sends else ""
 
     return {
@@ -405,6 +410,8 @@ def _variant_metrics_for_window(
         "end": end.isoformat(),
         "sends": sends,
         "sample_sends": sends,
+        "sample_sends_observed": sample_sends_observed,
+        "sample_target": sample_target,
         "total_variant_sends": total_variant_sends,
         "prospect_count": len(prospect_ids),
         "replies": replies,
@@ -413,6 +420,7 @@ def _variant_metrics_for_window(
         "send_failures": failures,
         "first_sent_at": first_sent,
         "last_sent_at": last_sent,
+        "last_sample_observed_at": last_sample_observed,
         "last_variant_sent_at": last_variant_sent,
     }
 
@@ -609,7 +617,13 @@ def _plan_variant_sample_metrics(
     start = plan_created_at or _parse_datetime(plan.get("logged_at")) or _parse_datetime(plan.get("created_at"))
     if start is None:
         return None
-    return _variant_metrics_for_window(session, variant=variant, start=start, end=now)
+    return _variant_metrics_for_window(
+        session,
+        variant=variant,
+        start=start,
+        end=now,
+        sample_target=experiment_sample_target(plan),
+    )
 
 
 def _latest_plan_sample_pending(session: Session, latest_plan: dict[str, Any] | None, *, now: datetime) -> bool:
@@ -996,6 +1010,7 @@ def relay_performance_status() -> dict[str, Any]:
             variant=active_variant,
             start=active_start,
             end=now,
+            sample_target=experiment_sample_target(active_plan),
         )
 
     return {

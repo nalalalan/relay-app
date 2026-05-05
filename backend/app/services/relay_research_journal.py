@@ -220,6 +220,7 @@ def build_money_loop_journal_entry(result: dict[str, Any]) -> dict[str, Any]:
                 "active_experiment_variant": status_after.get("active_experiment_variant"),
                 "active_experiment_sends": status_after.get("active_experiment_sends"),
                 "active_experiment_sample_sends": status_after.get("active_experiment_sample_sends"),
+                "active_experiment_sample_sends_observed": status_after.get("active_experiment_sample_sends_observed"),
                 "active_experiment_sample_target": status_after.get("active_experiment_sample_target"),
                 "active_experiment_new_due_count": status_after.get("active_experiment_new_due_count"),
                 "direct_due_count": status_after.get("direct_due_count"),

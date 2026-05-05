@@ -514,6 +514,7 @@ def _variant_metrics_since_plan(
     variant: str,
     since: datetime,
     until: datetime,
+    sample_target: int | None = None,
 ) -> dict[str, Any]:
     sent_events = session.execute(
         select(AcquisitionEvent)
@@ -532,6 +533,8 @@ def _variant_metrics_since_plan(
         for event, payload in variant_sends
         if _event_is_first_touch_sample(event, payload)
     ]
+    sample_target = max(_safe_int(sample_target), 0)
+    evaluated_sends = matching_sends[:sample_target] if sample_target > 0 else matching_sends
     prospect_ids = {
         str(event.prospect_external_id or "").strip()
         for event in matching_sends
@@ -562,13 +565,16 @@ def _variant_metrics_since_plan(
 
     return {
         "window": "variant_since_plan",
-        "sends": len(matching_sends),
-        "sample_sends": len(matching_sends),
+        "sends": len(evaluated_sends),
+        "sample_sends": len(evaluated_sends),
+        "sample_sends_observed": len(matching_sends),
+        "sample_target": sample_target,
         "total_variant_sends": len(variant_sends),
         "replies": replies,
         "payments": payments,
-        "first_sent_at": matching_sends[0].created_at.isoformat() if matching_sends else "",
-        "last_sent_at": matching_sends[-1].created_at.isoformat() if matching_sends else "",
+        "first_sent_at": evaluated_sends[0].created_at.isoformat() if evaluated_sends else "",
+        "last_sent_at": evaluated_sends[-1].created_at.isoformat() if evaluated_sends else "",
+        "last_sample_observed_at": matching_sends[-1].created_at.isoformat() if matching_sends else "",
         "last_variant_sent_at": variant_sends[-1][0].created_at.isoformat() if variant_sends else "",
     }
 
@@ -662,6 +668,7 @@ def _zero_signal_rotation_status(session: Session) -> dict[str, Any]:
                 variant=variant,
                 since=row.created_at or now,
                 until=now,
+                sample_target=min_sample,
             )
             if row.created_at
             else None
@@ -1787,6 +1794,12 @@ def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
             "active_experiment_sends": int(outreach.get("active_experiment_sends") or 0),
             "active_experiment_sample_sends": int(
                 outreach.get("active_experiment_sample_sends") or outreach.get("active_experiment_sends") or 0
+            ),
+            "active_experiment_sample_sends_observed": int(
+                outreach.get("active_experiment_sample_sends_observed")
+                or outreach.get("active_experiment_sample_sends")
+                or outreach.get("active_experiment_sends")
+                or 0
             ),
             "active_experiment_sample_target": int(outreach.get("active_experiment_sample_target") or 0),
             "active_experiment_needs_sample": bool(outreach.get("active_experiment_needs_sample") or False),

@@ -780,8 +780,9 @@ def _quality_snapshot(session) -> dict[str, Any]:
     active_experiment = _active_experiment()
     active_variant = str(active_experiment.get("experiment_variant") or "control_sample_ask")
     active_variant_sends = _active_variant_send_count(session, active_variant, active_experiment)
-    active_variant_sample_sends = _active_variant_sample_send_count(session, active_variant, active_experiment)
+    active_variant_sample_sends_observed = _active_variant_sample_send_count(session, active_variant, active_experiment)
     experiment_sample_target = _experiment_sample_target(active_experiment)
+    active_variant_sample_sends = min(active_variant_sample_sends_observed, experiment_sample_target)
     active_sample_complete = active_variant_sample_sends >= experiment_sample_target
     active_experiment_direct_new_due = 0
     active_experiment_generic_new_due = 0
@@ -858,6 +859,7 @@ def _quality_snapshot(session) -> dict[str, Any]:
         "active_experiment_started_at": _active_experiment_start(active_experiment).isoformat(),
         "active_experiment_sends": active_variant_sends,
         "active_experiment_sample_sends": active_variant_sample_sends,
+        "active_experiment_sample_sends_observed": active_variant_sample_sends_observed,
         "active_experiment_sample_target": experiment_sample_target,
         "active_experiment_needs_sample": not active_sample_complete,
         "active_experiment_new_due_count": active_experiment_new_due,
@@ -980,6 +982,12 @@ def _fallback_quality(status: dict[str, Any], error: Exception) -> dict[str, Any
         "active_experiment_sample_sends": int(
             status.get("active_experiment_sample_sends") or status.get("active_experiment_sends") or 0
         ),
+        "active_experiment_sample_sends_observed": int(
+            status.get("active_experiment_sample_sends_observed")
+            or status.get("active_experiment_sample_sends")
+            or status.get("active_experiment_sends")
+            or 0
+        ),
         "active_experiment_sample_target": _experiment_sample_target(active_experiment),
         "active_experiment_needs_sample": bool(status.get("active_experiment_needs_sample") or False),
         "active_experiment_new_due_count": int(status.get("active_experiment_new_due_count") or 0),
@@ -1064,8 +1072,13 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
         duplicate_email_blocked = 0
         weak_decision_maker_blocked = 0
         active_variant_sends = _active_variant_send_count(session, active_variant, active_experiment)
-        active_variant_sample_sends = _active_variant_sample_send_count(session, active_variant, active_experiment)
+        active_variant_sample_sends_observed = _active_variant_sample_send_count(
+            session,
+            active_variant,
+            active_experiment,
+        )
         experiment_sample_target = _experiment_sample_target(active_experiment)
+        active_variant_sample_sends = min(active_variant_sample_sends_observed, experiment_sample_target)
         total_sends_all_time = int(outreach._total_send_count(session) or 0)
         total_replies_all_time = int(
             session.execute(
@@ -1243,6 +1256,7 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
                         "active_experiment_sample_target": experiment_sample_target,
                         "active_experiment_sends_before": active_variant_sends,
                         "active_experiment_sample_sends_before": active_variant_sample_sends,
+                        "active_experiment_sample_sends_observed_before": active_variant_sample_sends_observed,
                         "active_experiment_first_touch": is_active_experiment_new,
                         "body_preview": outreach._preview_text(plain_text, limit=240),
                         "body_text": plain_text,
@@ -1282,6 +1296,7 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
             "active_experiment_variant": active_variant,
             "active_experiment_sends_before": active_variant_sends,
             "active_experiment_sample_sends_before": active_variant_sample_sends,
+            "active_experiment_sample_sends_observed_before": active_variant_sample_sends_observed,
             "active_experiment_sample_target": experiment_sample_target,
             "active_experiment_new_due_count": 0
             if active_sample_complete

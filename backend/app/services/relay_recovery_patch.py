@@ -418,6 +418,7 @@ def _compact_status_for_loop(status: dict[str, Any]) -> dict[str, Any]:
         "active_experiment_variant",
         "active_experiment_sends",
         "active_experiment_sample_sends",
+        "active_experiment_sample_sends_observed",
         "active_experiment_sample_target",
         "active_experiment_needs_sample",
         "active_experiment_new_due_count",
