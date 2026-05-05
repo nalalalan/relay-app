@@ -2091,7 +2091,9 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
             )
             active_experiment = performance.get("active_experiment") or {}
             outreach = outreach_status()
-            active_sends = _safe_int(outreach.get("active_experiment_sends"))
+            active_sends = _safe_int(
+                outreach.get("active_experiment_sample_sends") or outreach.get("active_experiment_sends")
+            )
             active_target = _safe_int(outreach.get("active_experiment_sample_target"))
             active_due = _safe_int(outreach.get("active_experiment_new_due_count"))
             active_remaining = max(active_target - active_sends, 0) if active_target else 0
@@ -2112,8 +2114,7 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 experiment_decision_next = "Run the outbound experiment review and rotate one controlled variable."
             cap_remaining = _safe_int(outreach.get("cap_remaining"))
             effective_daily_cap = _safe_int(outreach.get("effective_daily_cap") or outreach.get("daily_send_cap"))
-            positive_caps = [value for value in [cap_remaining, effective_daily_cap] if value > 0]
-            window_cap = min(positive_caps) if positive_caps else 0
+            window_cap = max(min(cap_remaining, effective_daily_cap or cap_remaining), 0)
             send_capacity_per_window = min(active_due, window_cap) if active_remaining > 0 and active_due > 0 else 0
             sample_windows_to_complete = _ceil_div(active_remaining, send_capacity_per_window)
             queued_sample_covers_remaining = active_due >= active_remaining if active_remaining > 0 else True
