@@ -2119,6 +2119,8 @@ def relay_evidence_export(days: int = 90, limit: int = 200) -> dict[str, Any]:
 
         def event_stage(event_type: str) -> str:
             name = (event_type or "").lower()
+            if any(token in name for token in ["smoke", "test", "dry_run"]):
+                return "system_health"
             if "stripe_paid" in name or "payment" in name or "paid" in name:
                 return "revenue"
             if any(token in name for token in ["reply", "lead_capture", "note_intake", "checkout", "messy_notes"]):
@@ -2128,7 +2130,14 @@ def relay_evidence_export(days: int = 90, limit: int = 200) -> dict[str, Any]:
             return "attention"
 
         def stage_rank(stage: str) -> int:
-            return {"none_detected": 0, "attention": 1, "inspection": 2, "buyer_signal": 3, "revenue": 4}.get(stage, 0)
+            return {
+                "none_detected": 0,
+                "system_health": 1,
+                "attention": 2,
+                "inspection": 3,
+                "buyer_signal": 4,
+                "revenue": 5,
+            }.get(stage, 0)
 
         def event_metadata(event: RelayIntentEvent) -> dict[str, Any]:
             return _safe_payload(event.metadata_json)
