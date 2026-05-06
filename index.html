@@ -1109,6 +1109,72 @@
         return entry.ledger || ((entry.payload || {}).decision || {}) || {};
       }
 
+      function currentMove(ops, ledger) {
+        var success = ((ops || {}).relay_success || {});
+        var moneySystem = ((ops || {}).money_system || {});
+        var latest = latestLedger(ledger);
+        var latestData = ledgerData(latest);
+        var mandate = success.money_proof_mandate || moneySystem.money_proof_mandate || {};
+        var score = mandate.score || {};
+        var health = success.money_proof_health || {};
+        var observation = success.active_reply_observation || {};
+        var moneyObj = success.money || {};
+        var outreach = success.outreach || {};
+        var payments = Number(moneyObj.payments || latestData.payments || 0);
+        var replies = Number(outreach.replies || latestData.replies || 0);
+        var bottleneck = String(latestData.bottleneck || success.bottleneck || mandate.bottleneck || "").trim();
+        var next =
+          latestData.next_money_move ||
+          health.autonomous_recovery_action ||
+          mandate.allowed_autonomous_action ||
+          success.next_action ||
+          "keep the current loop running";
+        var deadline =
+          observation.observe_until ||
+          latestData.proof_deadline ||
+          health.proof_deadline ||
+          mandate.proof_deadline ||
+          "";
+        var pending = Boolean(observation.pending || observation.seconds_until_observe_until > 0 || health.state === "waiting_for_reply_observation");
+
+        if (payments > 0) {
+          return { value: "Protect", hint: "Money exists. Keep the paid lane stable." };
+        }
+        if (replies > 0 || bottleneck === "reply_to_payment" || bottleneck === "checkout_to_payment") {
+          return { value: "Close", hint: sentence(next, "Close the buyer signal.") };
+        }
+        if (pending) {
+          var deadlineLabel = localTime(deadline);
+          return {
+            value: "Watch",
+            hint: deadlineLabel === "-" ? "Wait for the reply window to finish before changing variables." : "Review at " + deadlineLabel + " if no replies or payments."
+          };
+        }
+        if (bottleneck === "offer_market_rebuild_required" || health.state === "offer_rebuild_required" || mandate.state === "rebuild_offer_or_market_proof") {
+          return { value: "Rebuild", hint: sentence(next, "Rotate offer or market proof before another sample.") };
+        }
+        var progress =
+          latestData.active_progress ||
+          score.active_experiment_progress ||
+          success.active_experiment_progress ||
+          "";
+        if (progress) {
+          return { value: progress, hint: sentence(next, "Keep the current sample moving.") };
+        }
+        return { value: "Run", hint: sentence(next, "Keep the loop moving.") };
+      }
+
+      function sendWindowText(outreach) {
+        if (!outreach) return "not scheduled";
+        if (outreach.send_window_reason === "open" && outreach.send_window_end_local) {
+          return "open until " + localTime(outreach.send_window_end_local);
+        }
+        if (outreach.send_window_next_open_local) {
+          return localTime(outreach.send_window_next_open_local);
+        }
+        return "not scheduled";
+      }
+
       function rowHtml(label, value) {
         return '<div class="plain-row"><strong>' + escapeHtml(label) + '</strong><span>' + escapeHtml(value) + '</span></div>';
       }
@@ -1166,19 +1232,23 @@
         }).join("");
       }
 
-      function renderLoop(ops) {
+      function renderLoop(ops, ledger) {
         var success = ((ops || {}).relay_success || {});
         var moneySystem = ((ops || {}).money_system || {});
         var outreach = success.outreach || {};
-        var readiness = success.launch_readiness || {};
+        var move = currentMove(ops, ledger);
         var rows = [
           {
             label: "now",
-            value: readiness.next_step || success.next_action || "watch for buyer signal"
+            value: move.value.toLowerCase()
+          },
+          {
+            label: "why",
+            value: move.hint
           },
           {
             label: "send window",
-            value: outreach.send_window_next_open_local ? new Date(outreach.send_window_next_open_local).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "not scheduled"
+            value: sendWindowText(outreach)
           },
           {
             label: "sample progress",
@@ -1227,6 +1297,7 @@
           success.active_experiment_progress ||
           "0/10";
         var observeUntil = observation.observe_until ? "observe until " + localTime(observation.observe_until) : "";
+        var move = currentMove(ops, ledger);
 
         $("decisionTime").textContent = latest ? localTime(latest.created_at) : "latest log";
         $("changeList").innerHTML = [
@@ -1252,8 +1323,8 @@
             : "The current sample can be judged from logged reply and payment data.";
         var doNext =
           observation.pending || observation.seconds_until_observe_until > 0
-            ? "Hold the read until the reply window finishes; if still quiet, rebuild the offer or market proof."
-            : nextMove;
+            ? move.hint
+            : (move.hint || nextMove);
 
         $("analysisList").innerHTML = [
           signalHtml("Read", "Attention exists. Revenue is still " + money(gross) + ". Replies: " + fmt(replies) + ". Payments: " + fmt(payments) + "."),
@@ -1267,19 +1338,7 @@
         var positive = (evidence || {}).positive_change || {};
         var relayMoney = (((ops || {}).relay_success || {}).money || {});
         var success = ((ops || {}).relay_success || {});
-        var moneySystem = ((ops || {}).money_system || {});
-        var launch = success.launch_readiness || {};
-        var progress =
-          success.active_experiment_progress ||
-          moneySystem.active_experiment_progress ||
-          (((success.money_proof_mandate || {}).score || {}).active_experiment_progress) ||
-          (((moneySystem.money_proof_mandate || {}).score || {}).active_experiment_progress) ||
-          "-";
-        var nextStep =
-          launch.next_step ||
-          success.next_action ||
-          moneySystem.next_action ||
-          "waiting for the next clean signal";
+        var move = currentMove(ops, ledger);
         var viewsToday = rolling(evidence, "page_view", 1);
         var viewsBaseline = 0;
         var viewSignal = (positive.signals || []).find(function (signal) {
@@ -1302,8 +1361,8 @@
         $("clicksHint").textContent = fmt(sampleToday) + " sample clicks in 24h.";
         $("moneyValue").textContent = money(relayMoney.gross_usd || 0);
         $("moneyHint").textContent = fmt(relayMoney.payments || 0) + " paid tests.";
-        $("nextMoveValue").textContent = progress;
-        $("nextMoveHint").textContent = nextStep;
+        $("nextMoveValue").textContent = move.value;
+        $("nextMoveHint").textContent = move.hint;
         $("summaryLine").textContent = viewsToday > viewsBaseline && viewsBaseline
           ? "Views are above the recent average. Revenue is $0."
           : "Waiting for attention to turn into buyer signal.";
@@ -1316,7 +1375,7 @@
         renderSignals(evidence, ops);
         renderAnalysis(ops, ledger);
         renderTiming(evidence);
-        renderLoop(ops);
+        renderLoop(ops, ledger);
 
         $("trendCaption").textContent = trendRows.length
           ? (days === 1
