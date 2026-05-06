@@ -1,10 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Relay icon">
-  <rect width="128" height="128" rx="26" fill="#0c0d12"/>
-  <style>
-    .w { font-family: Inter, Arial, Helvetica, sans-serif; font-weight: 950; fill: #f7f5ef; }
-    .r { font-family: Inter, Arial, Helvetica, sans-serif; font-weight: 950; fill: #d76d86; }
-  </style>
-  <text x="52" y="88" text-anchor="middle" font-size="74" class="w" >R</text>
-  <path d="M73 59h31M93 48l13 11-13 11" fill="none" stroke="#e6b33a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
-  <path d="M80 91l10 10 19-24" fill="none" stroke="#18c8bd" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
+  <defs>
+    <radialGradient id="glass" cx="72%" cy="16%" r="86%">
+      <stop offset="0" stop-color="#252936"/>
+      <stop offset="0.45" stop-color="#11131b"/>
+      <stop offset="1" stop-color="#05060a"/>
+    </radialGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff9ed"/>
+      <stop offset="0.48" stop-color="#f4efe7"/>
+      <stop offset="1" stop-color="#aeb4c3"/>
+    </linearGradient>
+    <linearGradient id="roseGold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#d84f70"/>
+      <stop offset="0.48" stop-color="#f1a36f"/>
+      <stop offset="1" stop-color="#f2cc70"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#glass)"/>
+  <text x="64" y="75" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="50" font-weight="950" letter-spacing="0" fill="url(#metal)">RL</text>
+  <path d="M86 86 101 101" stroke="url(#roseGold)" stroke-width="6" stroke-linecap="round"/>
 </svg>
