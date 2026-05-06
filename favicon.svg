@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Relay icon">
-  <rect width="128" height="128" rx="26" fill="#141419"/>
+  <rect width="128" height="128" rx="26" fill="#0c0d12"/>
   <style>
-    .m { font-family: Inter, Arial, Helvetica, sans-serif; font-weight: 900; fill: #f7f1ed; }
-    .a { font-family: Inter, Arial, Helvetica, sans-serif; font-weight: 900; fill: #e4aeb9; }
+    .w { font-family: Inter, Arial, Helvetica, sans-serif; font-weight: 950; fill: #f7f5ef; }
+    .r { font-family: Inter, Arial, Helvetica, sans-serif; font-weight: 950; fill: #d76d86; }
   </style>
-  <text x="53" y="88" text-anchor="middle" font-size="72" class="m" >R</text>
-  <path d="M72 59h30M91 48l13 11-13 11" fill="none" stroke="#d6b45f" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M80 91l9 9 18-23" fill="none" stroke="#91d0c7" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="52" y="88" text-anchor="middle" font-size="74" class="w" >R</text>
+  <path d="M73 59h31M93 48l13 11-13 11" fill="none" stroke="#e6b33a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M80 91l10 10 19-24" fill="none" stroke="#18c8bd" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
 </svg>
