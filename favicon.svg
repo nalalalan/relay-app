@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Relay icon">
-  <rect width="128" height="128" rx="20" fill="#f5efe6"/>
-  <rect x="7" y="7" width="114" height="114" rx="15" fill="none" stroke="#d8cab8" stroke-width="1.2" opacity=".88"/>
-  <g><g transform="translate(0 2)"><path d="M28 38h56c8 0 13 5 13 12v25c0 7-5 12-13 12H54L35 101l4-14H28c-8 0-13-5-13-12V50c0-7 5-12 13-12z" fill="#fffaf2"/><rect x="29" y="51" width="48" height="8" rx="4" fill="#b87966"/><path d="M61 71h25l-9-9 6-6 20 19-20 20-6-6 9-9H61z" fill="#2b2520"/><path d="M90 40l12 12 19-25" fill="none" stroke="#8da18d" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></g></g>
+  <rect width="128" height="128" rx="20" fill="#e6dacb"/>
+  <rect x="8" y="8" width="112" height="112" rx="15" fill="none" stroke="#cbbba8" stroke-width="2" opacity=".95"/>
+  <g transform="translate(0 1)"><path d="M23 35h59c9 0 15 6 15 14v24c0 8-6 14-15 14H55l-24 17 6-17H23c-9 0-15-6-15-14V49c0-8 6-14 15-14z" fill="#fffaf0" stroke="#755338" stroke-width="4"/><rect x="26" y="50" width="42" height="8" rx="4" fill="#a96352"/><path d="M58 70h25l-9-9 6-7 22 20-22 21-6-7 9-9H58z" fill="#27211d"/><path d="M91 38l11 12 19-25" fill="none" stroke="#6f8a72" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></g>
 </svg>
