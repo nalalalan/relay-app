@@ -2179,6 +2179,7 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
             "intent_summary_route": "/api/relay/intent-summary",
             "research_journal_route": "/api/relay/research-journal",
             "decision_ledger_route": "/api/relay/decision-ledger",
+            "evidence_export_route": "/api/relay/evidence-export",
         }
 
         event_counts = (
