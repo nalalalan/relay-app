@@ -2056,6 +2056,10 @@ def relay_evidence_export(days: int = 90, limit: int = 200) -> dict[str, Any]:
                 return ""
             return email.rsplit("@", 1)[-1].strip().lower()[:255]
 
+        def metadata_keys(raw: str | None) -> list[str]:
+            payload = _safe_payload(raw)
+            return sorted(str(key)[:120] for key in payload.keys())
+
         journal_entries = []
         ledger_entries = []
         for event in journal_events:
@@ -2129,7 +2133,7 @@ def relay_evidence_export(days: int = 90, limit: int = 200) -> dict[str, Any]:
                     "email_domain": lead_domain(lead.email),
                     "session_id": lead.session_id,
                     "page_url": lead.page_url,
-                    "metadata": _safe_payload(lead.metadata_json),
+                    "metadata_keys": metadata_keys(lead.metadata_json),
                 }
                 for lead in leads
             ],
