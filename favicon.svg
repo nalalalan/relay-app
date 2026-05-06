@@ -1,9 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Relay icon">
-  <rect width="128" height="128" rx="18" fill="#141419"/>
-
-  <path d="M25 33h51c8 0 14 6 14 14v15c0 8-6 14-14 14H53L35 89l5-13H25c-8 0-14-6-14-14V47c0-8 6-14 14-14Z" fill="none" stroke="#f7f8f5" stroke-width="8" stroke-linejoin="round"/>
-  <path d="M38 54h34" stroke="#f3c969" stroke-width="7" stroke-linecap="round"/>
-  <rect x="66" y="70" width="45" height="35" rx="10" fill="#141419" stroke="#f7f8f5" stroke-width="8"/>
-  <path d="m78 88 9 8 16-19" fill="none" stroke="#59c5b8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="96" cy="57" r="5" fill="#ff907d"/>
+  <rect width="128" height="128" rx="26" fill="#141419"/>
+  <style>
+    .m { font-family: Inter, Arial, Helvetica, sans-serif; font-weight: 900; fill: #f7f1ed; }
+    .a { font-family: Inter, Arial, Helvetica, sans-serif; font-weight: 900; fill: #e4aeb9; }
+  </style>
+  <text x="53" y="88" text-anchor="middle" font-size="72" class="m" >R</text>
+  <path d="M72 59h30M91 48l13 11-13 11" fill="none" stroke="#d6b45f" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M80 91l9 9 18-23" fill="none" stroke="#91d0c7" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
