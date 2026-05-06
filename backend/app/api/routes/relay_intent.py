@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from html import escape
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -2047,6 +2048,22 @@ def relay_evidence_export(days: int = 90, limit: int = 200) -> dict[str, Any]:
             .limit(limit)
             .all()
         )
+        signal_event_limit = min(max(limit * 20, 2000), 20000)
+        signal_events = (
+            db.query(RelayIntentEvent)
+            .filter(RelayIntentEvent.created_at >= since)
+            .order_by(RelayIntentEvent.created_at.asc(), RelayIntentEvent.id.asc())
+            .limit(signal_event_limit)
+            .all()
+        )
+        outbound_sends = (
+            db.query(AcquisitionEvent)
+            .filter(AcquisitionEvent.event_type.like("custom_outreach_sent_step_%"))
+            .filter(AcquisitionEvent.created_at >= since)
+            .order_by(AcquisitionEvent.created_at.asc(), AcquisitionEvent.id.asc())
+            .limit(signal_event_limit)
+            .all()
+        )
         now = datetime.utcnow()
 
         def rolling_event_counts(window_days: int) -> dict[str, int]:
@@ -2055,6 +2072,16 @@ def relay_evidence_export(days: int = 90, limit: int = 200) -> dict[str, Any]:
                 db.query(RelayIntentEvent.event_type, func.count(RelayIntentEvent.id))
                 .filter(RelayIntentEvent.created_at >= window_since)
                 .group_by(RelayIntentEvent.event_type)
+                .all()
+            )
+            return {name or "unknown": int(count) for name, count in rows}
+
+        def rolling_acquisition_counts(window_days: int) -> dict[str, int]:
+            window_since = now - timedelta(days=window_days)
+            rows = (
+                db.query(AcquisitionEvent.event_type, func.count(AcquisitionEvent.id))
+                .filter(AcquisitionEvent.created_at >= window_since)
+                .group_by(AcquisitionEvent.event_type)
                 .all()
             )
             return {name or "unknown": int(count) for name, count in rows}
@@ -2077,12 +2104,245 @@ def relay_evidence_export(days: int = 90, limit: int = 200) -> dict[str, Any]:
             "14d": rolling_event_counts(14),
             "30d": rolling_event_counts(30),
         }
+        rolling_acquisition = {
+            "1d": rolling_acquisition_counts(1),
+            "7d": rolling_acquisition_counts(7),
+            "14d": rolling_acquisition_counts(14),
+            "30d": rolling_acquisition_counts(30),
+        }
 
         def rolling_count(window: str, event_type: str) -> int:
             return int(rolling_counts.get(window, {}).get(event_type, 0))
 
         def round_rate(value: float) -> float:
             return round(value, 3)
+
+        def event_stage(event_type: str) -> str:
+            name = (event_type or "").lower()
+            if "stripe_paid" in name or "payment" in name or "paid" in name:
+                return "revenue"
+            if any(token in name for token in ["reply", "lead_capture", "note_intake", "checkout", "messy_notes"]):
+                return "buyer_signal"
+            if any(token in name for token in ["sample", "pricing", "paper", "product_click"]):
+                return "inspection"
+            return "attention"
+
+        def stage_rank(stage: str) -> int:
+            return {"none_detected": 0, "attention": 1, "inspection": 2, "buyer_signal": 3, "revenue": 4}.get(stage, 0)
+
+        def event_metadata(event: RelayIntentEvent) -> dict[str, Any]:
+            return _safe_payload(event.metadata_json)
+
+        def url_params(url: str | None) -> dict[str, str]:
+            if not url:
+                return {}
+            try:
+                parsed = parse_qs(urlparse(url).query)
+            except Exception:
+                return {}
+            return {
+                str(key)[:120]: str(values[-1])[:500]
+                for key, values in parsed.items()
+                if values
+            }
+
+        def metadata_or_param(event: RelayIntentEvent, key: str) -> str:
+            metadata = event_metadata(event)
+            raw = metadata.get(key)
+            if raw is not None:
+                return str(raw)[:500]
+            return url_params(event.page_url).get(key, "")
+
+        def seconds_between(start: datetime | None, end: datetime | None) -> float | None:
+            if not start or not end:
+                return None
+            return max((end.replace(tzinfo=None) - start.replace(tzinfo=None)).total_seconds(), 0.0)
+
+        def percentile(values: list[float], pct: float) -> float | None:
+            clean = sorted(v for v in values if v is not None)
+            if not clean:
+                return None
+            if len(clean) == 1:
+                return round(clean[0], 2)
+            index = (len(clean) - 1) * pct
+            lower = math.floor(index)
+            upper = math.ceil(index)
+            if lower == upper:
+                return round(clean[int(index)], 2)
+            weight = index - lower
+            return round(clean[lower] * (1 - weight) + clean[upper] * weight, 2)
+
+        def summarize_seconds(values: list[float]) -> dict[str, Any]:
+            clean = [v for v in values if v is not None]
+            return {
+                "count": len(clean),
+                "p25": percentile(clean, 0.25),
+                "median": percentile(clean, 0.50),
+                "p75": percentile(clean, 0.75),
+                "min": round(min(clean), 2) if clean else None,
+                "max": round(max(clean), 2) if clean else None,
+            }
+
+        def summarize_ms(values: list[int]) -> dict[str, Any]:
+            seconds = [max(v, 0) / 1000 for v in values if v is not None]
+            return summarize_seconds(seconds)
+
+        def safe_meta_int(metadata: dict[str, Any], *keys: str) -> int:
+            for key in keys:
+                if key in metadata:
+                    return _safe_int(metadata.get(key))
+            return 0
+
+        def safe_meta_float(metadata: dict[str, Any], *keys: str) -> float:
+            for key in keys:
+                if key in metadata:
+                    return _safe_float(metadata.get(key))
+            return 0.0
+
+        send_by_token: dict[str, dict[str, Any]] = {}
+        send_by_prospect: dict[str, list[dict[str, Any]]] = {}
+        for send in outbound_sends:
+            payload = _safe_payload(send.payload_json)
+            token = str(payload.get("tracking_token") or "").strip()
+            record = {
+                "sent_at": send.created_at,
+                "event_type": send.event_type,
+                "prospect_external_id": send.prospect_external_id,
+                "step_number": payload.get("step_number"),
+                "subject": str(payload.get("subject") or "")[:255],
+                "experiment_variant": str(payload.get("experiment_variant") or "")[:120],
+                "provider": str(payload.get("provider") or "")[:80],
+                "sender_address_domain": lead_domain(str(payload.get("sender_address") or "")),
+                "tracking_token": token,
+            }
+            if token:
+                send_by_token[token] = record
+            send_by_prospect.setdefault(send.prospect_external_id or "unknown", []).append(record)
+
+        session_map: dict[str, dict[str, Any]] = {}
+        hourly_event_counts: dict[str, dict[str, int]] = {}
+        local_hour_counts: dict[str, int] = {}
+        for event in signal_events:
+            sid = event.session_id or f"event:{event.id}"
+            metadata = event_metadata(event)
+            name = event.event_type or "unknown"
+            created_at = event.created_at
+            hour_key = created_at.strftime("%Y-%m-%dT%H:00:00Z") if created_at else "unknown"
+            hourly_event_counts.setdefault(hour_key, {})
+            hourly_event_counts[hour_key][name] = hourly_event_counts[hour_key].get(name, 0) + 1
+            local_hour = str(metadata.get("local_hour") or "").strip()
+            if local_hour:
+                local_hour_counts[local_hour] = local_hour_counts.get(local_hour, 0) + 1
+
+            session = session_map.setdefault(
+                sid,
+                {
+                    "session_id": sid,
+                    "first_seen_at": created_at,
+                    "last_seen_at": created_at,
+                    "event_count": 0,
+                    "event_counts": {},
+                    "first_event_at": {},
+                    "max_active_ms": 0,
+                    "max_elapsed_ms": 0,
+                    "max_scroll_pct": 0.0,
+                    "tracking_token": "",
+                    "utm": {},
+                    "surface": "",
+                    "path": event.path or "",
+                    "referrer": event.referrer or "",
+                },
+            )
+            session["event_count"] += 1
+            session["event_counts"][name] = session["event_counts"].get(name, 0) + 1
+            session["last_seen_at"] = created_at or session["last_seen_at"]
+            session["first_event_at"].setdefault(name, created_at)
+            session["max_active_ms"] = max(session["max_active_ms"], safe_meta_int(metadata, "active_ms", "active_time_ms"))
+            session["max_elapsed_ms"] = max(session["max_elapsed_ms"], safe_meta_int(metadata, "elapsed_ms", "time_on_page_ms"))
+            session["max_scroll_pct"] = max(session["max_scroll_pct"], safe_meta_float(metadata, "max_scroll_pct", "scroll_pct"))
+            if not session["surface"] and metadata.get("surface"):
+                session["surface"] = str(metadata.get("surface"))[:120]
+            token = metadata_or_param(event, "rbp")
+            if token and not session["tracking_token"]:
+                session["tracking_token"] = token[:80]
+            utm = session["utm"]
+            for key in ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]:
+                value = metadata_or_param(event, key)
+                if value and key not in utm:
+                    utm[key] = value[:500]
+
+        session_summaries = []
+        first_action_seconds: dict[str, list[float]] = {
+            "sample_click": [],
+            "note_intake_click": [],
+            "note_intake_submit": [],
+            "checkout_click": [],
+            "lead_capture": [],
+        }
+        tracked_outbound_visits = []
+        for session in session_map.values():
+            first_events = session["first_event_at"]
+            first_page = first_events.get("page_view") or session["first_seen_at"]
+            for action in first_action_seconds:
+                delta = seconds_between(first_page, first_events.get(action))
+                if delta is not None:
+                    first_action_seconds[action].append(delta)
+            duration_seconds = seconds_between(session["first_seen_at"], session["last_seen_at"]) or 0.0
+            tracking_token = session.get("tracking_token") or ""
+            matched_send = send_by_token.get(tracking_token) if tracking_token else None
+            seconds_after_send = None
+            if matched_send:
+                seconds_after_send = seconds_between(matched_send.get("sent_at"), session["first_seen_at"])
+                tracked_outbound_visits.append(
+                    {
+                        "visited_at": session["first_seen_at"].isoformat() if session["first_seen_at"] else "",
+                        "seconds_after_send": round(seconds_after_send, 2) if seconds_after_send is not None else None,
+                        "same_day": bool(seconds_after_send is not None and seconds_after_send <= 86400),
+                        "fast_visit": bool(seconds_after_send is not None and seconds_after_send <= 900),
+                        "step_number": matched_send.get("step_number"),
+                        "experiment_variant": matched_send.get("experiment_variant"),
+                        "utm_content": session.get("utm", {}).get("utm_content", ""),
+                        "event_count": session["event_count"],
+                        "events": sorted(session["event_counts"].keys()),
+                    }
+                )
+            session_summaries.append(
+                {
+                    "session_id": session["session_id"],
+                    "first_seen_at": session["first_seen_at"].isoformat() if session["first_seen_at"] else "",
+                    "last_seen_at": session["last_seen_at"].isoformat() if session["last_seen_at"] else "",
+                    "duration_seconds": round(duration_seconds, 2),
+                    "event_count": session["event_count"],
+                    "events": session["event_counts"],
+                    "max_active_seconds": round(int(session["max_active_ms"] or 0) / 1000, 2),
+                    "max_elapsed_seconds": round(int(session["max_elapsed_ms"] or 0) / 1000, 2),
+                    "max_scroll_pct": round(float(session["max_scroll_pct"] or 0), 1),
+                    "surface": session.get("surface", ""),
+                    "path": session.get("path", ""),
+                    "has_outbound_tracking_token": bool(tracking_token),
+                    "utm": session.get("utm", {}),
+                }
+            )
+
+        total_sessions = len(session_map)
+        action_sessions = [
+            s for s in session_map.values()
+            if any(s["event_counts"].get(name, 0) > 0 for name in ["sample_click", "note_intake_click", "note_intake_submit", "checkout_click", "lead_capture"])
+        ]
+        engaged_10s = [s for s in session_map.values() if int(s["max_active_ms"] or 0) >= 10000]
+        engaged_30s = [s for s in session_map.values() if int(s["max_active_ms"] or 0) >= 30000]
+        engaged_60s = [s for s in session_map.values() if int(s["max_active_ms"] or 0) >= 60000]
+        deep_scroll_50 = [s for s in session_map.values() if float(s["max_scroll_pct"] or 0) >= 50]
+        deep_scroll_75 = [s for s in session_map.values() if float(s["max_scroll_pct"] or 0) >= 75]
+        returning_sessions = [
+            s for s in session_map.values()
+            if s["event_counts"].get("page_view", 0) > 1 or (seconds_between(s["first_seen_at"], s["last_seen_at"]) or 0) >= 3600
+        ]
+        outbound_response_seconds = [
+            item["seconds_after_send"]
+            for item in tracked_outbound_visits
+            if item.get("seconds_after_send") is not None
+        ]
 
         page_views_1d = rolling_count("1d", "page_view")
         page_views_7d = rolling_count("7d", "page_view")
@@ -2144,6 +2404,104 @@ def relay_evidence_export(days: int = 90, limit: int = 200) -> dict[str, Any]:
                 }
             )
 
+        observed_intent_events = sorted(
+            set().union(
+                rolling_counts.get("1d", {}).keys(),
+                rolling_counts.get("7d", {}).keys(),
+                rolling_counts.get("14d", {}).keys(),
+                rolling_counts.get("30d", {}).keys(),
+            )
+        )
+        for event_type in observed_intent_events:
+            current = rolling_count("1d", event_type)
+            if current <= 0:
+                continue
+            prior_6 = max((rolling_count("7d", event_type) - current) / 6, 0.0)
+            if prior_6 > 0 and current <= prior_6:
+                continue
+            signal = {
+                "signal": f"{event_type}_observed_or_lifted_1d",
+                "is_success_signal": True,
+                "stage": event_stage(event_type),
+                "current": current,
+                "baseline": round(prior_6, 2),
+                "interpretation": f"{event_stage(event_type)}_signal_observed",
+            }
+            if prior_6 > 0:
+                signal["lift"] = round_rate(current / prior_6)
+            positive_signals.append(signal)
+
+        observed_acquisition_events = sorted(
+            set().union(
+                rolling_acquisition.get("1d", {}).keys(),
+                rolling_acquisition.get("7d", {}).keys(),
+                rolling_acquisition.get("14d", {}).keys(),
+                rolling_acquisition.get("30d", {}).keys(),
+            )
+        )
+        for event_type in observed_acquisition_events:
+            current = int(rolling_acquisition.get("1d", {}).get(event_type, 0))
+            if current <= 0:
+                continue
+            prior_6 = max((int(rolling_acquisition.get("7d", {}).get(event_type, 0)) - current) / 6, 0.0)
+            if prior_6 > 0 and current <= prior_6:
+                continue
+            stage = event_stage(event_type)
+            if stage == "attention" and not event_type.startswith("custom_outreach_sent_step_"):
+                continue
+            signal = {
+                "signal": f"{event_type}_observed_or_lifted_1d",
+                "is_success_signal": True,
+                "stage": stage,
+                "current": current,
+                "baseline": round(prior_6, 2),
+                "interpretation": f"{stage}_system_signal_observed",
+            }
+            if prior_6 > 0:
+                signal["lift"] = round_rate(current / prior_6)
+            positive_signals.append(signal)
+
+        if tracked_outbound_visits:
+            positive_signals.append(
+                {
+                    "signal": "tracked_outbound_link_visits_present",
+                    "is_success_signal": True,
+                    "stage": "attention",
+                    "current": len(tracked_outbound_visits),
+                    "fast_visits_15m": sum(1 for item in tracked_outbound_visits if item.get("fast_visit")),
+                    "median_seconds_after_send": summarize_seconds(outbound_response_seconds).get("median"),
+                    "interpretation": "email_link_response_is_measurable",
+                }
+            )
+        if engaged_10s:
+            positive_signals.append(
+                {
+                    "signal": "engaged_sessions_10s_present",
+                    "is_success_signal": True,
+                    "stage": "attention",
+                    "current": len(engaged_10s),
+                    "interpretation": "visitors_are_spending_time_on_the_page",
+                }
+            )
+        if action_sessions:
+            positive_signals.append(
+                {
+                    "signal": "action_sessions_present",
+                    "is_success_signal": True,
+                    "stage": "inspection",
+                    "current": len(action_sessions),
+                    "interpretation": "some_sessions_moved_beyond_passive_viewing",
+                }
+            )
+
+        success_stage = "none_detected"
+        for signal in positive_signals:
+            stage = str(signal.get("stage") or "")
+            if not stage:
+                stage = "attention" if "page" in str(signal.get("signal") or "") else "inspection"
+            if stage_rank(stage) > stage_rank(success_stage):
+                success_stage = stage
+
         journal_entries = []
         ledger_entries = []
         for event in journal_events:
@@ -2197,18 +2555,63 @@ def relay_evidence_export(days: int = 90, limit: int = 200) -> dict[str, Any]:
             },
             "rolling": {
                 "intent_event_counts": rolling_counts,
+                "acquisition_event_counts": rolling_acquisition,
             },
             "positive_change": {
                 "has_positive_signal": bool(positive_signals),
-                "success_stage": "attention" if positive_signals else "none_detected",
-                "revenue_stage": "not_monetized_yet",
+                "success_stage": success_stage,
+                "revenue_stage": "paid_signal_present" if success_stage == "revenue" else "not_monetized_yet",
                 "signals": positive_signals,
                 "next_positive_changes_to_seek": [
+                    "faster tracked link visits after outbound sends",
+                    "more engaged sessions over 30 seconds",
                     "more sample clicks",
                     "more note-intake clicks",
+                    "more checkout-intent clicks",
                     "real replies",
                     "paid tests",
                 ],
+            },
+            "observable_signals": {
+                "session_count": total_sessions,
+                "signal_event_limit": signal_event_limit,
+                "sessions_exported": min(len(session_summaries), limit),
+                "funnel_depth": {
+                    "sessions": total_sessions,
+                    "sessions_with_action": len(action_sessions),
+                    "sessions_with_sample_click": sum(1 for s in session_map.values() if s["event_counts"].get("sample_click", 0) > 0),
+                    "sessions_with_note_intake_click": sum(1 for s in session_map.values() if s["event_counts"].get("note_intake_click", 0) > 0),
+                    "sessions_with_note_submit": sum(1 for s in session_map.values() if s["event_counts"].get("note_intake_submit", 0) > 0),
+                    "sessions_with_checkout_click": sum(1 for s in session_map.values() if s["event_counts"].get("checkout_click", 0) > 0),
+                    "sessions_with_lead_capture": sum(1 for s in session_map.values() if s["event_counts"].get("lead_capture", 0) > 0),
+                    "returning_sessions": len(returning_sessions),
+                },
+                "engagement": {
+                    "engaged_sessions_10s": len(engaged_10s),
+                    "engaged_sessions_30s": len(engaged_30s),
+                    "engaged_sessions_60s": len(engaged_60s),
+                    "deep_scroll_sessions_50pct": len(deep_scroll_50),
+                    "deep_scroll_sessions_75pct": len(deep_scroll_75),
+                    "active_seconds_per_session": summarize_ms([int(s["max_active_ms"] or 0) for s in session_map.values()]),
+                    "elapsed_seconds_per_session": summarize_ms([int(s["max_elapsed_ms"] or 0) for s in session_map.values()]),
+                },
+                "first_action_timing_seconds": {
+                    event_type: summarize_seconds(values)
+                    for event_type, values in first_action_seconds.items()
+                },
+                "outbound_link_response": {
+                    "tracked_visits": len(tracked_outbound_visits),
+                    "fast_visits_15m": sum(1 for item in tracked_outbound_visits if item.get("fast_visit")),
+                    "same_day_visits": sum(1 for item in tracked_outbound_visits if item.get("same_day")),
+                    "seconds_after_send": summarize_seconds(outbound_response_seconds),
+                    "recent": tracked_outbound_visits[-limit:],
+                },
+                "hourly_event_counts_utc": [
+                    {"hour": hour, "events": counts}
+                    for hour, counts in sorted(hourly_event_counts.items())
+                ],
+                "local_hour_counts_from_browser": local_hour_counts,
+                "recent_sessions": session_summaries[-limit:],
             },
             "daily": {
                 "intent_event_counts": [

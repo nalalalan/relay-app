@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import email
+import hashlib
 import imaplib
 import json
 import os
@@ -12,6 +13,7 @@ from email.header import decode_header, make_header
 from email.message import EmailMessage
 from email.utils import parseaddr
 from typing import Any, Dict
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -580,6 +582,36 @@ def _notes_url() -> str:
     return _landing_page_url().rstrip("/") + "/#send-notes"
 
 
+def _tracking_token(prospect: AcquisitionProspect) -> str:
+    raw = f"{prospect.external_id}|{prospect.contact_email}".encode("utf-8", errors="ignore")
+    return hashlib.sha256(raw).hexdigest()[:20]
+
+
+def _tracked_url(
+    url: str,
+    *,
+    prospect: AcquisitionProspect,
+    step: StepTemplate,
+    experiment_variant: str,
+    destination: str,
+) -> str:
+    clean = (url or "").strip()
+    if not clean:
+        return ""
+    parts = urlsplit(clean)
+    query = parse_qsl(parts.query, keep_blank_values=True)
+    query.extend(
+        [
+            ("utm_source", "relay_outbound"),
+            ("utm_medium", "email"),
+            ("utm_campaign", (experiment_variant or "unknown")[:80]),
+            ("utm_content", f"step_{step.step_number}_{destination}"[:80]),
+            ("rbp", _tracking_token(prospect)),
+        ]
+    )
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
+
+
 def _is_generic_inbox(email_address: str) -> bool:
     local = (email_address or "").split("@", 1)[0].strip().lower()
     if not local:
@@ -590,17 +622,59 @@ def _is_generic_inbox(email_address: str) -> bool:
     return local.startswith(("info", "hello", "contact", "admin", "support", "sales", "media", "press"))
 
 
-def _render_body(template: StepTemplate, prospect: AcquisitionProspect) -> str:
+def _render_body(template: StepTemplate, prospect: AcquisitionProspect, experiment_variant: str) -> str:
     company_name = (prospect.company_name or "your agency").strip()
     return template.body.format(
         company_name=company_name,
-        packet_checkout_url=settings.packet_checkout_url,
-        packet_5_pack_url=_packet_5_pack_url(),
-        weekly_sprint_url=_weekly_sprint_url(),
-        monthly_autopilot_url=_monthly_autopilot_url(),
-        landing_page_url=_landing_page_url(),
-        sample_url=_sample_url(),
-        notes_url=_notes_url(),
+        packet_checkout_url=_tracked_url(
+            settings.packet_checkout_url,
+            prospect=prospect,
+            step=template,
+            experiment_variant=experiment_variant,
+            destination="checkout",
+        ),
+        packet_5_pack_url=_tracked_url(
+            _packet_5_pack_url(),
+            prospect=prospect,
+            step=template,
+            experiment_variant=experiment_variant,
+            destination="five_pack",
+        ),
+        weekly_sprint_url=_tracked_url(
+            _weekly_sprint_url(),
+            prospect=prospect,
+            step=template,
+            experiment_variant=experiment_variant,
+            destination="weekly_sprint",
+        ),
+        monthly_autopilot_url=_tracked_url(
+            _monthly_autopilot_url(),
+            prospect=prospect,
+            step=template,
+            experiment_variant=experiment_variant,
+            destination="monthly_autopilot",
+        ),
+        landing_page_url=_tracked_url(
+            _landing_page_url(),
+            prospect=prospect,
+            step=template,
+            experiment_variant=experiment_variant,
+            destination="landing",
+        ),
+        sample_url=_tracked_url(
+            _sample_url(),
+            prospect=prospect,
+            step=template,
+            experiment_variant=experiment_variant,
+            destination="sample",
+        ),
+        notes_url=_tracked_url(
+            _notes_url(),
+            prospect=prospect,
+            step=template,
+            experiment_variant=experiment_variant,
+            destination="notes",
+        ),
     )
 
 
@@ -982,7 +1056,7 @@ def send_due_sequence_messages(limit: int | None = None) -> dict[str, Any]:
                 continue
 
             try:
-                plain_text = _render_body(step, prospect)
+                plain_text = _render_body(step, prospect, prospect_variant)
                 html_body = plain_text.replace("\n", "<br>")
                 subject = step.subject
                 result = _outbound_send(
@@ -1004,6 +1078,7 @@ def send_due_sequence_messages(limit: int | None = None) -> dict[str, Any]:
                         "contact_name": prospect.contact_name,
                         "body_preview": _preview_text(plain_text, limit=240),
                         "plain_text": plain_text,
+                        "tracking_token": _tracking_token(prospect),
                         "experiment_variant": prospect_variant,
                         "experiment_label": experiment.get("experiment_label", ""),
                         "experiment_source": experiment.get("source", ""),

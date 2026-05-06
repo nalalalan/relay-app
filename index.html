@@ -246,5 +246,108 @@
       <span>2026</span>
     </footer>
   </main>
+  <script src="/site-config.js"></script>
+  <script>
+    (function () {
+      var config = window.AO_CONFIG || {};
+      var eventUrl = config.RELAY_INTENT_EVENT_URL || "https://alan-operator-backend-production.up.railway.app/api/relay/event";
+      var sessionKey = "ao_relay_showcase_session_id";
+      var sessionId = "";
+      var startedAt = new Date();
+      var startedMs = Date.now();
+      var maxScrollPct = 0;
+      var lastActiveMs = startedMs;
+      var activeMs = 0;
+
+      try {
+        sessionId = localStorage.getItem(sessionKey) || "";
+        if (!sessionId) {
+          sessionId = "relay-showcase-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+          localStorage.setItem(sessionKey, sessionId);
+        }
+      } catch (error) {
+        sessionId = "relay-showcase-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      }
+
+      function updateActiveTime() {
+        var now = Date.now();
+        if (!document.hidden) {
+          activeMs += Math.max(now - lastActiveMs, 0);
+        }
+        lastActiveMs = now;
+      }
+
+      function scrollPercent() {
+        var doc = document.documentElement;
+        var body = document.body;
+        var scrollTop = window.scrollY || doc.scrollTop || body.scrollTop || 0;
+        var scrollHeight = Math.max(body.scrollHeight || 0, doc.scrollHeight || 0);
+        var viewport = window.innerHeight || doc.clientHeight || 1;
+        return Math.max(0, Math.min(100, Math.round((scrollTop / Math.max(scrollHeight - viewport, 1)) * 100)));
+      }
+
+      function metadata(extra) {
+        updateActiveTime();
+        maxScrollPct = Math.max(maxScrollPct, scrollPercent());
+        var data = {
+          surface: "relay_showcase",
+          page_started_at: startedAt.toISOString(),
+          elapsed_ms: Date.now() - startedMs,
+          active_ms: Math.round(activeMs),
+          max_scroll_pct: maxScrollPct,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+          local_hour: String(new Date().getHours()).padStart(2, "0"),
+          viewport_w: window.innerWidth || 0,
+          viewport_h: window.innerHeight || 0
+        };
+        Object.keys(extra || {}).forEach(function (key) {
+          data[key] = extra[key];
+        });
+        return data;
+      }
+
+      function track(eventType, extra) {
+        try {
+          fetch(eventUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            keepalive: true,
+            body: JSON.stringify({
+              session_id: sessionId,
+              event_type: eventType,
+              path: window.location.pathname,
+              page_url: window.location.href,
+              referrer: document.referrer || "",
+              metadata: metadata(extra || {})
+            })
+          }).catch(function () {});
+        } catch (error) {}
+      }
+
+      Array.prototype.slice.call(document.querySelectorAll("a[href]")).forEach(function (link) {
+        link.addEventListener("click", function () {
+          var href = link.getAttribute("href") || "";
+          var label = (link.textContent || "").trim().toLowerCase();
+          var type = "showcase_link_click";
+          if (href.indexOf("relaybrief.com") >= 0) type = "showcase_product_click";
+          if (href.indexOf("sample.pdf") >= 0) type = "showcase_sample_click";
+          if (href.indexOf("manuscripts/") >= 0 || label.indexOf("paper") >= 0 || label.indexOf("manuscript") >= 0) type = "showcase_paper_click";
+          track(type, { target_href: href, target_label: label.slice(0, 80) });
+        });
+      });
+
+      [15000, 45000, 90000].forEach(function (ms) {
+        window.setTimeout(function () {
+          track("showcase_engagement", { mark: String(ms / 1000) + "s" });
+        }, ms);
+      });
+
+      window.addEventListener("pagehide", function () {
+        track("showcase_engagement", { mark: "pagehide" });
+      });
+
+      track("page_view", {});
+    }());
+  </script>
 </body>
 </html>
