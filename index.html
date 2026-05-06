@@ -3,45 +3,27 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Relay | AO Labs</title>
-  <meta name="description" content="Relay is an AO Labs project: product, autonomous revenue loop, live evidence, and paper.">
+  <title>Relay | Live data</title>
+  <meta name="description" content="Live Relay data with links to the product page and current paper.">
   <link rel="canonical" href="https://relay.aolabs.io/">
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="AO Labs">
-  <meta property="og:title" content="Relay | AO Labs">
-  <meta property="og:description" content="Product, autonomous revenue loop, live evidence, and paper.">
-  <meta property="og:url" content="https://relay.aolabs.io/">
-  <meta property="og:image" content="https://relay.aolabs.io/og-image.png">
-  <meta property="og:image:secure_url" content="https://relay.aolabs.io/og-image.png">
-  <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Relay.">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Relay | AO Labs">
-  <meta name="twitter:description" content="Product, autonomous revenue loop, live evidence, and paper.">
-  <meta name="twitter:image" content="https://relay.aolabs.io/og-image.png">
-  <meta name="twitter:image:alt" content="Relay.">
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta name="theme-color" content="#f7f5f0">
   <style>
     :root {
       color-scheme: light;
-      --bg: #f7f5ef;
-      --paper: #fffefa;
-      --ink: #17130f;
+      --bg: #f7f5f0;
+      --panel: #fffefa;
+      --ink: #15120e;
       --muted: #6f675d;
-      --line: #ddd5ca;
-      --soft: #ebe5dc;
-      --blue: #285f8f;
-      --green: #286748;
-      --amber: #8c5d22;
-      --shadow: 0 22px 60px rgba(35, 28, 20, .08);
+      --line: #ded8cf;
+      --soft: #ece7dd;
+      --good: #246345;
+      --warn: #8b5a19;
+      --blue: #2b5f8d;
+      --red: #963a2c;
+      --shadow: 0 18px 46px rgba(40, 32, 23, .07);
     }
 
     * { box-sizing: border-box; }
-
-    html { scroll-behavior: smooth; }
 
     body {
       margin: 0;
@@ -50,84 +32,114 @@
       color: var(--ink);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       letter-spacing: 0;
+      overflow-x: hidden;
     }
 
     a { color: inherit; text-decoration: none; }
-
-    img {
-      display: block;
-      width: 100%;
-    }
+    button { font: inherit; color: inherit; }
 
     .wrap {
-      width: min(calc(100% - 30px), 1180px);
+      width: calc(100% - 28px);
+      max-width: 1180px;
       margin: 0 auto;
     }
 
-    .topbar {
+    header {
       position: sticky;
       top: 0;
-      z-index: 10;
+      z-index: 5;
       border-bottom: 1px solid var(--line);
-      background: rgba(247, 245, 239, .92);
-      backdrop-filter: blur(18px);
+      background: rgba(247, 245, 240, .92);
+      backdrop-filter: blur(14px);
     }
 
-    .topbar-inner {
+    .topbar {
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      min-height: 62px;
-      gap: 18px;
+      align-items: center;
+      min-height: 58px;
+      gap: 14px;
     }
 
     .brand {
       display: inline-flex;
       align-items: center;
       gap: 10px;
-      min-width: 0;
-      font-size: 15px;
-      font-weight: 900;
+      font-size: 14px;
+      font-weight: 850;
+      white-space: nowrap;
     }
 
     .mark {
       display: grid;
       place-items: center;
-      width: 34px;
-      height: 34px;
+      width: 31px;
+      height: 31px;
       border-radius: 8px;
       background: var(--ink);
       color: #fff;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 900;
     }
 
-    nav {
-      display: flex;
+    .status {
+      display: inline-flex;
       align-items: center;
-      gap: 16px;
+      gap: 8px;
       color: var(--muted);
-      font-size: 13px;
-      font-weight: 820;
+      font-size: 12px;
+      font-weight: 760;
+      white-space: nowrap;
     }
 
-    nav a:hover,
-    nav a:focus-visible {
-      color: var(--ink);
-      outline: none;
+    .top-right {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
     }
+
+    .nav-links {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 840;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--warn);
+    }
+
+    .dot.live { background: var(--good); }
+    .dot.err { background: var(--red); }
 
     main {
-      padding: 42px 0 52px;
+      padding: 18px 0 42px;
     }
 
     .hero {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(360px, 480px);
-      gap: 42px;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
       align-items: center;
-      min-height: min(760px, calc(100vh - 130px));
-      padding-bottom: 36px;
+      padding: 2px 0 14px;
     }
 
     h1,
@@ -138,147 +150,249 @@
     }
 
     h1 {
-      max-width: 720px;
-      font-size: clamp(72px, 12vw, 160px);
-      line-height: .82;
-      font-weight: 950;
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.05;
+      font-weight: 900;
     }
 
     .sub {
-      max-width: 650px;
-      margin-top: 18px;
+      margin-top: 6px;
       color: var(--muted);
-      font-size: clamp(19px, 2.6vw, 30px);
-      line-height: 1.15;
-      font-weight: 760;
+      font-size: 14px;
+      font-weight: 650;
+      line-height: 1.35;
+      max-width: 760px;
+      overflow-wrap: anywhere;
     }
 
-    .live-strip {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
-      margin-top: 26px;
-      max-width: 720px;
-    }
-
-    .stat,
-    .artifact,
-    .system-item,
-    .paper-link {
+    .tabs {
+      display: inline-grid;
+      grid-template-columns: repeat(4, 1fr);
+      overflow: hidden;
       border: 1px solid var(--line);
       border-radius: 8px;
-      background: var(--paper);
+      background: var(--panel);
+      max-width: 100%;
+    }
+
+    .tab {
+      min-width: 70px;
+      min-height: 38px;
+      border: 0;
+      border-right: 1px solid var(--line);
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .tab:last-child { border-right: 0; }
+    .tab.active {
+      background: var(--ink);
+      color: #fff;
+    }
+
+    .grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .answer-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .card,
+    .panel,
+    .signal {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
       box-shadow: var(--shadow);
     }
 
-    .stat {
-      min-height: 92px;
+    .card {
+      min-height: 96px;
       padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
 
     .label {
       color: var(--muted);
       font-size: 11px;
-      line-height: 1;
-      font-weight: 900;
+      font-weight: 850;
       text-transform: uppercase;
     }
 
     .value {
-      margin-top: 12px;
-      font-size: clamp(26px, 4vw, 42px);
-      line-height: .9;
-      font-weight: 950;
-    }
-
-    .value.blue { color: var(--blue); }
-    .value.green { color: var(--green); }
-
-    .hero-panel {
-      align-self: stretch;
-      min-height: 520px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--paper);
-      box-shadow: var(--shadow);
-      overflow: hidden;
-      display: grid;
-      grid-template-rows: minmax(0, 1fr) auto;
-    }
-
-    .terminal {
-      padding: 18px;
-      display: grid;
-      align-content: stretch;
-      grid-template-rows: minmax(0, 1fr) repeat(8, auto);
-      gap: 9px;
-      background:
-        linear-gradient(180deg, rgba(255, 254, 250, .72), rgba(255, 254, 250, .96)),
-        linear-gradient(135deg, rgba(40, 95, 143, .10), rgba(40, 103, 72, .08));
-    }
-
-    .loop-map {
-      display: grid;
-      align-content: center;
-      gap: 12px;
-      min-height: 260px;
-      padding: 10px 2px 18px;
-    }
-
-    .loop-title {
-      font-size: clamp(28px, 4vw, 46px);
-      line-height: .95;
-      font-weight: 950;
-    }
-
-    .loop-sub {
-      max-width: 320px;
-      color: var(--muted);
-      font-size: 15px;
-      line-height: 1.35;
-      font-weight: 720;
-    }
-
-    .loop-steps {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 6px;
-      margin-top: 6px;
-    }
-
-    .loop-step {
-      display: grid;
-      place-items: center;
-      min-height: 54px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(255, 254, 250, .68);
-      color: var(--muted);
-      font-size: 11px;
+      margin-top: 7px;
+      font-size: clamp(26px, 3.5vw, 38px);
+      line-height: 1;
       font-weight: 900;
-      text-transform: uppercase;
     }
 
-    .pulse-row {
+    .value.good { color: var(--good); }
+    .value.warn { color: var(--warn); }
+    .value.blue { color: var(--blue); }
+
+    .hint {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 680;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .main-grid {
+      grid-template-columns: minmax(0, 1.25fr) minmax(310px, .75fr);
+      margin-top: 12px;
+    }
+
+    .single-grid {
+      grid-template-columns: minmax(0, 1fr);
+      margin-top: 12px;
+    }
+
+    .panel {
+      padding: 16px;
+      min-height: 238px;
+      overflow: hidden;
+    }
+
+    .panel.tall {
+      min-height: 320px;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1.1;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
+    .caption {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 680;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .chart {
+      width: 100%;
+      height: 230px;
+      display: block;
+    }
+
+    .axis {
+      stroke: #bdb5aa;
+      stroke-width: 1;
+      shape-rendering: crispEdges;
+    }
+
+    .grid-line {
+      stroke: #e7e1d8;
+      stroke-width: 1;
+      shape-rendering: crispEdges;
+    }
+
+    .axis-label,
+    .tick-label {
+      fill: var(--muted);
+      font-size: 11px;
+      font-weight: 760;
+    }
+
+    .series-views {
+      fill: none;
+      stroke: var(--blue);
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .series-actions {
+      fill: none;
+      stroke: var(--good);
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .dot-point {
+      stroke: var(--panel);
+      stroke-width: 2;
+    }
+
+    .bar-view {
+      fill: var(--blue);
+    }
+
+    .bar-action {
+      fill: var(--good);
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .key {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--blue);
+    }
+
+    .key.action { background: var(--good); }
+
+    .funnel {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 10px;
+    }
+
+    .funnel-row {
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr) 76px;
       gap: 10px;
       align-items: center;
-      min-height: 38px;
+      min-height: 30px;
       color: var(--muted);
       font-size: 13px;
-      font-weight: 790;
-    }
-
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: var(--green);
+      font-weight: 760;
     }
 
     .track {
-      height: 8px;
+      height: 10px;
       border-radius: 999px;
       background: var(--soft);
       overflow: hidden;
@@ -286,281 +400,164 @@
 
     .bar {
       display: block;
-      width: 10%;
       height: 100%;
       border-radius: inherit;
       background: var(--ink);
     }
 
-    .hero-panel-footer {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      border-top: 1px solid var(--line);
+    .count {
+      display: inline-flex;
+      justify-content: flex-end;
+      gap: 4px;
+      color: var(--ink);
+      font-weight: 850;
+      white-space: nowrap;
     }
 
-    .footer-link {
-      display: flex;
-      min-height: 72px;
-      padding: 14px;
-      border-right: 1px solid var(--line);
-      flex-direction: column;
-      justify-content: center;
-      gap: 5px;
-      font-weight: 900;
-    }
-
-    .footer-link:last-child { border-right: 0; }
-
-    .footer-link span {
+    .pct {
       color: var(--muted);
-      font-size: 11px;
-      font-weight: 900;
-      text-transform: uppercase;
+      font-weight: 700;
     }
 
-    section {
-      padding: 28px 0;
-    }
-
-    .section-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: end;
-      gap: 20px;
-      margin-bottom: 14px;
-      border-top: 1px solid var(--line);
-      padding-top: 20px;
-    }
-
-    h2 {
-      font-size: clamp(30px, 5vw, 58px);
-      line-height: .94;
-      font-weight: 950;
-    }
-
-    .small {
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 800;
-    }
-
-    .system-grid {
+    .signals {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
+      gap: 8px;
     }
 
-    .system-item {
-      min-height: 150px;
-      padding: 16px;
+    .signal {
+      padding: 12px;
       box-shadow: none;
     }
 
-    .system-item h3 {
-      font-size: 20px;
-      font-weight: 950;
-    }
-
-    .system-item p {
-      margin-top: 30px;
-      color: var(--muted);
-      font-size: 15px;
-      line-height: 1.35;
-      font-weight: 650;
-    }
-
-    .artifact-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr);
-      gap: 12px;
-      align-items: stretch;
-    }
-
-    .artifact {
-      overflow: hidden;
-      display: grid;
-      grid-template-rows: minmax(0, 1fr) auto;
-      box-shadow: var(--shadow);
-    }
-
-    .artifact.product {
-      min-height: 560px;
-    }
-
-    .artifact img {
-      height: 100%;
-      object-fit: cover;
-      object-position: center top;
-      background: var(--soft);
-    }
-
-    .artifact.product img {
-      aspect-ratio: 16 / 10;
-    }
-
-    .artifact.side {
-      min-height: 274px;
-    }
-
-    .side-stack {
-      display: grid;
-      gap: 12px;
-    }
-
-    .caption {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      min-height: 62px;
-      padding: 14px 16px;
-      border-top: 1px solid var(--line);
-      align-items: center;
-      font-size: 15px;
-      font-weight: 900;
-    }
-
-    .caption span {
-      color: var(--muted);
-      font-size: 11px;
-      text-transform: uppercase;
-    }
-
-    .paper-link {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 18px;
-      align-items: center;
-      min-height: 126px;
-      padding: 22px;
-      box-shadow: var(--shadow);
-    }
-
-    .paper-link h3 {
-      font-size: clamp(24px, 3vw, 36px);
-      line-height: 1;
-      font-weight: 950;
-    }
-
-    .paper-link p {
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 16px;
-      font-weight: 650;
-    }
-
-    .read {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 44px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 0 16px;
+    .signal-name {
       font-size: 14px;
-      font-weight: 900;
-      white-space: nowrap;
+      font-weight: 850;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .signal-meta {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 690;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .plain-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .plain-row {
+      display: grid;
+      grid-template-columns: minmax(92px, .42fr) minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 10px;
+    }
+
+    .plain-row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .plain-row strong {
+      font-size: 14px;
+      font-weight: 850;
+    }
+
+    .plain-row span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 720;
+      text-align: left;
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
 
     .links {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      padding-top: 4px;
+      margin-top: 12px;
     }
 
     .link {
       display: inline-flex;
-      min-height: 40px;
       align-items: center;
+      min-height: 36px;
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 0 13px;
-      background: var(--paper);
+      padding: 0 12px;
+      background: var(--panel);
       color: var(--ink);
       font-size: 13px;
-      font-weight: 900;
-    }
-
-    .link:hover,
-    .link:focus-visible,
-    .footer-link:hover,
-    .footer-link:focus-visible,
-    .artifact:hover .caption,
-    .paper-link:hover,
-    .paper-link:focus-visible {
-      border-color: rgba(23, 19, 15, .42);
-      outline: none;
+      font-weight: 800;
     }
 
     footer {
       display: flex;
       justify-content: space-between;
-      gap: 14px;
-      padding: 34px 0 0;
+      gap: 12px;
+      padding-top: 18px;
       color: var(--muted);
       font-size: 12px;
-      font-weight: 760;
+      font-weight: 720;
     }
 
-    @media (max-width: 900px) {
+    @media (max-width: 940px) {
       .hero,
-      .artifact-grid,
-      .paper-link {
+      .main-grid {
         grid-template-columns: minmax(0, 1fr);
       }
 
-      .hero {
-        min-height: auto;
-        gap: 22px;
-      }
-
-      .live-strip,
-      .system-grid,
-      .loop-steps {
+      .answer-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .hero-panel,
-      .artifact.product,
-      .artifact.side {
-        min-height: auto;
+      .tabs {
+        width: 100%;
       }
     }
 
-    @media (max-width: 620px) {
+    @media (max-width: 580px) {
       .wrap {
-        width: min(calc(100% - 22px), 420px);
-      }
-
-      .topbar-inner {
-        min-height: 58px;
-      }
-
-      nav {
-        gap: 10px;
-        font-size: 12px;
+        width: calc(100% - 22px);
+        max-width: 430px;
       }
 
       h1 {
-        font-size: 68px;
+        font-size: 24px;
       }
 
-      .live-strip,
-      .system-grid,
-      .hero-panel-footer {
+      .answer-grid {
         grid-template-columns: minmax(0, 1fr);
       }
 
-      .footer-link {
-        border-right: 0;
-        border-bottom: 1px solid var(--line);
+      .tab {
+        min-width: 0;
+        padding: 0 7px;
+        font-size: 12px;
       }
 
-      .footer-link:last-child { border-bottom: 0; }
-
-      .section-head {
+      .panel-head {
         align-items: start;
-        flex-direction: column;
+      }
+
+      .small {
+        white-space: normal;
+        text-align: right;
+      }
+
+      .chart {
+        height: 200px;
+      }
+
+      .funnel-row {
+        grid-template-columns: 86px minmax(0, 1fr) 62px;
       }
 
       footer {
@@ -570,332 +567,651 @@
   </style>
 </head>
 <body>
-  <header class="topbar" aria-label="Relay navigation">
-    <div class="wrap topbar-inner">
+  <header>
+    <div class="wrap topbar">
       <a class="brand" href="/">
         <span class="mark">AO</span>
         <span>Relay</span>
       </a>
-      <nav>
-        <a href="https://relaybrief.com/">Product</a>
-        <a href="https://relaylive.aolabs.io/">Live</a>
-        <a href="/manuscripts/relay-proof-governed-autonomy-for-live-revenue-experiments.pdf">Paper</a>
-      </nav>
+      <div class="top-right">
+        <nav class="nav-links" aria-label="Relay links">
+          <a class="nav-link" href="https://relaybrief.com/" data-event="relay_live_product_click">Product</a>
+          <a class="nav-link" href="/manuscripts/relay-proof-governed-autonomy-for-live-revenue-experiments.pdf" data-event="relay_live_paper_click">Paper</a>
+        </nav>
+        <div class="status">
+          <span id="liveDot" class="dot"></span>
+          <span id="statusText">loading</span>
+        </div>
+      </div>
     </div>
   </header>
 
   <main class="wrap">
-    <section class="hero" aria-label="Relay project">
+    <section class="hero" aria-label="Relay live status">
       <div>
-        <h1>Relay</h1>
-        <p class="sub">A live autonomous revenue system. Product, outreach, evidence, paper.</p>
-
-        <div class="live-strip" aria-label="Live Relay metrics">
-          <div class="stat">
-            <div class="label">Stage</div>
-            <div id="liveStage" class="value blue">live</div>
-          </div>
-          <div class="stat">
-            <div class="label">Signals</div>
-            <div id="liveSignals" class="value">-</div>
-          </div>
-          <div class="stat">
-            <div class="label">Views</div>
-            <div id="liveViews" class="value">-</div>
-          </div>
-          <div class="stat">
-            <div class="label">Money</div>
-            <div id="liveMoney" class="value green">$0</div>
-          </div>
-        </div>
+        <h1>Live metrics</h1>
+        <p class="sub" id="summaryLine">Loading the live trend.</p>
       </div>
-
-      <aside class="hero-panel" aria-label="Live system pulse">
-        <div class="terminal">
-          <div class="loop-map">
-            <div>
-              <div class="loop-title">Built loop.</div>
-              <p class="loop-sub">A product surface, outbound system, live signal layer, and manuscript running from the same evidence.</p>
-            </div>
-            <div class="loop-steps" aria-label="Relay loop">
-              <span class="loop-step">send</span>
-              <span class="loop-step">watch</span>
-              <span class="loop-step">adapt</span>
-              <span class="loop-step">archive</span>
-            </div>
-          </div>
-          <div class="pulse-row">
-            <span class="dot"></span>
-            <span>product telemetry</span>
-            <strong id="pulseViews">-</strong>
-          </div>
-          <div class="track"><span id="barViews" class="bar"></span></div>
-          <div class="pulse-row">
-            <span class="dot"></span>
-            <span>inspection signal</span>
-            <strong id="pulseSample">-</strong>
-          </div>
-          <div class="track"><span id="barSample" class="bar"></span></div>
-          <div class="pulse-row">
-            <span class="dot"></span>
-            <span>autonomy loop</span>
-            <strong id="pulseLoop">on</strong>
-          </div>
-          <div class="track"><span id="barLoop" class="bar"></span></div>
-          <div class="pulse-row">
-            <span class="dot"></span>
-            <span>evidence archive</span>
-            <strong id="pulseEvidence">clean</strong>
-          </div>
-          <div class="track"><span id="barEvidence" class="bar"></span></div>
-        </div>
-        <div class="hero-panel-footer">
-          <a class="footer-link" href="https://relaybrief.com/"><span>Use</span>Product</a>
-          <a class="footer-link" href="https://relaylive.aolabs.io/"><span>Watch</span>Live data</a>
-          <a class="footer-link" href="/manuscripts/relay-proof-governed-autonomy-for-live-revenue-experiments.pdf"><span>Read</span>Paper</a>
-        </div>
-      </aside>
-    </section>
-
-    <section aria-label="System">
-      <div class="section-head">
-        <h2>System</h2>
-        <p class="small">Built as a working loop, not a mockup.</p>
-      </div>
-      <div class="system-grid">
-        <article class="system-item">
-          <h3>Product</h3>
-          <p>A paid follow-up packet for messy call notes.</p>
-        </article>
-        <article class="system-item">
-          <h3>Autonomy</h3>
-          <p>Outbound, follow-up, reply handling, and proof gates.</p>
-        </article>
-        <article class="system-item">
-          <h3>Evidence</h3>
-          <p>Every useful signal gets logged and staged.</p>
-        </article>
-        <article class="system-item">
-          <h3>Paper</h3>
-          <p>The system is documented as a live experiment.</p>
-        </article>
+      <div class="tabs" role="tablist" aria-label="Time range">
+        <button class="tab active" data-days="1" type="button">Day</button>
+        <button class="tab" data-days="7" type="button">Week</button>
+        <button class="tab" data-days="30" type="button">Month</button>
+        <button class="tab" data-days="90" type="button">90 days</button>
       </div>
     </section>
 
-    <section aria-label="Artifacts">
-      <div class="section-head">
-        <h2>Artifacts</h2>
-        <div class="links">
-          <a class="link" href="https://relaybrief.com/">Product</a>
-          <a class="link" href="https://relaylive.aolabs.io/">Live dashboard</a>
-          <a class="link" href="/sample.pdf">Sample</a>
-        </div>
-      </div>
-
-      <div class="artifact-grid">
-        <a class="artifact product" href="https://relaybrief.com/" aria-label="Open Relay product page">
-          <img src="/manuscripts/relay_nature_style/figures/relay-product-page-desktop.png" alt="Relay product page.">
-          <div class="caption">Product surface <span>live</span></div>
-        </a>
-
-        <div class="side-stack">
-          <a class="artifact side" href="/sample.pdf" aria-label="Open sample packet">
-            <img src="/manuscripts/relay_nature_style/figures/relay-sample-preview.png" alt="Relay sample packet.">
-            <div class="caption">Sample packet <span>pdf</span></div>
-          </a>
-          <a class="artifact side" href="/manuscripts/relay-proof-governed-autonomy-for-live-revenue-experiments.pdf" aria-label="Open Relay paper">
-            <img src="/renders/page-1.png" alt="Relay paper first page.">
-            <div class="caption">Manuscript <span>paper</span></div>
-          </a>
-        </div>
-      </div>
-    </section>
-
-    <section aria-label="Paper">
-      <a class="paper-link" href="/manuscripts/relay-proof-governed-autonomy-for-live-revenue-experiments.pdf">
+    <section class="grid answer-grid" aria-label="Current answers">
+      <article class="card">
         <div>
-          <h3>Proof-governed autonomy for live revenue experiments</h3>
-          <p>Current manuscript and evidence package.</p>
+          <div class="label">Views / 24h</div>
+          <div id="viewsValue" class="value blue">-</div>
         </div>
-        <span class="read">Open paper</span>
-      </a>
+        <div id="viewsHint" class="hint">-</div>
+      </article>
+      <article class="card">
+        <div>
+          <div class="label">Offer clicks / 24h</div>
+          <div id="clicksValue" class="value good">-</div>
+        </div>
+        <div id="clicksHint" class="hint">Sample, notes, checkout, or lead action.</div>
+      </article>
+      <article class="card">
+        <div>
+          <div class="label">Money</div>
+          <div id="moneyValue" class="value warn">$0</div>
+        </div>
+        <div id="moneyHint" class="hint">0 paid tests.</div>
+      </article>
+      <article class="card">
+        <div>
+          <div class="label">Next system move</div>
+          <div id="nextMoveValue" class="value">-</div>
+        </div>
+        <div id="nextMoveHint" class="hint">-</div>
+      </article>
     </section>
+
+    <section class="grid main-grid" aria-label="Live trend charts">
+      <article class="panel tall">
+        <div class="panel-head">
+          <h2>Views and actions over time</h2>
+          <span id="trendRange" class="small">local dates</span>
+        </div>
+        <svg id="trendChart" class="chart" role="img" aria-label="Line chart of page views and action clicks by date"></svg>
+        <div class="legend">
+          <span><i class="key"></i>views</span>
+          <span><i class="key action"></i>offer clicks</span>
+        </div>
+        <p id="trendCaption" class="caption">-</p>
+      </article>
+
+      <article class="panel">
+        <div class="panel-head">
+          <h2>What matters</h2>
+          <span id="updatedAt" class="small">-</span>
+        </div>
+        <div id="signalsList" class="signals"></div>
+      </article>
+    </section>
+
+    <section class="grid main-grid" aria-label="Funnel and timing">
+      <article class="panel">
+        <div class="panel-head">
+          <h2>Funnel</h2>
+          <span id="rangeLabel" class="small">selected range</span>
+        </div>
+        <div id="funnelRows" class="funnel"></div>
+        <p id="funnelCaption" class="caption">-</p>
+      </article>
+
+      <article class="panel">
+        <div class="panel-head">
+          <h2>First action timing</h2>
+          <span class="small">from first page view</span>
+        </div>
+        <div id="timingList" class="plain-list"></div>
+        <p class="caption">Median time among sessions where that action happened. Empty or weird values mean there is not enough clean data yet.</p>
+      </article>
+    </section>
+
+    <section class="grid single-grid" aria-label="Autonomous loop">
+      <article class="panel">
+        <div class="panel-head">
+          <h2>Autonomous loop</h2>
+          <span class="small">status</span>
+        </div>
+        <div id="loopList" class="plain-list"></div>
+      </article>
+    </section>
+
+    <div class="links" aria-label="Relay links">
+      <a class="link" href="https://relaybrief.com/" data-event="relay_live_product_click">Product</a>
+      <a class="link" href="/manuscripts/relay-proof-governed-autonomy-for-live-revenue-experiments.pdf" data-event="relay_live_paper_click">Paper</a>
+      <a class="link" href="https://alan-operator-backend-production.up.railway.app/api/relay/evidence-export?days=30&limit=100">Raw export</a>
+    </div>
 
     <footer>
-      <span>Relay / AO Labs / 2026</span>
-      <span id="updatedAt">live data loading</span>
+      <span>Aggregate live data only.</span>
+      <span>Refreshes every 30 seconds.</span>
     </footer>
   </main>
 
-  <script src="/site-config.js"></script>
   <script>
     (function () {
-      var config = window.AO_CONFIG || {};
-      var eventUrl = config.RELAY_INTENT_EVENT_URL || "https://alan-operator-backend-production.up.railway.app/api/relay/event";
-      var apiBase = config.API_BASE || "https://alan-operator-backend-production.up.railway.app";
-      var sessionKey = "ao_relay_showcase_session_id";
-      var sessionId = "";
-      var startedAt = new Date();
-      var startedMs = Date.now();
-      var maxScrollPct = 0;
-      var lastActiveMs = startedMs;
-      var activeMs = 0;
+      var API = "https://alan-operator-backend-production.up.railway.app/api/relay";
+      var days = 1;
+      var timer = null;
+      var lastEvidence = null;
+      var lastOps = null;
 
-      try {
-        sessionId = localStorage.getItem(sessionKey) || "";
-        if (!sessionId) {
-          sessionId = "relay-showcase-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
-          localStorage.setItem(sessionKey, sessionId);
-        }
-      } catch (error) {
-        sessionId = "relay-showcase-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
-      }
+      var ACTION_EVENTS = [
+        "sample_click",
+        "showcase_sample_click",
+        "note_intake_click",
+        "notes_started",
+        "notes_100_chars",
+        "note_intake_submit",
+        "checkout_click",
+        "lead_capture"
+      ];
+
+      var EVENT_NAMES = {
+        page_view: "views",
+        page_engagement: "engaged",
+        sample_click: "sample",
+        showcase_sample_click: "sample",
+        note_intake_click: "notes",
+        notes_started: "started",
+        note_intake_submit: "submitted",
+        checkout_click: "checkout",
+        lead_capture: "leads"
+      };
 
       function $(id) {
         return document.getElementById(id);
       }
 
-      function updateActiveTime() {
-        var now = Date.now();
-        if (!document.hidden) {
-          activeMs += Math.max(now - lastActiveMs, 0);
-        }
-        lastActiveMs = now;
-      }
-
-      function scrollPercent() {
-        var doc = document.documentElement;
-        var body = document.body;
-        var scrollTop = window.scrollY || doc.scrollTop || body.scrollTop || 0;
-        var scrollHeight = Math.max(body.scrollHeight || 0, doc.scrollHeight || 0);
-        var viewport = window.innerHeight || doc.clientHeight || 1;
-        return Math.max(0, Math.min(100, Math.round((scrollTop / Math.max(scrollHeight - viewport, 1)) * 100)));
-      }
-
-      function metadata(extra) {
-        updateActiveTime();
-        maxScrollPct = Math.max(maxScrollPct, scrollPercent());
-        var data = {
-          surface: "relay_showcase",
-          page_started_at: startedAt.toISOString(),
-          elapsed_ms: Date.now() - startedMs,
-          active_ms: Math.round(activeMs),
-          max_scroll_pct: maxScrollPct,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
-          local_hour: String(new Date().getHours()).padStart(2, "0"),
-          viewport_w: window.innerWidth || 0,
-          viewport_h: window.innerHeight || 0
-        };
-        Object.keys(extra || {}).forEach(function (key) {
-          data[key] = extra[key];
-        });
-        return data;
-      }
-
-      function track(eventType, extra) {
+      function track(type) {
+        if (!type) return;
         try {
-          fetch(eventUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            keepalive: true,
-            body: JSON.stringify({
-              session_id: sessionId,
-              event_type: eventType,
-              path: window.location.pathname,
-              page_url: window.location.href,
-              referrer: document.referrer || "",
-              metadata: metadata(extra || {})
-            })
-          }).catch(function () {});
+          var body = JSON.stringify({
+            event_type: type,
+            page_url: location.href,
+            referrer: document.referrer || "",
+            metadata: {
+              surface: "relay_live",
+              host: location.hostname,
+              path: location.pathname
+            }
+          });
+          if (navigator.sendBeacon) {
+            navigator.sendBeacon(API + "/event", new Blob([body], { type: "application/json" }));
+          } else {
+            fetch(API + "/event", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: body,
+              keepalive: true
+            }).catch(function () {});
+          }
         } catch (error) {}
       }
 
-      function number(value) {
-        return Number(value || 0);
-      }
-
       function fmt(value) {
-        return Math.round(number(value)).toLocaleString();
+        var n = Number(value || 0);
+        if (!Number.isFinite(n)) return "0";
+        if (n >= 1000) return n.toLocaleString();
+        return String(Math.round(n * 100) / 100);
       }
 
       function money(value) {
-        return "$" + Math.round(number(value)).toLocaleString();
+        var n = Number(value || 0);
+        return "$" + n.toLocaleString(undefined, { maximumFractionDigits: 0 });
       }
 
-      function stage(value) {
-        return String(value || "live").replace(/_/g, " ");
+      function pct(value) {
+        var n = Number(value || 0);
+        if (!Number.isFinite(n)) return "0%";
+        if (Math.abs(n) >= 100) return Math.round(n) + "%";
+        return Math.round(n * 10) / 10 + "%";
       }
 
-      function setBar(id, value, max) {
-        var pct = Math.max(6, Math.min(100, (number(value) / Math.max(number(max), 1)) * 100));
-        $(id).style.width = pct + "%";
+      function formatDuration(seconds) {
+        var n = Number(seconds || 0);
+        if (!Number.isFinite(n) || n <= 0) return "-";
+        if (n < 60) return Math.round(n) + " sec";
+        if (n < 3600) return Math.round(n / 60) + " min";
+        if (n < 86400) return Math.round((n / 3600) * 10) / 10 + " hr";
+        return Math.round((n / 86400) * 10) / 10 + " days";
       }
 
-      function renderLive(evidence, ops) {
-        var positive = evidence.positive_change || {};
-        var rolling = ((evidence.rolling || {}).intent_event_counts || {})["1d"] || {};
-        var signals = (positive.signals || []).length;
-        var views = number(rolling.page_view);
-        var sample = number(rolling.sample_click) + number(rolling.showcase_sample_click);
-        var engagement = number(rolling.page_engagement) + number(rolling.showcase_engagement);
+      function rangeName() {
+        if (days === 1) return "24h";
+        if (days === 7) return "week";
+        if (days === 30) return "month";
+        return "90 days";
+      }
+
+      function rolling(data, key, overrideDays) {
+        var windowKey = (overrideDays || days) + "d";
+        var counts = (((data || {}).rolling || {}).intent_event_counts || {})[windowKey] || {};
+        return Number(counts[key] || 0);
+      }
+
+      function actionTotal(data, overrideDays) {
+        return ACTION_EVENTS.reduce(function (sum, key) {
+          return sum + rolling(data, key, overrideDays);
+        }, 0);
+      }
+
+      function dateKey(date) {
+        var parts = new Intl.DateTimeFormat("en-CA", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit"
+        }).formatToParts(date);
+        var map = {};
+        parts.forEach(function (part) { map[part.type] = part.value; });
+        return map.year + "-" + map.month + "-" + map.day;
+      }
+
+      function shortDate(key) {
+        var date = new Date(key + "T12:00:00");
+        return new Intl.DateTimeFormat([], { month: "short", day: "numeric" }).format(date);
+      }
+
+      function hourLabel(hour) {
+        if (hour === 0) return "12a";
+        if (hour === 12) return "12p";
+        if (hour < 12) return hour + "a";
+        return (hour - 12) + "p";
+      }
+
+      function hourlyRows(evidence) {
+        return ((((evidence || {}).observable_signals || {}).hourly_event_counts_utc) || []).map(function (row) {
+          return {
+            date: new Date(row.hour),
+            events: row.events || {}
+          };
+        }).filter(function (row) {
+          return !Number.isNaN(row.date.getTime());
+        });
+      }
+
+      function dailySeries(evidence) {
+        var lookbackDays = Math.max(days, 1);
+        var cutoff = Date.now() - lookbackDays * 86400000;
+        var map = {};
+        hourlyRows(evidence).forEach(function (row) {
+          if (row.date.getTime() < cutoff) return;
+          var key = dateKey(row.date);
+          if (!map[key]) map[key] = { label: key, views: 0, actions: 0 };
+          map[key].views += Number(row.events.page_view || 0);
+          ACTION_EVENTS.forEach(function (eventName) {
+            map[key].actions += Number(row.events[eventName] || 0);
+          });
+        });
+        return Object.keys(map).sort().map(function (key) { return map[key]; });
+      }
+
+      function hourKey(date) {
+        return dateKey(date) + "T" + String(date.getHours()).padStart(2, "0");
+      }
+
+      function last24HourlySeries(evidence) {
+        var now = new Date();
+        var start = new Date(now);
+        start.setMinutes(0, 0, 0);
+        start.setHours(start.getHours() - 23);
+        var slots = Array.from({ length: 24 }, function (_, hour) {
+          var slotDate = new Date(start.getTime() + hour * 3600000);
+          return { hour: slotDate.getHours(), key: hourKey(slotDate), views: 0, actions: 0 };
+        });
+        var byKey = {};
+        slots.forEach(function (slot) { byKey[slot.key] = slot; });
+        hourlyRows(evidence).forEach(function (row) {
+          var key = hourKey(row.date);
+          var slot = byKey[key];
+          if (!slot) return;
+          slot.views += Number(row.events.page_view || 0);
+          ACTION_EVENTS.forEach(function (eventName) {
+            slot.actions += Number(row.events[eventName] || 0);
+          });
+        });
+        return slots;
+      }
+
+      function selectedTrendSeries(evidence) {
+        return days === 1 ? last24HourlySeries(evidence) : dailySeries(evidence);
+      }
+
+      function svgEl(name, attrs) {
+        var el = document.createElementNS("http://www.w3.org/2000/svg", name);
+        Object.keys(attrs || {}).forEach(function (key) {
+          el.setAttribute(key, attrs[key]);
+        });
+        return el;
+      }
+
+      function addText(svg, text, x, y, cls, anchor) {
+        var el = svgEl("text", {
+          x: x,
+          y: y,
+          class: cls || "tick-label",
+          "text-anchor": anchor || "middle"
+        });
+        el.textContent = text;
+        svg.appendChild(el);
+      }
+
+      function drawLineChart(id, rows, mode) {
+        var svg = $(id);
+        svg.innerHTML = "";
+        var width = 760;
+        var height = 230;
+        var pad = { left: 48, right: 16, top: 18, bottom: 42 };
+        svg.setAttribute("viewBox", "0 0 " + width + " " + height);
+
+        if (!rows.length) {
+          addText(svg, "No trend data yet", width / 2, height / 2, "axis-label", "middle");
+          return;
+        }
+
+        var max = Math.max.apply(null, rows.map(function (row) {
+          return Math.max(row.views, row.actions);
+        }).concat([1]));
+        var xRange = Math.max(rows.length - 1, 1);
+        var plotW = width - pad.left - pad.right;
+        var plotH = height - pad.top - pad.bottom;
+        var yMax = Math.max(1, Math.ceil(max));
+
+        function x(i) {
+          return pad.left + (i / xRange) * plotW;
+        }
+
+        function y(value) {
+          return pad.top + plotH - (Number(value || 0) / yMax) * plotH;
+        }
+
+        [0, .5, 1].forEach(function (p) {
+          var yy = pad.top + plotH - p * plotH;
+          svg.appendChild(svgEl("line", { x1: pad.left, y1: yy, x2: width - pad.right, y2: yy, class: "grid-line" }));
+          addText(svg, fmt(yMax * p), pad.left - 10, yy + 4, "tick-label", "end");
+        });
+
+        svg.appendChild(svgEl("line", { x1: pad.left, y1: pad.top, x2: pad.left, y2: pad.top + plotH, class: "axis" }));
+        svg.appendChild(svgEl("line", { x1: pad.left, y1: pad.top + plotH, x2: width - pad.right, y2: pad.top + plotH, class: "axis" }));
+
+        function pathFor(key) {
+          return rows.map(function (row, i) {
+            return (i === 0 ? "M" : "L") + x(i).toFixed(1) + " " + y(row[key]).toFixed(1);
+          }).join(" ");
+        }
+
+        svg.appendChild(svgEl("path", { d: pathFor("views"), class: "series-views" }));
+        svg.appendChild(svgEl("path", { d: pathFor("actions"), class: "series-actions" }));
+
+        rows.forEach(function (row, i) {
+          svg.appendChild(svgEl("circle", { cx: x(i), cy: y(row.views), r: 4, fill: "var(--blue)", class: "dot-point" }));
+          svg.appendChild(svgEl("circle", { cx: x(i), cy: y(row.actions), r: 4, fill: "var(--good)", class: "dot-point" }));
+        });
+
+        var tickIndexes = mode === "hour"
+          ? [0, 6, 12, 18, 23]
+          : rows.length <= 5
+            ? rows.map(function (_, i) { return i; })
+            : [0, Math.floor((rows.length - 1) / 2), rows.length - 1];
+        tickIndexes.forEach(function (i) {
+          if (!rows[i]) return;
+          var label = mode === "hour" ? hourLabel(rows[i].hour) : shortDate(rows[i].label);
+          addText(svg, label, x(i), height - 18, "tick-label", "middle");
+        });
+        addText(svg, "count", pad.left, 10, "axis-label", "start");
+        addText(svg, mode === "hour" ? "hour" : "date", width / 2, height - 2, "axis-label", "middle");
+      }
+
+      function renderFunnel(evidence) {
+        var views = rolling(evidence, "page_view") || 0;
+        var rows = [
+          { label: "views", value: views },
+          { label: "engaged", value: rolling(evidence, "page_engagement") },
+          { label: "sample", value: rolling(evidence, "sample_click") + rolling(evidence, "showcase_sample_click") },
+          { label: "notes", value: rolling(evidence, "note_intake_click") },
+          { label: "checkout", value: rolling(evidence, "checkout_click") },
+          { label: "leads", value: rolling(evidence, "lead_capture") }
+        ];
+        var max = Math.max.apply(null, rows.map(function (row) { return row.value; }).concat([1]));
+        $("funnelRows").innerHTML = rows.map(function (row, index) {
+          var width = Math.max((row.value / max) * 100, row.value ? 2 : 0);
+          var conversion = index === 0 || !views ? "" : '<span class="pct">' + pct((row.value / views) * 100) + '</span>';
+          return (
+            '<div class="funnel-row">' +
+              '<span>' + row.label + '</span>' +
+              '<span class="track"><span class="bar" style="width:' + width + '%"></span></span>' +
+              '<span class="count">' + fmt(row.value) + conversion + '</span>' +
+            '</div>'
+          );
+        }).join("");
+
+        var checkout = rolling(evidence, "checkout_click");
+        var leads = rolling(evidence, "lead_capture");
+        var noteClicks = rolling(evidence, "note_intake_click");
+        $("funnelCaption").textContent =
+          "Selected range: " + fmt(views) + " views, " + fmt(noteClicks) + " notes clicks, " +
+          fmt(checkout) + " checkout clicks, " + fmt(leads) + " leads.";
+      }
+
+      function cleanSignal(text) {
+        var s = String(text || "");
+        var map = {
+          page_views_1d_above_prior_6d_average: "Views beat the recent daily average",
+          page_views_1d_above_prior_13d_average: "Views beat the two-week daily average",
+          calendar_day_page_views_increased: "Views increased from the last measured day",
+          sample_clicks_present_1d: "Someone opened the sample",
+          action_sessions_present: "Some sessions moved past passive viewing",
+          engaged_sessions_10s_present: "Some visitors stayed longer than 10 seconds",
+          page_engagement_observed_or_lifted_1d: "Page engagement happened today",
+          page_view_observed_or_lifted_1d: "Views happened today",
+          sample_click_observed_or_lifted_1d: "Sample clicks happened today",
+          showcase_engagement_observed_or_lifted_1d: "Relay page engagement happened today"
+        };
+        if (map[s]) return map[s];
+        return s
+          .replace(/_observed_or_lifted_1d/g, "")
+          .replace(/_1d_above_prior_/g, " above ")
+          .replace(/_/g, " ");
+      }
+
+      function renderSignals(evidence, ops) {
+        var positive = ((evidence || {}).positive_change || {});
+        var raw = (positive.signals || []).filter(function (signal) {
+          var stage = String(signal.stage || "");
+          var name = String(signal.signal || "");
+          if (stage === "system_health") return false;
+          if (name.indexOf("smoke_test") >= 0) return false;
+          if (name.indexOf("money_loop_tick") >= 0) return false;
+          if (name.indexOf("research_journal") >= 0) return false;
+          return true;
+        }).slice(0, 4);
+        var moneyObj = (((ops || {}).relay_success || {}).money || {});
+        var rows = raw.map(function (signal) {
+          var meta = [];
+          if (signal.current !== null && signal.current !== undefined) meta.push("now " + fmt(signal.current));
+          if (signal.baseline !== null && signal.baseline !== undefined) meta.push("baseline " + fmt(signal.baseline));
+          if (signal.lift) meta.push(fmt(signal.lift) + "x");
+          return {
+            name: cleanSignal(signal.signal),
+            meta: meta.join(" / ")
+          };
+        });
+        rows.push({
+          name: Number(moneyObj.payments || 0) > 0 ? "Money happened" : "No paid buyer yet",
+          meta: money(moneyObj.gross_usd || 0) + " gross / " + fmt(moneyObj.payments || 0) + " payments"
+        });
+        $("signalsList").innerHTML = rows.map(function (row) {
+          return '<div class="signal"><div class="signal-name">' + row.name + '</div><div class="signal-meta">' + row.meta + '</div></div>';
+        }).join("");
+      }
+
+      function renderTiming(evidence) {
+        var timing = (((evidence || {}).observable_signals || {}).first_action_timing_seconds || {});
+        var rows = [
+          { label: "sample click", obj: timing.sample_click || {} },
+          { label: "notes click", obj: timing.note_intake_click || {} },
+          { label: "checkout click", obj: timing.checkout_click || {} },
+          { label: "lead capture", obj: timing.lead_capture || {} }
+        ];
+        $("timingList").innerHTML = rows.map(function (row) {
+          var count = Number(row.obj.count || 0);
+          var median = row.obj.median;
+          var value = count ? formatDuration(median) : "no data";
+          return (
+            '<div class="plain-row">' +
+              '<strong>' + row.label + '</strong>' +
+              '<span>' + value + (count ? " / " + fmt(count) + " sessions" : "") + '</span>' +
+            '</div>'
+          );
+        }).join("");
+      }
+
+      function renderLoop(ops) {
+        var success = ((ops || {}).relay_success || {});
+        var moneySystem = ((ops || {}).money_system || {});
+        var outreach = success.outreach || {};
+        var readiness = success.launch_readiness || {};
+        var rows = [
+          {
+            label: "now",
+            value: readiness.next_step || success.next_action || "watch for buyer signal"
+          },
+          {
+            label: "send window",
+            value: outreach.send_window_next_open_local ? new Date(outreach.send_window_next_open_local).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "not scheduled"
+          },
+          {
+            label: "sample progress",
+            value: success.active_experiment_progress || "0/10"
+          },
+          {
+            label: "you",
+            value: (((moneySystem.operator_mode || {}).do_not_interrupt_user) || ((success.owner_absence_contract || {}).manual_input_required === false)) ? "not needed right now" : "needed"
+          }
+        ];
+        $("loopList").innerHTML = rows.map(function (row) {
+          return '<div class="plain-row"><strong>' + row.label + '</strong><span>' + row.value + '</span></div>';
+        }).join("");
+      }
+
+      function render(evidence, ops) {
+        var positive = (evidence || {}).positive_change || {};
+        var obs = (evidence || {}).observable_signals || {};
         var relayMoney = (((ops || {}).relay_success || {}).money || {});
-        var gross = number(relayMoney.gross_usd);
-        var loop = (((ops || {}).money_loop_runtime || {}).status || "on");
-
-        $("liveStage").textContent = stage(positive.success_stage);
-        $("liveSignals").textContent = fmt(signals);
-        $("liveViews").textContent = fmt(views);
-        $("liveMoney").textContent = money(gross);
-        $("pulseViews").textContent = fmt(views);
-        $("pulseSample").textContent = fmt(sample);
-        $("pulseLoop").textContent = String(loop).replace(/_/g, " ");
-        $("pulseEvidence").textContent = evidence.ok ? "clean" : "check";
-        $("updatedAt").textContent = "updated " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-
-        setBar("barViews", views, Math.max(views, 35));
-        setBar("barSample", sample, Math.max(sample, 6));
-        setBar("barLoop", engagement || 1, Math.max(engagement, 8));
-        setBar("barEvidence", signals, Math.max(signals, 20));
-      }
-
-      function loadLive() {
-        var bust = Date.now();
-        Promise.all([
-          fetch(apiBase + "/api/relay/evidence-export?days=30&limit=100&_=" + bust, { cache: "no-store" }).then(function (r) { return r.json(); }),
-          fetch(apiBase + "/api/relay/ops-check?days=7&_=" + bust, { cache: "no-store" }).then(function (r) { return r.json(); })
-        ]).then(function (results) {
-          renderLive(results[0], results[1]);
-        }).catch(function () {
-          $("updatedAt").textContent = "live data unavailable";
+        var success = ((ops || {}).relay_success || {});
+        var moneySystem = ((ops || {}).money_system || {});
+        var launch = success.launch_readiness || {};
+        var progress =
+          success.active_experiment_progress ||
+          moneySystem.active_experiment_progress ||
+          (((success.money_proof_mandate || {}).score || {}).active_experiment_progress) ||
+          (((moneySystem.money_proof_mandate || {}).score || {}).active_experiment_progress) ||
+          "-";
+        var nextStep =
+          launch.next_step ||
+          success.next_action ||
+          moneySystem.next_action ||
+          "waiting for the next clean signal";
+        var viewsToday = rolling(evidence, "page_view", 1);
+        var viewsBaseline = 0;
+        var viewSignal = (positive.signals || []).find(function (signal) {
+          return signal.signal === "page_views_1d_above_prior_6d_average";
         });
+        if (viewSignal && viewSignal.baseline !== null && viewSignal.baseline !== undefined) viewsBaseline = Number(viewSignal.baseline || 0);
+        var clicksToday = actionTotal(evidence, 1);
+        var sampleToday = rolling(evidence, "sample_click", 1) + rolling(evidence, "showcase_sample_click", 1);
+        var trendRows = selectedTrendSeries(evidence);
+        var trendMode = days === 1 ? "hour" : "date";
+        var first = trendRows[0] || { views: 0, actions: 0 };
+        var last = trendRows[trendRows.length - 1] || { views: 0, actions: 0 };
+        var delta = last.views - first.views;
+
+        $("viewsValue").textContent = fmt(viewsToday);
+        $("viewsHint").textContent = viewsBaseline
+          ? fmt(viewSignal.lift || (viewsToday / viewsBaseline)) + "x recent daily average (" + fmt(viewsBaseline) + ")"
+          : "views logged in the last 24 hours";
+        $("clicksValue").textContent = fmt(clicksToday);
+        $("clicksHint").textContent = fmt(sampleToday) + " sample clicks in 24h.";
+        $("moneyValue").textContent = money(relayMoney.gross_usd || 0);
+        $("moneyHint").textContent = fmt(relayMoney.payments || 0) + " paid tests.";
+        $("nextMoveValue").textContent = progress;
+        $("nextMoveHint").textContent = nextStep;
+        $("summaryLine").textContent = viewsToday > viewsBaseline && viewsBaseline
+          ? "Views are above the recent average. Revenue is $0."
+          : "Waiting for attention to turn into buyer signal.";
+        $("updatedAt").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+        $("rangeLabel").textContent = rangeName();
+        $("trendRange").textContent = days === 1 ? "24h / local hours" : rangeName() + " / local dates";
+
+        drawLineChart("trendChart", trendRows, trendMode);
+        renderFunnel(evidence);
+        renderSignals(evidence, ops);
+        renderTiming(evidence);
+        renderLoop(ops);
+
+        $("trendCaption").textContent = trendRows.length
+          ? (days === 1
+              ? "Last 24h: " + fmt(viewsToday) + " views and " + fmt(clicksToday) + " offer clicks, plotted by local hour."
+              : "Views changed by " + (delta >= 0 ? "+" : "") + fmt(delta) + " from " + shortDate(first.label) + " to " + shortDate(last.label) + ". Offer clicks are sample, notes, checkout, and lead actions.")
+          : "No trend data in this range.";
       }
 
-      Array.prototype.slice.call(document.querySelectorAll("a[href]")).forEach(function (link) {
+      function setStatus(kind, text) {
+        $("liveDot").className = "dot " + kind;
+        $("statusText").textContent = text;
+      }
+
+      async function load() {
+        try {
+          setStatus("", "updating");
+          var bust = Date.now();
+          var evidenceDays = Math.max(days, 30);
+          var evidenceUrl = API + "/evidence-export?days=" + evidenceDays + "&limit=160&_=" + bust;
+          var opsUrl = API + "/ops-check?days=7&_=" + bust;
+          var responses = await Promise.all([
+            fetch(evidenceUrl, { cache: "no-store" }),
+            fetch(opsUrl, { cache: "no-store" })
+          ]);
+          if (!responses[0].ok || !responses[1].ok) throw new Error("fetch failed");
+          lastEvidence = await responses[0].json();
+          lastOps = await responses[1].json();
+          render(lastEvidence, lastOps);
+          setStatus("live", "live");
+        } catch (error) {
+          setStatus("err", "offline");
+          if (lastEvidence) render(lastEvidence, lastOps || {});
+        }
+      }
+
+      Array.prototype.slice.call(document.querySelectorAll(".tab")).forEach(function (button) {
+        button.addEventListener("click", function () {
+          days = Number(button.getAttribute("data-days") || 1);
+          Array.prototype.slice.call(document.querySelectorAll(".tab")).forEach(function (tab) {
+            tab.classList.toggle("active", tab === button);
+          });
+          load();
+        });
+      });
+
+      Array.prototype.slice.call(document.querySelectorAll("[data-event]")).forEach(function (link) {
         link.addEventListener("click", function () {
-          var href = link.getAttribute("href") || "";
-          var label = (link.textContent || "").trim().toLowerCase();
-          var type = "showcase_link_click";
-          if (href.indexOf("relaybrief.com") >= 0) type = "showcase_product_click";
-          if (href.indexOf("relaylive.aolabs.io") >= 0) type = "showcase_live_click";
-          if (href.indexOf("sample.pdf") >= 0) type = "showcase_sample_click";
-          if (href.indexOf("manuscripts/") >= 0 || label.indexOf("paper") >= 0 || label.indexOf("manuscript") >= 0) type = "showcase_paper_click";
-          track(type, { target_href: href, target_label: label.slice(0, 80) });
+          track(link.getAttribute("data-event"));
         });
       });
 
-      [15000, 45000, 90000].forEach(function (ms) {
-        window.setTimeout(function () {
-          track("showcase_engagement", { mark: String(ms / 1000) + "s" });
-        }, ms);
-      });
-
+      load();
+      timer = window.setInterval(load, 30000);
       window.addEventListener("pagehide", function () {
-        track("showcase_engagement", { mark: "pagehide" });
+        if (timer) window.clearInterval(timer);
       });
-
-      loadLive();
-      window.setInterval(loadLive, 30000);
-      track("page_view", {});
     }());
   </script>
 </body>
