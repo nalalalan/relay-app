@@ -1977,6 +1977,175 @@ def relay_decision_ledger(days: int = 30, limit: int = 50) -> dict[str, Any]:
         db.close()
 
 
+@router.get("/evidence-export")
+def relay_evidence_export(days: int = 90, limit: int = 200) -> dict[str, Any]:
+    days = max(1, min(days, 365))
+    limit = max(1, min(limit, 1000))
+    since = datetime.utcnow() - timedelta(days=days)
+
+    db = SessionLocal()
+    try:
+        intent_rows = (
+            db.query(func.date(RelayIntentEvent.created_at), RelayIntentEvent.event_type, func.count(RelayIntentEvent.id))
+            .filter(RelayIntentEvent.created_at >= since)
+            .group_by(func.date(RelayIntentEvent.created_at), RelayIntentEvent.event_type)
+            .order_by(func.date(RelayIntentEvent.created_at).asc(), RelayIntentEvent.event_type.asc())
+            .all()
+        )
+        lead_rows = (
+            db.query(func.date(RelayIntentLead.created_at), RelayIntentLead.source, func.count(RelayIntentLead.id))
+            .filter(RelayIntentLead.created_at >= since)
+            .group_by(func.date(RelayIntentLead.created_at), RelayIntentLead.source)
+            .order_by(func.date(RelayIntentLead.created_at).asc(), RelayIntentLead.source.asc())
+            .all()
+        )
+        acquisition_rows = (
+            db.query(func.date(AcquisitionEvent.created_at), AcquisitionEvent.event_type, func.count(AcquisitionEvent.id))
+            .filter(AcquisitionEvent.created_at >= since)
+            .group_by(func.date(AcquisitionEvent.created_at), AcquisitionEvent.event_type)
+            .order_by(func.date(AcquisitionEvent.created_at).asc(), AcquisitionEvent.event_type.asc())
+            .all()
+        )
+        prospect_status_rows = (
+            db.query(AcquisitionProspect.status, func.count(AcquisitionProspect.id))
+            .group_by(AcquisitionProspect.status)
+            .order_by(func.count(AcquisitionProspect.id).desc())
+            .all()
+        )
+        prospect_reply_rows = (
+            db.query(AcquisitionProspect.last_reply_state, func.count(AcquisitionProspect.id))
+            .group_by(AcquisitionProspect.last_reply_state)
+            .order_by(func.count(AcquisitionProspect.id).desc())
+            .all()
+        )
+        intent_total_rows = (
+            db.query(RelayIntentEvent.event_type, func.count(RelayIntentEvent.id))
+            .filter(RelayIntentEvent.created_at >= since)
+            .group_by(RelayIntentEvent.event_type)
+            .order_by(func.count(RelayIntentEvent.id).desc())
+            .all()
+        )
+        acquisition_total_rows = (
+            db.query(AcquisitionEvent.event_type, func.count(AcquisitionEvent.id))
+            .filter(AcquisitionEvent.created_at >= since)
+            .group_by(AcquisitionEvent.event_type)
+            .order_by(func.count(AcquisitionEvent.id).desc())
+            .all()
+        )
+        leads = (
+            db.query(RelayIntentLead)
+            .filter(RelayIntentLead.created_at >= since)
+            .order_by(RelayIntentLead.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        journal_events = (
+            db.query(AcquisitionEvent)
+            .filter(AcquisitionEvent.event_type == RELAY_RESEARCH_JOURNAL_EVENT)
+            .filter(AcquisitionEvent.created_at >= since)
+            .order_by(AcquisitionEvent.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+        def clean_day(value: Any) -> str:
+            return value.isoformat() if hasattr(value, "isoformat") else str(value or "")
+
+        def lead_domain(email: str | None) -> str:
+            if not email or "@" not in email:
+                return ""
+            return email.rsplit("@", 1)[-1].strip().lower()[:255]
+
+        journal_entries = []
+        ledger_entries = []
+        for event in journal_events:
+            payload = _safe_payload(event.payload_json)
+            source = event.prospect_external_id.replace("relay-research:", "", 1)
+            journal_entries.append(
+                {
+                    "id": event.id,
+                    "created_at": event.created_at.isoformat() if event.created_at else "",
+                    "source": source,
+                    "summary": event.summary,
+                    "payload": payload,
+                }
+            )
+            ledger = payload.get("decision_ledger") if isinstance(payload.get("decision_ledger"), dict) else {}
+            if ledger:
+                ledger_entries.append(
+                    {
+                        "id": event.id,
+                        "created_at": event.created_at.isoformat() if event.created_at else "",
+                        "source": source,
+                        "summary": event.summary,
+                        "ledger": ledger,
+                    }
+                )
+
+        return {
+            "ok": True,
+            "schema_version": "relay-evidence-export-v1",
+            "generated_at": datetime.utcnow().isoformat(),
+            "window": {
+                "days": days,
+                "since": since.isoformat(),
+                "limit": limit,
+            },
+            "privacy": {
+                "lead_emails": "redacted_to_domain",
+                "raw_notes": "not_exported",
+            },
+            "coverage": {
+                "raw_product_events": "relay_intent_events",
+                "raw_intent_leads": "relay_intent_leads",
+                "outreach_replies_payments_and_journal": "acquisition_events",
+                "decision_ledger_source": "research_journal_payload.decision_ledger",
+            },
+            "totals": {
+                "intent_event_counts": {name or "unknown": int(count) for name, count in intent_total_rows},
+                "acquisition_event_counts": {name or "unknown": int(count) for name, count in acquisition_total_rows},
+                "prospect_status_counts": {status or "unknown": int(count) for status, count in prospect_status_rows},
+                "prospect_reply_state_counts": {state or "unknown": int(count) for state, count in prospect_reply_rows},
+            },
+            "daily": {
+                "intent_event_counts": [
+                    {"date": clean_day(day), "event_type": name or "unknown", "count": int(count)}
+                    for day, name, count in intent_rows
+                ],
+                "lead_counts": [
+                    {"date": clean_day(day), "source": source or "unknown", "count": int(count)}
+                    for day, source, count in lead_rows
+                ],
+                "acquisition_event_counts": [
+                    {"date": clean_day(day), "event_type": name or "unknown", "count": int(count)}
+                    for day, name, count in acquisition_rows
+                ],
+            },
+            "leads": [
+                {
+                    "created_at": lead.created_at.isoformat() if lead.created_at else "",
+                    "source": lead.source,
+                    "score": int(lead.score or 0),
+                    "email_domain": lead_domain(lead.email),
+                    "session_id": lead.session_id,
+                    "page_url": lead.page_url,
+                    "metadata": _safe_payload(lead.metadata_json),
+                }
+                for lead in leads
+            ],
+            "research_journal": {
+                "count": len(journal_entries),
+                "entries": journal_entries,
+            },
+            "decision_ledger": {
+                "count": len(ledger_entries),
+                "entries": ledger_entries,
+            },
+        }
+    finally:
+        db.close()
+
+
 @router.get("/ops-check")
 def relay_ops_check(days: int = 14) -> dict[str, Any]:
     days = max(1, min(days, 90))
