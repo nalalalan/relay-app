@@ -256,6 +256,11 @@
       margin-top: 12px;
     }
 
+    .analysis-grid {
+      grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+      margin-top: 12px;
+    }
+
     .panel {
       padding: 16px;
       min-height: 238px;
@@ -510,7 +515,8 @@
 
     @media (max-width: 940px) {
       .hero,
-      .main-grid {
+      .main-grid,
+      .analysis-grid {
         grid-template-columns: minmax(0, 1fr);
       }
 
@@ -631,6 +637,24 @@
       </article>
     </section>
 
+    <section class="grid analysis-grid" aria-label="Relay analysis">
+      <article class="panel">
+        <div class="panel-head">
+          <h2>Changed</h2>
+          <span id="decisionTime" class="small">latest log</span>
+        </div>
+        <div id="changeList" class="plain-list"></div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-head">
+          <h2>Analysis</h2>
+          <span class="small">from evidence</span>
+        </div>
+        <div id="analysisList" class="signals"></div>
+      </article>
+    </section>
+
     <section class="grid main-grid" aria-label="Live trend charts">
       <article class="panel tall">
         <div class="panel-head">
@@ -688,6 +712,7 @@
       <a class="link" href="https://relaybrief.com/" data-event="relay_live_product_click">Product</a>
       <a class="link" href="/manuscripts/relay-proof-governed-autonomy-for-live-revenue-experiments.pdf" data-event="relay_live_paper_click">Paper</a>
       <a class="link" href="https://alan-operator-backend-production.up.railway.app/api/relay/evidence-export?days=30&limit=100">Raw export</a>
+      <a class="link" href="https://alan-operator-backend-production.up.railway.app/api/relay/decision-ledger?days=30&limit=20">Decision log</a>
     </div>
 
     <footer>
@@ -703,6 +728,7 @@
       var timer = null;
       var lastEvidence = null;
       var lastOps = null;
+      var lastLedger = null;
 
       var ACTION_EVENTS = [
         "sample_click",
@@ -729,6 +755,18 @@
 
       function $(id) {
         return document.getElementById(id);
+      }
+
+      function escapeHtml(value) {
+        return String(value || "").replace(/[&<>"']/g, function (char) {
+          return {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            "\"": "&quot;",
+            "'": "&#39;"
+          }[char];
+        });
       }
 
       function track(type) {
@@ -1022,6 +1060,47 @@
           .replace(/_/g, " ");
       }
 
+      function plain(text) {
+        return String(text || "")
+          .replace(/_/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      function sentence(text, fallback) {
+        var value = plain(text);
+        return value || fallback || "-";
+      }
+
+      function localTime(value) {
+        if (!value) return "-";
+        var date = new Date(value);
+        if (isNaN(date.getTime())) return String(value);
+        return date.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+      }
+
+      function latestLedger(ledger) {
+        var entries = ((ledger || {}).entries || []);
+        for (var i = 0; i < entries.length; i += 1) {
+          if (entries[i].ledger) return entries[i];
+          if (((entries[i].payload || {}).decision || {}).next_action) return entries[i];
+        }
+        return entries[0] || null;
+      }
+
+      function ledgerData(entry) {
+        if (!entry) return {};
+        return entry.ledger || ((entry.payload || {}).decision || {}) || {};
+      }
+
+      function rowHtml(label, value) {
+        return '<div class="plain-row"><strong>' + escapeHtml(label) + '</strong><span>' + escapeHtml(value) + '</span></div>';
+      }
+
+      function signalHtml(name, meta) {
+        return '<div class="signal"><div class="signal-name">' + escapeHtml(name) + '</div><div class="signal-meta">' + escapeHtml(meta) + '</div></div>';
+      }
+
       function renderSignals(evidence, ops) {
         var positive = ((evidence || {}).positive_change || {});
         var raw = (positive.signals || []).filter(function (signal) {
@@ -1049,7 +1128,7 @@
           meta: money(moneyObj.gross_usd || 0) + " gross / " + fmt(moneyObj.payments || 0) + " payments"
         });
         $("signalsList").innerHTML = rows.map(function (row) {
-          return '<div class="signal"><div class="signal-name">' + row.name + '</div><div class="signal-meta">' + row.meta + '</div></div>';
+          return signalHtml(row.name, row.meta);
         }).join("");
       }
 
@@ -1066,10 +1145,7 @@
           var median = row.obj.median;
           var value = count ? formatDuration(median) : "no data";
           return (
-            '<div class="plain-row">' +
-              '<strong>' + row.label + '</strong>' +
-              '<span>' + value + (count ? " / " + fmt(count) + " sessions" : "") + '</span>' +
-            '</div>'
+            rowHtml(row.label, value + (count ? " / " + fmt(count) + " sessions" : ""))
           );
         }).join("");
       }
@@ -1098,13 +1174,81 @@
           }
         ];
         $("loopList").innerHTML = rows.map(function (row) {
-          return '<div class="plain-row"><strong>' + row.label + '</strong><span>' + row.value + '</span></div>';
+          return rowHtml(row.label, row.value);
         }).join("");
       }
 
-      function render(evidence, ops) {
+      function renderAnalysis(ops, ledger) {
+        var success = ((ops || {}).relay_success || {});
+        var moneySystem = ((ops || {}).money_system || {});
+        var mandate = success.money_proof_mandate || moneySystem.money_proof_mandate || {};
+        var score = mandate.score || {};
+        var health = success.money_proof_health || {};
+        var observation = success.active_reply_observation || {};
+        var latest = latestLedger(ledger);
+        var latestData = ledgerData(latest);
+        var latestDecision =
+          latestData.decision ||
+          latestData.next_action ||
+          mandate.primary_action ||
+          health.autonomous_recovery_action ||
+          success.next_action ||
+          "watch the current proof lane";
+        var why =
+          latestData.why ||
+          latestData.proof_health_reason ||
+          health.reason ||
+          observation.reason ||
+          "not enough buyer signal yet";
+        var proofState =
+          latestData.proof_state ||
+          health.state ||
+          mandate.state ||
+          "observing";
+        var progress =
+          latestData.active_progress ||
+          score.active_experiment_progress ||
+          success.active_experiment_progress ||
+          "0/10";
+        var observeUntil = observation.observe_until ? "observe until " + localTime(observation.observe_until) : "";
+
+        $("decisionTime").textContent = latest ? localTime(latest.created_at) : "latest log";
+        $("changeList").innerHTML = [
+          rowHtml("latest", sentence(latestDecision, "watch the current proof lane")),
+          rowHtml("because", sentence(why, "not enough buyer signal yet")),
+          rowHtml("bottleneck", sentence(latestData.bottleneck || health.reason || success.bottleneck, "buyer signal")),
+          rowHtml("proof", sentence(progress + " / " + proofState + (observeUntil ? " / " + observeUntil : ""), "observing"))
+        ].join("");
+
+        var moneyObj = success.money || {};
+        var replies = Number((((success.outreach || {}).replies) || latestData.replies || 0));
+        var payments = Number(moneyObj.payments || latestData.payments || 0);
+        var gross = Number(moneyObj.gross_usd || latestData.gross_usd || 0);
+        var nextMove =
+          latestData.next_money_move ||
+          health.autonomous_recovery_action ||
+          mandate.allowed_autonomous_action ||
+          success.next_action ||
+          "wait for the next clean signal";
+        var hold =
+          observation.pending || observation.seconds_until_observe_until > 0
+            ? "The current send sample is still inside its reply window."
+            : "The current sample can be judged from logged reply and payment data.";
+        var doNext =
+          observation.pending || observation.seconds_until_observe_until > 0
+            ? "Hold the read until the reply window finishes; if still quiet, rebuild the offer or market proof."
+            : nextMove;
+
+        $("analysisList").innerHTML = [
+          signalHtml("Read", "Attention exists. Revenue is still " + money(gross) + ". Replies: " + fmt(replies) + ". Payments: " + fmt(payments) + "."),
+          signalHtml("Do next", sentence(doNext, "wait for the next clean signal")),
+          signalHtml("Do not do", "Do not add volume just to make the numbers look bigger."),
+          signalHtml("Timing", hold)
+        ].join("");
+      }
+
+      function render(evidence, ops, ledger) {
         var positive = (evidence || {}).positive_change || {};
-        var obs = (evidence || {}).observable_signals || {};
         var relayMoney = (((ops || {}).relay_success || {}).money || {});
         var success = ((ops || {}).relay_success || {});
         var moneySystem = ((ops || {}).money_system || {});
@@ -1154,6 +1298,7 @@
         drawLineChart("trendChart", trendRows, trendMode);
         renderFunnel(evidence);
         renderSignals(evidence, ops);
+        renderAnalysis(ops, ledger);
         renderTiming(evidence);
         renderLoop(ops);
 
@@ -1176,18 +1321,21 @@
           var evidenceDays = Math.max(days, 30);
           var evidenceUrl = API + "/evidence-export?days=" + evidenceDays + "&limit=160&_=" + bust;
           var opsUrl = API + "/ops-check?days=7&_=" + bust;
+          var ledgerUrl = API + "/decision-ledger?days=30&limit=12&_=" + bust;
           var responses = await Promise.all([
             fetch(evidenceUrl, { cache: "no-store" }),
-            fetch(opsUrl, { cache: "no-store" })
+            fetch(opsUrl, { cache: "no-store" }),
+            fetch(ledgerUrl, { cache: "no-store" })
           ]);
-          if (!responses[0].ok || !responses[1].ok) throw new Error("fetch failed");
+          if (!responses[0].ok || !responses[1].ok || !responses[2].ok) throw new Error("fetch failed");
           lastEvidence = await responses[0].json();
           lastOps = await responses[1].json();
-          render(lastEvidence, lastOps);
+          lastLedger = await responses[2].json();
+          render(lastEvidence, lastOps, lastLedger);
           setStatus("live", "live");
         } catch (error) {
           setStatus("err", "offline");
-          if (lastEvidence) render(lastEvidence, lastOps || {});
+          if (lastEvidence) render(lastEvidence, lastOps || {}, lastLedger || {});
         }
       }
 
