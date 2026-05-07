@@ -96,7 +96,7 @@ def _proposal_email(payload: CloseOpportunity, payment_link: str) -> tuple[str, 
     subject = f"{payload.company_name} — {payload.recommended_offer}"
     body = (
         f"Hi {first_name},\n\n"
-        f"Based on what I have so far, the best next move is {payload.recommended_offer.lower()}. "
+        f"Current move: {payload.recommended_offer.lower()}. "
         f"{payload.best_next_commercial_move}\n\n"
         f"Current pricing guidance: {payload.recommended_price_guidance}.\n\n"
         f"If you want to move ahead, you can use this link to start the paid step:\n{payment_link}\n\n"

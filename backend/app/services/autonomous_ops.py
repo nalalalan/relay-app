@@ -901,37 +901,37 @@ def _recommendation_paragraph(summary: dict[str, Any], outreach_digest: dict[str
 
     if replies_today > 0:
         return (
-            "Best next move: work live replies fast and learn from them before changing anything else. "
+            "Current move: work live replies fast and learn from them before changing anything else. "
             "Keep the current volume flat, answer interested people quickly, and tighten the follow-up around the objections they actually raise."
         )
 
     if buyers_waiting > 0:
         return (
-            "Best next move: close the loop on people who already paid or still owe intake. "
+            "Current move: close the loop on people who already paid or still owe intake. "
             "That is the cleanest, most realistic path to more revenue right now, and it improves autonomy without getting scammy."
         )
 
     if sent_today <= 0:
         return (
-            "Best next move: sending did not happen today, so do not rewrite the offer or touch growth plans yet. "
+            "Current move: sending did not happen today, so do not rewrite the offer or touch growth plans yet. "
             "The only priority is to confirm the daily send actually ran before judging the market."
         )
 
     if sent_today > 0 and replies_today == 0 and week_payments > 0:
         return (
-            "Best next move: let a few clean send days accumulate before changing the machine. "
+            "Current move: let a few clean send days accumulate before changing the machine. "
             "You already proved somebody will pay, so the realistic path is better reply rate, not more complexity. "
             "If replies stay at zero after 2ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“3 clean days, improve targeting and opener clarity before you touch anything else."
         )
 
     if sent_today > 0 and replies_today == 0 and due_now > 0:
         return (
-            "Best next move: stay boring and legal. Keep the low-volume senders running, do not scale, and do not thrash the site or product. "
+            "Current move: stay boring and legal. Keep the low-volume senders running, do not scale, and do not thrash the site or product. "
             "If there is still zero reply signal after 2ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“3 clean days, improve targeting and opener clarity before making any bigger changes."
         )
 
     return (
-        "Best next move: keep the machine simple, keep the claim believable, and only change one thing at a time. "
+        "Current move: keep the machine simple, keep the claim believable, and only change one thing at a time. "
         "The safest route to more money is better reply quality and faster handling of real interest, not more volume or more promises."
     )
 
@@ -993,7 +993,7 @@ def _daily_update_html(summary: dict[str, Any], outreach_digest: dict[str, Any],
       <div style="margin:18px 0 8px;font-size:22px;font-weight:800;letter-spacing:-0.02em;">The 5 things to watch</div>
       {card_html}
 
-      <div style="margin:18px 0 8px;font-size:22px;font-weight:800;letter-spacing:-0.02em;">Best next move</div>
+      <div style="margin:18px 0 8px;font-size:22px;font-weight:800;letter-spacing:-0.02em;">Current move</div>
       <div style="font-size:16px;line-height:1.6;color:#344054;">{escape(recommendation)}</div>
 
       {_email_activity_summary_html(outreach_digest, limit=3)}
@@ -1026,7 +1026,7 @@ def _daily_update_text(summary: dict[str, Any], outreach_digest: dict[str, Any],
         f"   {outreach_digest.get('in_sequence_count', 0)} in sequence",
         f"5. Window / cap: {_window_summary_line(outreach_digest)}",
         "",
-        "Best next move:",
+        "Current move:",
         recommendation,
         "",
         *_email_activity_summary_text(outreach_digest, limit=3),
@@ -1252,7 +1252,7 @@ def _daily_update_html(summary: dict[str, Any], outreach_digest: dict[str, Any],
         {row_html}
       </div>
 
-      <div style="margin:16px 0 8px;font-size:18px;font-weight:850;letter-spacing:-0.02em;">Best next move</div>
+      <div style="margin:16px 0 8px;font-size:18px;font-weight:850;letter-spacing:-0.02em;">Current move</div>
       <div style="font-size:15px;line-height:1.6;color:#d0d5dd;">{escape(recommendation)}</div>
 
       {live_button}
@@ -1283,7 +1283,7 @@ def _daily_update_text(summary: dict[str, Any], outreach_digest: dict[str, Any],
         _ascii_safe(f"4. Queue: {outreach_digest.get('due_now_count', 0)} due now | {outreach_digest.get('in_sequence_count', 0)} in sequence"),
         _ascii_safe(f"5. Window / cap: {_window_summary_ascii(outreach_digest)}"),
         "",
-        "Best next move:",
+        "Current move:",
         recommendation,
     ]
 
@@ -1622,7 +1622,7 @@ def _daily_update_html(summary: dict[str, Any], outreach_digest: dict[str, Any],
 
       {_duet_html()}
 
-      <div style="margin:16px 0 8px;font-size:18px;font-weight:850;letter-spacing:-0.02em;">Best next move</div>
+      <div style="margin:16px 0 8px;font-size:18px;font-weight:850;letter-spacing:-0.02em;">Current move</div>
       <div style="font-size:15px;line-height:1.6;color:#d0d5dd;">{escape(recommendation)}</div>
 
       {live_button}
@@ -1655,7 +1655,7 @@ def _daily_update_text(summary: dict[str, Any], outreach_digest: dict[str, Any],
     ]
 
     lines.extend(_duet_text_lines())
-    lines.extend(["", "Best next move:", recommendation])
+    lines.extend(["", "Current move:", recommendation])
 
     if ao_live_url:
         lines.extend(["", f"AO Live: {ao_live_url}"])

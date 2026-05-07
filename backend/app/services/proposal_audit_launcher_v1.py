@@ -233,7 +233,7 @@ def buyer_email_for(opportunity: QualifiedOpportunity, launch_type: LaunchType, 
 
     body = (
         f"Hi {first_name},\n\n"
-        f"Based on what I have so far, the best next move is a {offer_name.lower()}. "
+        f"Current move: {offer_name.lower()}. "
         f"{why}{missing_block}\n\n"
         "If you want, I can map the exact first scope and next action from here.\n\n"
         "— Alan"
