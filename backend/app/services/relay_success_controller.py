@@ -1616,7 +1616,9 @@ def _outbound_window_execution_contract(outreach: dict[str, Any]) -> dict[str, A
     active_remaining = max(active_target - active_sends, 0) if active_target else 0
     cap_remaining = int(outreach.get("cap_remaining") or 0)
     daily_cap = int(outreach.get("daily_send_cap") or 0)
-    capacity = max(min(cap_remaining, daily_cap or cap_remaining), 0)
+    current_window_capacity = max(min(cap_remaining, daily_cap or cap_remaining), 0)
+    future_window_capacity = max(daily_cap, current_window_capacity)
+    capacity = current_window_capacity if bool(outreach.get("send_window_is_open")) else future_window_capacity
     expected_sends = (
         min(active_remaining, active_due, capacity)
         if active_remaining > 0 and active_due > 0 and capacity > 0
