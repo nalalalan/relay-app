@@ -1,16 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Relay icon">
-  <defs>
-    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%" color-interpolation-filters="sRGB">
-      <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#2b241d" flood-opacity="0.20"/>
-    </filter>
-  </defs>
-  <g filter="url(#shadow)">
-    <rect x="13" y="17" width="26" height="31" rx="6" fill="#fffaf2"/>
-    <path d="M18 26h12M18 34h16M18 42h9" stroke="#181716" stroke-width="3.5" stroke-linecap="round"/>
-    <rect x="35" y="16" width="18" height="34" rx="7" fill="#bd775f"/>
-    <path d="M39 25h8M39 33h8M39 41h8" stroke="#fffaf2" stroke-width="3.4" stroke-linecap="round"/>
-    <path d="M27 33h19" stroke="#181716" stroke-width="4" stroke-linecap="round"/>
-    <path d="M41 28l6 5-6 5" fill="none" stroke="#181716" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="47" cy="50" r="3" fill="#c49a45"/>
-  </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="6 6 116 116" role="img" aria-label="Relay icon"><defs><filter id="d" x="-35%" y="-35%" width="170%" height="170%"><feDropShadow dx="0" dy="10" stdDeviation="6" flood-color="#2b211d" flood-opacity=".18"/><feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#fffaf4" flood-opacity=".48"/></filter><linearGradient id="cream" x1="18" y1="18" x2="108" y2="114"><stop stop-color="#fff8ef"/><stop offset="1" stop-color="#e4d7c6"/></linearGradient><linearGradient id="ink" x1="18" y1="14" x2="108" y2="116"><stop stop-color="#34333b"/><stop offset="1" stop-color="#090b11"/></linearGradient><linearGradient id="clay" x1="18" y1="18" x2="108" y2="114"><stop stop-color="#e7a28d"/><stop offset=".55" stop-color="#bd7059"/><stop offset="1" stop-color="#76473a"/></linearGradient><linearGradient id="gold" x1="20" y1="16" x2="108" y2="112"><stop stop-color="#efc868"/><stop offset=".58" stop-color="#bd8337"/><stop offset="1" stop-color="#6d4522"/></linearGradient></defs><g filter="url(#d)"><rect x="23" y="31" width="48" height="61" rx="11" fill="url(#cream)"/><path d="M36 49h18M36 64h24M36 79h15" stroke="url(#ink)" stroke-width="5" stroke-linecap="round" opacity=".82"/><path d="M65 64h24" stroke="url(#ink)" stroke-width="7" stroke-linecap="round"/><rect x="82" y="38" width="28" height="54" rx="12" fill="url(#clay)"/><path d="M92 55h9M92 68h9" stroke="#fff8ef" stroke-width="5" stroke-linecap="round" opacity=".88"/><circle cx="96" cy="92" r="9" fill="url(#gold)"/><path d="M91 92h10" stroke="#fff8ef" stroke-width="4" stroke-linecap="round"/></g></svg>
