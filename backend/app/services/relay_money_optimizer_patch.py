@@ -1201,19 +1201,21 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
             generic_active_sample_fallback_count = len(generic_active_sample_fallback)
             active_sample_candidates = (active_direct_first_touch + generic_active_sample_fallback)[:active_sample_needed]
             active_sample_ids = {candidate[0].external_id for candidate in active_sample_candidates}
+            active_sample_can_complete_now = len(active_sample_candidates) >= active_sample_needed
             money_fill_candidates = (
                 [
                     candidate
                     for candidate in direct_due
                     if candidate[0].external_id not in active_sample_ids and candidate[2] != active_variant
                 ]
-                if fill_remaining_after_active_sample
+                if fill_remaining_after_active_sample and active_sample_can_complete_now
                 else []
             )
             money_fill_after_active_sample_count = len(money_fill_candidates)
             candidates = active_sample_candidates + money_fill_candidates
             active_sample_reserved_only = True
         else:
+            active_sample_can_complete_now = False
             active_sample_reserved_only = False
 
         remaining_cap = max(effective_daily_cap - outreach._daily_send_count(session), 0)
@@ -1315,6 +1317,7 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
             else 0,
             "active_variant_paused_after_sample_complete": active_variant_paused_after_sample_complete,
             "active_sample_reserved_only": active_sample_reserved_only,
+            "active_sample_can_complete_now": active_sample_can_complete_now,
             "fill_remaining_cap_after_active_sample": fill_remaining_after_active_sample,
             "money_fill_after_active_sample_count": money_fill_after_active_sample_count,
             "blocked_bad_email_count": blocked_bad_email,
