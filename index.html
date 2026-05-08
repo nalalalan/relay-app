@@ -553,36 +553,25 @@
       overflow-wrap: anywhere;
     }
 
-    .progress-track {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 8px;
-      margin-bottom: 14px;
-    }
-
-    .stage {
-      min-height: 82px;
+    .money-readout {
       border: 1px solid var(--line);
       border-radius: 8px;
       background: #fff;
-      padding: 10px;
+      padding: 16px;
     }
 
-    .stage.done {
+    .money-readout.good {
       border-color: rgba(54, 105, 76, .38);
       background: #f5faf6;
     }
 
-    .stage.active {
-      border-color: rgba(153, 98, 26, .44);
+    .money-readout.waiting {
+      border-color: rgba(153, 98, 26, .34);
       background: #fff8ea;
     }
 
-    .stage.waiting {
-      background: var(--soft);
-    }
-
-    .stage-state {
+    .money-readout span {
+      display: block;
       color: var(--muted);
       font-size: 10px;
       font-weight: 900;
@@ -590,143 +579,30 @@
       text-transform: uppercase;
     }
 
-    .stage strong {
+    .money-readout strong {
       display: block;
       margin-top: 8px;
-      font-size: 14px;
-      line-height: 1.15;
-      font-weight: 900;
-    }
-
-    .stage span {
-      display: block;
-      margin-top: 6px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.3;
-      font-weight: 720;
-      overflow-wrap: anywhere;
-    }
-
-    .movement-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-      margin: 0 0 12px;
-    }
-
-    .movement-card {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fff;
-      padding: 10px 12px;
-      min-height: 76px;
-    }
-
-    .movement-card.done {
-      border-color: rgba(54, 105, 76, .38);
-      background: #f5faf6;
-    }
-
-    .movement-card.waiting {
-      border-color: rgba(153, 98, 26, .34);
-      background: #fff8ea;
-    }
-
-    .movement-card span {
-      display: block;
-      color: var(--muted);
-      font-size: 10px;
-      font-weight: 900;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-    }
-
-    .movement-card strong {
-      display: block;
-      margin-top: 7px;
       color: var(--ink);
-      font-size: 18px;
+      font-size: 24px;
       line-height: 1.1;
       font-weight: 920;
       overflow-wrap: anywhere;
     }
 
-    .movement-card em {
+    .money-readout em {
       display: block;
-      margin-top: 7px;
+      margin-top: 9px;
       color: var(--muted);
       font-style: normal;
-      font-size: 12px;
-      line-height: 1.3;
-      font-weight: 720;
-      overflow-wrap: anywhere;
-    }
-
-    .money-path {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    .money-step {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fff;
-      padding: 14px;
-      min-height: 96px;
-    }
-
-    .money-step.good {
-      border-color: rgba(54, 105, 76, .38);
-      background: #f5faf6;
-    }
-
-    .money-step.waiting {
-      border-color: rgba(153, 98, 26, .34);
-      background: #fff8ea;
-    }
-
-    .money-step.pending {
-      background: var(--soft);
-    }
-
-    .money-step span {
-      display: block;
-      color: var(--muted);
-      font-size: 10px;
-      font-weight: 900;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-    }
-
-    .money-step strong {
-      display: block;
-      margin-top: 7px;
-      color: var(--ink);
-      font-size: 19px;
-      line-height: 1.1;
-      font-weight: 920;
-      overflow-wrap: anywhere;
-    }
-
-    .money-step em {
-      display: block;
-      margin-top: 7px;
-      color: var(--muted);
-      font-style: normal;
-      font-size: 12px;
-      line-height: 1.3;
-      font-weight: 720;
-      overflow-wrap: anywhere;
-    }
-
-    .money-note {
-      margin: 12px 0 0;
-      color: var(--muted);
       font-size: 14px;
       line-height: 1.35;
       font-weight: 780;
+      overflow-wrap: anywhere;
+    }
+
+    .money-readout b {
+      color: var(--ink);
+      font-weight: 900;
     }
 
     .plain-list {
@@ -848,18 +724,6 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .progress-track {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .movement-grid {
-        grid-template-columns: minmax(0, 1fr);
-      }
-
-      .money-path {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
       .tabs {
         width: 100%;
       }
@@ -876,10 +740,6 @@
       }
 
       .answer-grid {
-        grid-template-columns: minmax(0, 1fr);
-      }
-
-      .money-path {
         grid-template-columns: minmax(0, 1fr);
       }
 
@@ -995,8 +855,7 @@
           <h2>Progress toward money</h2>
           <span id="decisionTime" class="small">latest log</span>
         </div>
-        <div id="moneyPath" class="money-path"></div>
-        <p id="moneyPathNote" class="money-note">-</p>
+        <div id="moneyPath" class="money-readout"></div>
       </article>
     </section>
 
@@ -1558,60 +1417,10 @@
         return '<div class="plain-row"><strong>' + escapeHtml(label) + '</strong><span>' + escapeHtml(value) + '</span></div>';
       }
 
-      function stageHtml(label, state, meta, cls) {
-        return (
-          '<div class="stage ' + escapeHtml(cls || "") + '">' +
-            '<div class="stage-state">' + escapeHtml(state) + '</div>' +
-            '<strong>' + escapeHtml(label) + '</strong>' +
-            '<span>' + escapeHtml(meta) + '</span>' +
-          '</div>'
-        );
-      }
-
       function progressPoint(value) {
         var match = String(value || "").match(/^([0-9]+)\/([0-9]+)$/);
         if (!match) return null;
         return { current: Number(match[1]), target: Number(match[2]), label: match[1] + "/" + match[2] };
-      }
-
-      function movementCard(label, value, meta, cls) {
-        return (
-          '<div class="movement-card ' + escapeHtml(cls || "") + '">' +
-            '<span>' + escapeHtml(label) + '</span>' +
-            '<strong>' + escapeHtml(value) + '</strong>' +
-            '<em>' + escapeHtml(meta) + '</em>' +
-          '</div>'
-        );
-      }
-
-      function movementCardsHtml(ledger, evidence, currentProgress, replies, payments, gross) {
-        var entries = ((ledger || {}).entries || []).slice().reverse();
-        var points = entries.map(function (entry) {
-          return progressPoint(ledgerData(entry).active_progress);
-        }).filter(Boolean);
-        var first = points[0];
-        var last = points[points.length - 1] || progressPoint(currentProgress);
-        var sampleValue = first && last && first.label !== last.label
-          ? first.label + " -> " + last.label
-          : (last ? last.label : currentProgress);
-        var viewsToday = rolling(evidence, "page_view", 1);
-        var viewsWeek = rolling(evidence, "page_view", 7);
-        var sampleWeek = rolling(evidence, "sample_click", 7) + rolling(evidence, "showcase_sample_click", 7);
-        return [
-          movementCard("sample moved", sampleValue, "active outreach", "done"),
-          movementCard("attention", fmt(viewsToday) + " today", fmt(viewsWeek) + " week / " + fmt(sampleWeek) + " samples", viewsToday ? "done" : "waiting"),
-          movementCard("gap", fmt(replies) + " replies / " + money(gross), fmt(payments) + " payments", payments ? "done" : "waiting")
-        ].join("");
-      }
-
-      function moneyStepHtml(label, value, meta, cls) {
-        return (
-          '<div class="money-step ' + escapeHtml(cls || "") + '">' +
-            '<span>' + escapeHtml(label) + '</span>' +
-            '<strong>' + escapeHtml(value) + '</strong>' +
-            '<em>' + escapeHtml(meta) + '</em>' +
-          '</div>'
-        );
       }
 
       function progressDelta(ledger, currentProgress) {
@@ -1628,12 +1437,17 @@
       function moneyPathHtml(ledger, evidence, currentProgress, replies, payments, gross) {
         var viewsWeek = rolling(evidence, "page_view", 7);
         var sampleWeek = rolling(evidence, "sample_click", 7) + rolling(evidence, "showcase_sample_click", 7);
-        return [
-          moneyStepHtml("working", "Attention", fmt(viewsWeek) + " views / " + fmt(sampleWeek) + " samples", viewsWeek ? "good" : "pending"),
-          moneyStepHtml("complete", "Sample", progressDelta(ledger, currentProgress), currentProgress === "10/10" ? "good" : "pending"),
-          moneyStepHtml("waiting", "Buyer signal", fmt(replies) + " replies", replies ? "good" : "waiting"),
-          moneyStepHtml("not yet", "Money", money(gross), payments ? "good" : "pending")
-        ].join("");
+        var paid = payments > 0 || gross > 0;
+        var headline = paid ? "Money happened" : "Good progress";
+        var sample = progressDelta(ledger, currentProgress);
+        return (
+          '<span>' + escapeHtml(paid ? "money progress" : "toward money") + '</span>' +
+          '<strong>' + escapeHtml(headline) + '</strong>' +
+          '<em>' + escapeHtml(paid ? "Paid signal exists. " : "Not paid yet. ") + '<b>' +
+          escapeHtml(fmt(viewsWeek) + " views") + '</b> / <b>' + escapeHtml(fmt(sampleWeek) + " sample opens") +
+          '</b> / sample <b>' + escapeHtml(sample) + '</b>. Waiting on buyer signal: <b>' +
+          escapeHtml(fmt(replies) + " replies") + '</b> / <b>' + escapeHtml(money(gross)) + '</b>.</em>'
+        );
       }
 
       function humanDecision(text) {
@@ -1875,10 +1689,9 @@
         var guardrail = (cap === undefined || cap === null ? "cap tracked" : "cap " + fmt(cap)) + "; no scale before reply signal";
 
         $("decisionTime").textContent = latest ? localTime(latest.created_at) : "latest log";
-        $("moneyPath").innerHTML = moneyPathHtml(ledger, evidence, progress, replies, payments, gross);
-        $("moneyPathNote").textContent =
-          "Good progress toward money: attention exists and the sample is complete. Missing buyer signal: " +
-          fmt(replies) + " replies / " + money(gross) + ". Review " + checkTime + ".";
+        $("moneyPath").className = "money-readout " + (payments || gross ? "good" : "waiting");
+        $("moneyPath").innerHTML = moneyPathHtml(ledger, evidence, progress, replies, payments, gross) +
+          '<em>Next check: <b>' + escapeHtml(checkTime) + '</b>.</em>';
       }
 
       function render(evidence, ops, ledger) {
@@ -1910,9 +1723,9 @@
         $("moneyHint").textContent = fmt(relayMoney.payments || 0) + " paid tests.";
         $("nextMoveValue").textContent = move.value;
         $("nextMoveHint").textContent = move.hint;
-        $("summaryLine").textContent = viewsToday > viewsBaseline && viewsBaseline
-          ? "Views are above the recent average. Revenue is $0."
-          : "Waiting for attention to turn into buyer signal.";
+        $("summaryLine").textContent = Number(relayMoney.payments || 0) > 0 || Number(relayMoney.gross_usd || 0) > 0
+          ? "Money signal exists."
+          : "Good progress: attention exists; buyer signal next.";
         $("updatedAt").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
         $("rangeLabel").textContent = rangeName();
         $("trendRange").textContent = days === 1 ? "24h / local hours" : rangeName() + " / local dates";
