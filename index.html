@@ -554,24 +554,37 @@
       overflow-wrap: anywhere;
     }
 
-    .money-readout {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fffaf0;
-      padding: 20px;
+    .launch-section {
+      margin-top: 20px;
+      padding: 18px 0 20px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
     }
 
-    .money-readout.good {
-      border-color: rgba(54, 105, 76, .38);
-      background: #f5faf6;
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 14px;
     }
 
-    .money-readout.waiting {
-      border-color: rgba(153, 98, 26, .34);
-      background: #fff8ea;
+    .launch-readout {
+      min-width: 0;
     }
 
-    .money-readout span {
+    .launch-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(260px, .85fr) minmax(220px, .7fr);
+      gap: 26px;
+      align-items: start;
+    }
+
+    .launch-block {
+      min-width: 0;
+    }
+
+    .launch-label {
       display: block;
       color: var(--muted);
       font-size: 10px;
@@ -580,64 +593,31 @@
       text-transform: uppercase;
     }
 
-    .money-readout strong {
+    .launch-title {
       display: block;
       margin-top: 8px;
       color: var(--ink);
-      font-size: clamp(22px, 2.3vw, 28px);
-      line-height: 1.1;
+      font-size: clamp(20px, 2.2vw, 28px);
+      line-height: 1.05;
       font-weight: 920;
       overflow-wrap: anywhere;
     }
 
-    .money-readout em {
-      display: block;
-      margin-top: 9px;
-      color: var(--muted);
-      font-style: normal;
-      font-size: 14px;
-      line-height: 1.35;
-      font-weight: 780;
-      overflow-wrap: anywhere;
-    }
-
-    .money-readout b {
-      color: var(--ink);
-      font-weight: 900;
-    }
-
-    .movement-grid {
+    .launch-stats {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
+      gap: 12px;
       margin-top: 14px;
     }
 
-    .movement {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fff;
-      padding: 10px;
-    }
-
-    .movement.win {
-      border-color: rgba(54, 105, 76, .32);
-      background: #f5faf6;
-    }
-
-    .movement.next {
-      border-color: rgba(153, 98, 26, .34);
-      background: #fff8ea;
-    }
-
-    .movement span,
-    .movement b,
-    .movement em {
+    .launch-stat span,
+    .launch-stat b,
+    .launch-stat em {
       display: block;
       overflow-wrap: anywhere;
     }
 
-    .movement span {
+    .launch-stat span {
       color: var(--muted);
       font-size: 10px;
       font-weight: 900;
@@ -645,80 +625,59 @@
       text-transform: uppercase;
     }
 
-    .movement b {
-      margin-top: 7px;
+    .launch-stat b {
+      margin-top: 5px;
       color: var(--ink);
-      font-size: 20px;
+      font-size: 19px;
       line-height: 1.05;
       font-weight: 920;
     }
 
-    .movement em {
-      margin-top: 6px;
+    .launch-stat em {
+      margin-top: 5px;
       color: var(--muted);
       font-style: normal;
       font-size: 12px;
-      font-weight: 780;
-      line-height: 1.25;
+      font-weight: 760;
+      line-height: 1.3;
     }
 
-    .mini-bar {
-      height: 6px;
-      margin-top: 9px;
-      border-radius: 999px;
-      background: #e8e2d8;
-      overflow: hidden;
+    .launch-chart {
+      margin-top: 14px;
     }
 
-    .mini-fill {
+    .launch-line {
+      width: 100%;
+      height: 96px;
       display: block;
-      height: 100%;
-      width: 50%;
-      border-radius: inherit;
-      background: var(--good);
     }
 
-    .launch-spark {
-      display: grid;
-      grid-auto-flow: column;
-      grid-auto-columns: minmax(10px, 1fr);
-      align-items: end;
-      gap: 4px;
-      height: 58px;
-      margin: 14px 0 10px;
-      padding-top: 8px;
-      border-top: 1px solid var(--line);
+    .launch-axis {
+      stroke: #d8d0c5;
+      stroke-width: 1;
     }
 
-    .launch-day {
-      position: relative;
-      min-height: 4px;
-      border-radius: 999px 999px 0 0;
-      background: var(--blue);
-      opacity: .88;
+    .launch-views-line {
+      fill: none;
+      stroke: var(--blue);
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
-    .launch-day.action {
-      background: linear-gradient(180deg, var(--blue), var(--good));
+    .launch-sample-dot {
+      fill: var(--good);
+      stroke: var(--panel);
+      stroke-width: 2;
     }
 
-    .launch-day::after {
-      content: "";
-      position: absolute;
-      left: 50%;
-      bottom: -7px;
-      width: 4px;
-      height: 4px;
-      border-radius: 50%;
-      background: var(--line);
-      transform: translateX(-50%);
+    .launch-lead-dot {
+      fill: var(--warn);
+      stroke: var(--panel);
+      stroke-width: 2;
     }
 
-    .launch-day.action::after {
-      background: var(--good);
-    }
-
-    .launch-labels {
+    .launch-chart-labels {
       display: flex;
       justify-content: space-between;
       gap: 10px;
@@ -727,108 +686,48 @@
       font-weight: 820;
     }
 
-    .money-rail {
-      position: relative;
-      height: 13px;
-      margin: 18px 0 14px;
-      border-radius: 999px;
-      background: #e8e2d8;
-      overflow: hidden;
+    .launch-chart-labels span:nth-child(2) {
+      text-align: center;
     }
 
-    .money-fill {
-      display: block;
-      position: relative;
-      height: 100%;
-      width: 50%;
-      border-radius: inherit;
-      background: linear-gradient(90deg, var(--good), var(--blue));
-      overflow: hidden;
-      transition: width 420ms ease;
-    }
-
-    .money-fill::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      width: 34%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
-      transform: translateX(-120%);
-    }
-
-    .money-track {
+    .system-list {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 8px;
-      margin-bottom: 14px;
+      gap: 10px;
+      margin-top: 14px;
     }
 
-    .money-step {
-      padding: 8px 9px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
+    .system-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: baseline;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 9px;
+    }
+
+    .system-row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .system-row span {
       color: var(--muted);
-      background: #fff;
-      line-height: 1.2;
-    }
-
-    .money-step b,
-    .money-step em {
-      display: block;
+      font-size: 12px;
+      font-weight: 760;
       overflow-wrap: anywhere;
     }
 
-    .money-step b {
-      color: inherit;
-      font-size: 13px;
-      font-weight: 900;
+    .system-row b {
+      color: var(--ink);
+      font-size: 16px;
+      font-weight: 920;
+      white-space: nowrap;
     }
 
-    .money-step em {
-      margin-top: 5px;
-      font-style: normal;
-      font-size: 11px;
-      font-weight: 760;
-    }
-
-    .money-step.done {
-      color: var(--good);
-      border-color: rgba(54, 105, 76, .32);
-      background: #f5faf6;
-    }
-
-    .money-step.next {
-      color: var(--warn);
-      border-color: rgba(153, 98, 26, .34);
-      background: #fff8ea;
-    }
-
-    .money-bottom {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      gap: 8px 14px;
+    .gap-box {
+      padding: 12px 0 0;
       border-top: 1px solid var(--line);
-      padding-top: 10px;
-    }
-
-    .money-bottom span {
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 820;
-      letter-spacing: 0;
-      text-transform: none;
-    }
-
-    @media (prefers-reduced-motion: no-preference) {
-      .money-fill::after {
-        animation: money-glint 2.8s ease-in-out infinite;
-      }
-
-      @keyframes money-glint {
-        0%, 42% { transform: translateX(-120%); }
-        75%, 100% { transform: translateX(320%); }
-      }
+      margin-top: 14px;
     }
 
     .plain-list {
@@ -938,7 +837,8 @@
       .paper-strip,
       .main-grid,
       .data-grid,
-      .analysis-grid {
+      .analysis-grid,
+      .launch-grid {
         grid-template-columns: minmax(0, 1fr);
       }
 
@@ -969,16 +869,12 @@
         grid-template-columns: minmax(0, 1fr);
       }
 
-      .money-track {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .movement-grid {
+      .launch-stats {
         grid-template-columns: minmax(0, 1fr);
       }
 
-      .launch-spark {
-        grid-auto-columns: minmax(6px, 1fr);
+      .section-head {
+        align-items: start;
       }
 
       .tab {
@@ -1022,7 +918,7 @@
           <a class="nav-link" href="https://relaybrief.com/" data-event="relay_live_product_click">Product</a>
           <a class="nav-link" href="/paper.pdf" download data-event="relay_live_paper_click">Paper</a>
           <a class="nav-link ao-home" href="https://aolabs.io/" aria-label="AO Labs">
-            <img src="https://aolabs.io/favicon.svg?v=20260508-premium-ao" alt="">
+            <img src="https://aolabs.io/favicon.svg?v=20260508-icon-pass2" alt="">
           </a>
         </nav>
         <div class="status">
@@ -1036,7 +932,7 @@
   <main class="wrap">
     <section class="hero" aria-label="Relay live status">
       <div>
-        <h1>Progress</h1>
+        <h1>relay.aolabs.io</h1>
         <p class="sub" id="summaryLine">Loading the live trend.</p>
       </div>
       <div class="tabs" role="tablist" aria-label="Time range">
@@ -1047,14 +943,12 @@
       </div>
     </section>
 
-    <section class="grid single-grid" aria-label="Relay autonomous progress">
-      <article class="panel">
-        <div class="panel-head">
-          <h2>Progress since launch</h2>
-          <span id="decisionTime" class="small">latest log</span>
-        </div>
-        <div id="moneyPath" class="money-readout"></div>
-      </article>
+    <section class="launch-section" aria-label="Relay since launch">
+      <div class="section-head">
+        <h2>Since launch</h2>
+        <span id="decisionTime" class="small">latest log</span>
+      </div>
+      <div id="moneyPath" class="launch-readout"></div>
     </section>
 
     <section class="grid answer-grid" aria-label="Current answers">
@@ -1748,58 +1642,125 @@
         return rows.find(function (row) { return Number(row[key] || 0) > 0; }) || null;
       }
 
-      function launchSparkHtml(rows) {
-        if (!rows.length) return "";
-        var max = Math.max.apply(null, rows.map(function (row) {
-          return Math.max(row.views, row.samples, row.leads);
-        }).concat([1]));
-        var bars = rows.map(function (row) {
-          var h = Math.max(7, Math.round((Number(row.views || 0) / max) * 50));
-          var active = Number(row.actions || 0) > 0 ? " action" : "";
-          return '<i class="launch-day' + active + '" title="' + escapeHtml(shortDate(row.label) + ": " + fmt(row.views) + " views, " + fmt(row.samples) + " sample opens") + '" style="height:' + h + 'px"></i>';
-        }).join("");
+      function launchStat(label, value, note) {
         return (
-          '<div class="launch-spark" aria-hidden="true">' + bars + '</div>' +
-          '<div class="launch-labels"><span>' + escapeHtml(shortDate(rows[0].label)) + '</span><span>' + escapeHtml(shortDate(rows[rows.length - 1].label)) + '</span></div>'
+          '<div class="launch-stat">' +
+            '<span>' + escapeHtml(label) + '</span>' +
+            '<b>' + escapeHtml(value) + '</b>' +
+            '<em>' + escapeHtml(note) + '</em>' +
+          '</div>'
         );
       }
 
-      function moneyPathHtml(ledger, evidence, currentProgress, replies, payments, gross) {
+      function systemRow(label, value) {
+        return '<div class="system-row"><span>' + escapeHtml(label) + '</span><b>' + escapeHtml(value) + '</b></div>';
+      }
+
+      function launchLineHtml(rows) {
+        if (!rows.length) {
+          return '<div class="launch-chart"><div class="launch-chart-labels"><span>No launch data yet.</span></div></div>';
+        }
+        var width = 560;
+        var height = 108;
+        var padX = 6;
+        var padTop = 10;
+        var padBottom = 22;
+        var max = Math.max.apply(null, rows.map(function (row) {
+          return Number(row.views || 0);
+        }).concat([1]));
+        function x(index) {
+          if (rows.length <= 1) return padX;
+          return padX + (index / (rows.length - 1)) * (width - padX * 2);
+        }
+        function y(value) {
+          return padTop + (1 - (Number(value || 0) / max)) * (height - padTop - padBottom);
+        }
+        var points = rows.map(function (row, index) {
+          return x(index).toFixed(1) + "," + y(row.views).toFixed(1);
+        }).join(" ");
+        var sampleDots = rows.map(function (row, index) {
+          if (!Number(row.samples || 0)) return "";
+          return '<circle class="launch-sample-dot" cx="' + x(index).toFixed(1) + '" cy="' + y(row.views).toFixed(1) + '" r="4"><title>' + escapeHtml(shortDate(row.label) + ": " + fmt(row.samples) + " sample opens") + '</title></circle>';
+        }).join("");
+        var leadDots = rows.map(function (row, index) {
+          if (!Number(row.leads || 0)) return "";
+          return '<circle class="launch-lead-dot" cx="' + x(index).toFixed(1) + '" cy="' + y(row.views).toFixed(1) + '" r="5"><title>' + escapeHtml(shortDate(row.label) + ": " + fmt(row.leads) + " leads") + '</title></circle>';
+        }).join("");
+        return (
+          '<div class="launch-chart">' +
+            '<svg class="launch-line" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="Daily views since launch">' +
+              '<line class="launch-axis" x1="' + padX + '" y1="' + (height - padBottom) + '" x2="' + (width - padX) + '" y2="' + (height - padBottom) + '"></line>' +
+              '<polyline class="launch-views-line" points="' + points + '"></polyline>' +
+              sampleDots +
+              leadDots +
+            '</svg>' +
+            '<div class="launch-chart-labels"><span>' + escapeHtml(shortDate(rows[0].label)) + '</span><span>views by day; dots are sample or lead days</span><span>' + escapeHtml(shortDate(rows[rows.length - 1].label)) + '</span></div>' +
+          '</div>'
+        );
+      }
+
+      function moneyPathHtml(ledger, evidence, currentProgress, replies, payments, gross, checkTime) {
         var rows = launchRows(evidence);
-        var first = rows[0] || null;
-        var last = rows[rows.length - 1] || null;
         var firstSample = firstRow(rows, "samples");
         var peak = rows.reduce(function (best, row) {
           return !best || Number(row.views || 0) > Number(best.views || 0) ? row : best;
         }, null);
         var totals = ((evidence || {}).totals || {}).intent_event_counts || {};
+        var acquisition = ((evidence || {}).totals || {}).acquisition_event_counts || {};
         var launchViews = Number(totals.page_view || 0);
         var launchSamples = Number(totals.sample_click || 0) + Number(totals.showcase_sample_click || 0);
         var launchLeads = Number(totals.lead_capture || 0);
-        var viewsToday = rolling(evidence, "page_view", 1);
-        var sampleToday = rolling(evidence, "sample_click", 1) + rolling(evidence, "showcase_sample_click", 1);
         var paid = payments > 0 || gross > 0;
-        var completed = (launchViews ? 1 : 0) + (launchSamples ? 1 : 0) + (replies || launchLeads ? 1 : 0) + (paid ? 1 : 0);
-        var fill = Math.max(10, Math.min(100, (completed / 4) * 100));
-        var headline = paid ? "Money happened" : "Since launch";
-        var sampleTodayLabel = fmt(sampleToday) + (sampleToday === 1 ? " sample open" : " sample opens");
-        var launchLabel = first && last ? shortDate(first.label) + " -> " + shortDate(last.label) : "live";
         var peakNote = peak ? shortDate(peak.label) + " peak day" : "peak pending";
         var sampleNote = firstSample ? "first sample " + shortDate(firstSample.label) : "sample pending";
-        var leadNote = launchLeads ? "captured since launch" : "buyer signal gap";
+        var experiments = Number(acquisition.relay_experiment_plan || 0);
+        var reviews = Number(acquisition.relay_performance_weekly_review || 0);
+        var journal = Number(acquisition.relay_research_journal_entry || 0);
+        var controls = Number(acquisition.relay_success_control_tick || 0);
+        var moneyTicks = Number(acquisition.relay_money_loop_tick || 0);
+        var sent = Number(acquisition.custom_outreach_sent_step_1 || 0) +
+          Number(acquisition.custom_outreach_sent_step_2 || 0) +
+          Number(acquisition.custom_outreach_sent_step_3 || 0);
+        var activeSample = progressDelta(ledger, currentProgress);
+        var buyerState = paid ? money(gross) : fmt(replies) + " replies / " + money(gross);
+        var nextCheck = checkTime && checkTime !== "-" ? checkTime : "logged by system";
         return (
-          '<span>' + escapeHtml(paid ? "money progress" : "toward money") + '</span>' +
-          '<strong>' + escapeHtml(headline) + '</strong>' +
-          '<div class="movement-grid">' +
-            movementCard("win", "visibility", fmt(launchViews) + " views", peakNote, peak && launchViews ? Math.min(100, Number(peak.views || 0) / Math.max(launchViews, 1) * 100) : 35) +
-            movementCard("win", "inspection", fmt(launchSamples) + " sample opens", sampleNote, launchSamples ? 75 : 8) +
-            movementCard(launchLeads || replies ? "win" : "next", "buyer path", fmt(launchLeads) + " leads", leadNote, launchLeads ? 55 : 8) +
-          '</div>' +
-          launchSparkHtml(rows) +
-          '<div class="money-rail" aria-hidden="true"><i class="money-fill" style="width:' + fill + '%"></i></div>' +
-          '<div class="money-bottom">' +
-            '<span>' + escapeHtml(launchLabel) + ': <b>' + escapeHtml(fmt(viewsToday)) + '</b> views today, <b>' + escapeHtml(sampleTodayLabel) + '</b></span>' +
-            '<span>Gap: <b>buyer signal</b>, <b>' + escapeHtml(fmt(replies)) + '</b> replies, <b>' + escapeHtml(money(gross)) + '</b></span>' +
+          '<div class="launch-grid">' +
+            '<div class="launch-block">' +
+              '<span class="launch-label">Product</span>' +
+              '<strong class="launch-title">' + escapeHtml(fmt(launchViews) + " views") + '</strong>' +
+              '<div class="launch-stats">' +
+                launchStat("sample opens", fmt(launchSamples), sampleNote) +
+                launchStat("leads", fmt(launchLeads), "captured") +
+                launchStat("peak", peak ? fmt(peak.views || 0) + " views" : "-", peakNote) +
+              '</div>' +
+              launchLineHtml(rows) +
+            '</div>' +
+            '<div class="launch-block">' +
+              '<span class="launch-label">System</span>' +
+              '<strong class="launch-title">' + escapeHtml(fmt(experiments) + " experiments") + '</strong>' +
+              '<div class="system-list">' +
+                systemRow("performance reviews", fmt(reviews)) +
+                systemRow("journal entries", fmt(journal)) +
+                systemRow("control checks", fmt(controls)) +
+                systemRow("money loop ticks", fmt(moneyTicks)) +
+                systemRow("active sample", activeSample) +
+                systemRow("outreach sent", fmt(sent)) +
+              '</div>' +
+            '</div>' +
+            '<div class="launch-block">' +
+              '<span class="launch-label">Buyer signal</span>' +
+              '<strong class="launch-title">' + escapeHtml(buyerState) + '</strong>' +
+              '<div class="system-list">' +
+                systemRow("payments", fmt(payments)) +
+                systemRow("next check", nextCheck) +
+                systemRow("change rule", replies || paid ? "close signal" : "one variable") +
+              '</div>' +
+              '<div class="gap-box">' +
+                '<div class="launch-label">Current limit</div>' +
+                '<div class="launch-title">' + escapeHtml(paid ? "paid buyer exists" : "buyer reply") + '</div>' +
+              '</div>' +
+            '</div>' +
           '</div>'
         );
       }
@@ -2043,14 +2004,14 @@
         var guardrail = (cap === undefined || cap === null ? "cap tracked" : "cap " + fmt(cap)) + "; no scale before reply signal";
 
         $("decisionTime").textContent = latest ? localTime(latest.created_at) : "latest log";
-        $("moneyPath").className = "money-readout " + (payments || gross ? "good" : "waiting");
-        $("moneyPath").innerHTML = moneyPathHtml(ledger, evidence, progress, replies, payments, gross) +
-          '<em>Check <b>' + escapeHtml(checkTime) + '</b>.</em>';
+        $("moneyPath").className = "launch-readout " + (payments || gross ? "good" : "waiting");
+        $("moneyPath").innerHTML = moneyPathHtml(ledger, evidence, progress, replies, payments, gross, checkTime);
       }
 
       function render(evidence, ops, ledger) {
         var positive = (evidence || {}).positive_change || {};
         var launchTotals = (((evidence || {}).totals || {}).intent_event_counts || {});
+        var launchSystem = (((evidence || {}).totals || {}).acquisition_event_counts || {});
         var relayMoney = (((ops || {}).relay_success || {}).money || {});
         var success = ((ops || {}).relay_success || {});
         var move = currentMove(ops, ledger);
@@ -2082,7 +2043,9 @@
           ? "Money signal exists."
           : "Since launch: " + fmt(launchTotals.page_view || 0) + " views, " +
             fmt((launchTotals.sample_click || 0) + (launchTotals.showcase_sample_click || 0)) +
-            " samples, " + fmt(launchTotals.lead_capture || 0) + " leads.";
+            " sample opens, " + fmt(launchTotals.lead_capture || 0) + " leads. System: " +
+            fmt(launchSystem.relay_experiment_plan || 0) + " experiments, " +
+            fmt(launchSystem.relay_performance_weekly_review || 0) + " reviews.";
         $("updatedAt").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
         $("rangeLabel").textContent = rangeName();
         $("trendRange").textContent = days === 1 ? "24h / local hours" : rangeName() + " / local dates";
