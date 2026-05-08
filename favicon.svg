@@ -1,1 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="6 6 116 116" role="img" aria-label="Relay icon"><defs><filter id="d" x="-35%" y="-35%" width="170%" height="170%"><feDropShadow dx="0" dy="10" stdDeviation="6" flood-color="#2b211d" flood-opacity=".18"/><feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#fffaf4" flood-opacity=".48"/></filter><linearGradient id="cream" x1="18" y1="18" x2="108" y2="114"><stop stop-color="#fff8ef"/><stop offset="1" stop-color="#e4d7c6"/></linearGradient><linearGradient id="ink" x1="18" y1="14" x2="108" y2="116"><stop stop-color="#34333b"/><stop offset="1" stop-color="#090b11"/></linearGradient><linearGradient id="clay" x1="18" y1="18" x2="108" y2="114"><stop stop-color="#e7a28d"/><stop offset=".55" stop-color="#bd7059"/><stop offset="1" stop-color="#76473a"/></linearGradient><linearGradient id="gold" x1="20" y1="16" x2="108" y2="112"><stop stop-color="#efc868"/><stop offset=".58" stop-color="#bd8337"/><stop offset="1" stop-color="#6d4522"/></linearGradient></defs><g filter="url(#d)"><rect x="23" y="31" width="48" height="61" rx="11" fill="url(#cream)"/><path d="M36 49h18M36 64h24M36 79h15" stroke="url(#ink)" stroke-width="5" stroke-linecap="round" opacity=".82"/><path d="M65 64h24" stroke="url(#ink)" stroke-width="7" stroke-linecap="round"/><rect x="82" y="38" width="28" height="54" rx="12" fill="url(#clay)"/><path d="M92 55h9M92 68h9" stroke="#fff8ef" stroke-width="5" stroke-linecap="round" opacity=".88"/><circle cx="96" cy="92" r="9" fill="url(#gold)"/><path d="M91 92h10" stroke="#fff8ef" stroke-width="4" stroke-linecap="round"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="6 6 116 116" role="img" aria-label="Relay icon">
+  <defs>
+    <filter id="d" x="-35%" y="-35%" width="170%" height="170%">
+      <feDropShadow dx="0" dy="10" stdDeviation="6" flood-color="#2b211d" flood-opacity=".14"/>
+      <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#fffaf4" flood-opacity=".5"/>
+    </filter>
+    <linearGradient id="cream" x1="18" y1="18" x2="108" y2="114">
+      <stop stop-color="#fff8ef"/>
+      <stop offset="1" stop-color="#eadbc8"/>
+    </linearGradient>
+    <linearGradient id="clay" x1="18" y1="18" x2="108" y2="114">
+      <stop stop-color="#e6a091"/>
+      <stop offset=".55" stop-color="#bf755f"/>
+      <stop offset="1" stop-color="#895442"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="18" y1="20" x2="108" y2="112">
+      <stop stop-color="#8db1a6"/>
+      <stop offset=".56" stop-color="#5d887f"/>
+      <stop offset="1" stop-color="#3b625e"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="20" y1="16" x2="108" y2="112">
+      <stop stop-color="#efc86f"/>
+      <stop offset=".58" stop-color="#c58d43"/>
+      <stop offset="1" stop-color="#8b602e"/>
+    </linearGradient>
+    <linearGradient id="line" x1="18" y1="14" x2="108" y2="116">
+      <stop stop-color="#746554"/>
+      <stop offset="1" stop-color="#4b4036"/>
+    </linearGradient>
+  </defs>
+  <g filter="url(#d)">
+    <path d="M25 39h39c7 0 12 5 12 12v22c0 7-5 12-12 12H49L34 98v-13h-9c-7 0-12-5-12-12V51c0-7 5-12 12-12z" fill="url(#clay)"/>
+    <path d="M31 56h26M31 69h19" stroke="#fff8ef" stroke-width="5" stroke-linecap="round" opacity=".9"/>
+    <path d="M72 62h21" stroke="url(#gold)" stroke-width="8" stroke-linecap="round"/>
+    <path d="M90 52 105 62 90 72" fill="none" stroke="url(#gold)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="77" y="77" width="36" height="28" rx="10" fill="url(#cream)"/>
+    <path d="M87 90h15M87 99h10" stroke="url(#line)" stroke-width="4" stroke-linecap="round" opacity=".7"/>
+    <circle cx="105" cy="80" r="10" fill="url(#teal)"/>
+    <path d="M100 80 104 84 111 75" fill="none" stroke="#fff8ef" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
