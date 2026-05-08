@@ -6,9 +6,9 @@
   <title>Relay | Live data</title>
   <meta name="description" content="Messy sales-call notes become clean follow-up, CRM-ready summaries, and a live view of what is converting.">
   <link rel="canonical" href="https://relay.aolabs.io/">
-  <link rel="icon" href="/favicon.svg?v=20260507-suite3" type="image/svg+xml">
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=20260507-suite3">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260507-suite3">
+  <link rel="icon" href="/favicon.svg?v=20260508-icon-pass2" type="image/svg+xml">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=20260508-icon-pass2">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260508-icon-pass2">
   <meta name="twitter:image:alt" content="Relay by AO Labs preview card.">
   <meta name="twitter:image" content="https://relay.aolabs.io/og-image-20260506-meaning.png">
   <meta name="twitter:description" content="Messy sales-call notes become clean follow-up, CRM-ready summaries, and a live view of what is converting.">
@@ -584,7 +584,7 @@
       display: block;
       margin-top: 8px;
       color: var(--ink);
-      font-size: clamp(30px, 5.5vw, 54px);
+      font-size: clamp(22px, 2.3vw, 28px);
       line-height: 1.1;
       font-weight: 920;
       overflow-wrap: anywhere;
@@ -604,6 +604,78 @@
     .money-readout b {
       color: var(--ink);
       font-weight: 900;
+    }
+
+    .movement-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .movement {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px;
+    }
+
+    .movement.win {
+      border-color: rgba(54, 105, 76, .32);
+      background: #f5faf6;
+    }
+
+    .movement.next {
+      border-color: rgba(153, 98, 26, .34);
+      background: #fff8ea;
+    }
+
+    .movement span,
+    .movement b,
+    .movement em {
+      display: block;
+      overflow-wrap: anywhere;
+    }
+
+    .movement span {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .movement b {
+      margin-top: 7px;
+      color: var(--ink);
+      font-size: 20px;
+      line-height: 1.05;
+      font-weight: 920;
+    }
+
+    .movement em {
+      margin-top: 6px;
+      color: var(--muted);
+      font-style: normal;
+      font-size: 12px;
+      font-weight: 780;
+      line-height: 1.25;
+    }
+
+    .mini-bar {
+      height: 6px;
+      margin-top: 9px;
+      border-radius: 999px;
+      background: #e8e2d8;
+      overflow: hidden;
+    }
+
+    .mini-fill {
+      display: block;
+      height: 100%;
+      width: 50%;
+      border-radius: inherit;
+      background: var(--good);
     }
 
     .money-rail {
@@ -852,6 +924,10 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
+      .movement-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
       .tab {
         min-width: 0;
         padding: 0 7px;
@@ -921,7 +997,7 @@
     <section class="grid single-grid" aria-label="Relay autonomous progress">
       <article class="panel">
         <div class="panel-head">
-          <h2>Progress toward money</h2>
+          <h2>Movement toward money</h2>
           <span id="decisionTime" class="small">latest log</span>
         </div>
         <div id="moneyPath" class="money-readout"></div>
@@ -1580,6 +1656,24 @@
         return first && first.label !== last.label ? first.label + " -> " + last.label : last.label;
       }
 
+      function movementSignal(evidence, name) {
+        return (((evidence || {}).positive_change || {}).signals || []).find(function (signal) {
+          return signal.signal === name;
+        }) || null;
+      }
+
+      function movementCard(kind, label, value, note, pct) {
+        var width = Math.max(3, Math.min(100, Number(pct || 0)));
+        return (
+          '<div class="movement ' + escapeHtml(kind || "") + '">' +
+            '<span>' + escapeHtml(label) + '</span>' +
+            '<b>' + escapeHtml(value) + '</b>' +
+            '<em>' + escapeHtml(note) + '</em>' +
+            '<div class="mini-bar" aria-hidden="true"><i class="mini-fill" style="width:' + width + '%"></i></div>' +
+          '</div>'
+        );
+      }
+
       function moneyPathHtml(ledger, evidence, currentProgress, replies, payments, gross) {
         var viewsWeek = rolling(evidence, "page_view", 7);
         var viewsToday = rolling(evidence, "page_view", 1);
@@ -1590,21 +1684,31 @@
         var sampleDone = String(currentProgress) === "10/10";
         var completed = (viewsWeek ? 1 : 0) + (sampleDone ? 1 : 0) + (replies ? 1 : 0) + (paid ? 1 : 0);
         var fill = Math.max(10, Math.min(100, (completed / 4) * 100));
-        var headline = paid ? "Money happened" : fmt(completed) + " of 4 complete";
+        var headline = paid ? "Money happened" : "Moved today";
         var sampleTodayLabel = fmt(sampleToday) + (sampleToday === 1 ? " sample open" : " sample opens");
+        var outreachMove = movementSignal(evidence, "custom_outreach_sent_step_1_observed_or_lifted_1d");
+        var sampleMove = movementSignal(evidence, "sample_clicks_present_1d");
+        var outreachValue = outreachMove && outreachMove.baseline !== undefined
+          ? fmt(outreachMove.baseline) + " -> " + fmt(outreachMove.current)
+          : fmt(viewsToday) + " views";
+        var outreachNote = outreachMove && outreachMove.lift
+          ? fmt(outreachMove.lift) + "x first touches"
+          : fmt(viewsToday) + " views today";
+        var outreachPct = outreachMove && outreachMove.current
+          ? Math.min(100, (Number(outreachMove.current) / Math.max(Number(outreachMove.current), Number(outreachMove.baseline || 0), 1)) * 100)
+          : 35;
         return (
           '<span>' + escapeHtml(paid ? "money progress" : "toward money") + '</span>' +
           '<strong>' + escapeHtml(headline) + '</strong>' +
-          '<div class="money-rail" aria-hidden="true"><i class="money-fill" style="width:' + fill + '%"></i></div>' +
-          '<div class="money-track">' +
-            '<div class="money-step ' + (viewsWeek ? "done" : "") + '"><b>Attention</b><em>' + escapeHtml(fmt(viewsWeek) + " views") + '</em></div>' +
-            '<div class="money-step ' + (sampleDone ? "done" : "") + '"><b>Sample</b><em>' + escapeHtml(sample) + '</em></div>' +
-            '<div class="money-step ' + (replies ? "done" : "next") + '"><b>Buyer signal</b><em>' + escapeHtml(fmt(replies) + " replies") + '</em></div>' +
-            '<div class="money-step ' + (paid ? "done" : "") + '"><b>Money</b><em>' + escapeHtml(money(gross)) + '</em></div>' +
+          '<div class="movement-grid">' +
+            movementCard("win", "outreach", outreachValue, outreachNote, outreachPct) +
+            movementCard("win", "sample", sample, sampleDone ? "finished active sample" : "active sample moving", sampleDone ? 100 : 45) +
+            movementCard(sampleToday ? "win" : "next", "inspection", sampleToday ? fmt(sampleMove && sampleMove.current || sampleToday) + " sample open" : "0 sample opens", sampleToday ? "offer opened today" : "next gap", sampleToday ? 65 : 8) +
           '</div>' +
+          '<div class="money-rail" aria-hidden="true"><i class="money-fill" style="width:' + fill + '%"></i></div>' +
           '<div class="money-bottom">' +
             '<span>Today: <b>' + escapeHtml(fmt(viewsToday)) + '</b> views, <b>' + escapeHtml(sampleTodayLabel) + '</b></span>' +
-            '<span>Week: <b>' + escapeHtml(fmt(sampleWeek)) + '</b> sample opens</span>' +
+            '<span>Gap: <b>buyer signal</b>, <b>' + escapeHtml(fmt(replies)) + '</b> replies, <b>' + escapeHtml(money(gross)) + '</b></span>' +
           '</div>'
         );
       }
@@ -1850,7 +1954,7 @@
         $("decisionTime").textContent = latest ? localTime(latest.created_at) : "latest log";
         $("moneyPath").className = "money-readout " + (payments || gross ? "good" : "waiting");
         $("moneyPath").innerHTML = moneyPathHtml(ledger, evidence, progress, replies, payments, gross) +
-          '<em>Next: <b>buyer signal</b>. Check <b>' + escapeHtml(checkTime) + '</b>.</em>';
+          '<em>Check <b>' + escapeHtml(checkTime) + '</b>.</em>';
       }
 
       function render(evidence, ops, ledger) {
@@ -1884,7 +1988,7 @@
         $("nextMoveHint").textContent = move.hint;
         $("summaryLine").textContent = Number(relayMoney.payments || 0) > 0 || Number(relayMoney.gross_usd || 0) > 0
           ? "Money signal exists."
-          : "2 of 4 complete. Buyer signal next.";
+          : "Outreach moved. Sample finished. Buyer signal next.";
         $("updatedAt").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
         $("rangeLabel").textContent = rangeName();
         $("trendRange").textContent = days === 1 ? "24h / local hours" : rangeName() + " / local dates";
