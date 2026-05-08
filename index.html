@@ -298,6 +298,7 @@
 
     .answer-grid {
       grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-top: 12px;
     }
 
     .card,
@@ -556,8 +557,8 @@
     .money-readout {
       border: 1px solid var(--line);
       border-radius: 8px;
-      background: #fff;
-      padding: 16px;
+      background: #fffaf0;
+      padding: 20px;
     }
 
     .money-readout.good {
@@ -583,7 +584,7 @@
       display: block;
       margin-top: 8px;
       color: var(--ink);
-      font-size: 24px;
+      font-size: clamp(30px, 5.5vw, 54px);
       line-height: 1.1;
       font-weight: 920;
       overflow-wrap: anywhere;
@@ -607,8 +608,8 @@
 
     .money-rail {
       position: relative;
-      height: 10px;
-      margin: 16px 0 12px;
+      height: 13px;
+      margin: 18px 0 14px;
       border-radius: 999px;
       background: #e8e2d8;
       overflow: hidden;
@@ -616,67 +617,97 @@
 
     .money-fill {
       display: block;
+      position: relative;
       height: 100%;
       width: 50%;
       border-radius: inherit;
       background: linear-gradient(90deg, var(--good), var(--blue));
+      overflow: hidden;
+      transition: width 420ms ease;
     }
 
-    .money-steps {
+    .money-fill::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      width: 34%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
+      transform: translateX(-120%);
+    }
+
+    .money-track {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 8px;
       margin-bottom: 14px;
     }
 
-    .money-steps span {
-      display: block;
+    .money-step {
       padding: 8px 9px;
       border: 1px solid var(--line);
       border-radius: 8px;
       color: var(--muted);
       background: #fff;
-      font-size: 12px;
-      font-weight: 850;
       line-height: 1.2;
-      text-transform: none;
-      letter-spacing: 0;
     }
 
-    .money-steps .done {
+    .money-step b,
+    .money-step em {
+      display: block;
+      overflow-wrap: anywhere;
+    }
+
+    .money-step b {
+      color: inherit;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .money-step em {
+      margin-top: 5px;
+      font-style: normal;
+      font-size: 11px;
+      font-weight: 760;
+    }
+
+    .money-step.done {
       color: var(--good);
       border-color: rgba(54, 105, 76, .32);
       background: #f5faf6;
     }
 
-    .money-steps .next {
+    .money-step.next {
       color: var(--warn);
       border-color: rgba(153, 98, 26, .34);
       background: #fff8ea;
     }
 
-    .money-metrics {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .money-metric {
+    .money-bottom {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 8px 14px;
       border-top: 1px solid var(--line);
       padding-top: 10px;
     }
 
-    .money-metric b {
-      display: block;
-      font-size: 18px;
-      line-height: 1;
-    }
-
-    .money-metric span {
-      margin-top: 6px;
-      font-size: 11px;
+    .money-bottom span {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 820;
       letter-spacing: 0;
       text-transform: none;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .money-fill::after {
+        animation: money-glint 2.8s ease-in-out infinite;
+      }
+
+      @keyframes money-glint {
+        0%, 42% { transform: translateX(-120%); }
+        75%, 100% { transform: translateX(320%); }
+      }
     }
 
     .plain-list {
@@ -817,8 +848,7 @@
         grid-template-columns: minmax(0, 1fr);
       }
 
-      .money-steps,
-      .money-metrics {
+      .money-track {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
@@ -861,6 +891,7 @@
       <div class="top-right">
         <nav class="nav-links" aria-label="Relay links">
           <a class="nav-link" href="https://relaybrief.com/" data-event="relay_live_product_click">Product</a>
+          <a class="nav-link" href="/paper.pdf" download data-event="relay_live_paper_click">Paper</a>
           <a class="nav-link ao-home" href="https://aolabs.io/" aria-label="AO Labs">
             <img src="https://aolabs.io/favicon.svg?v=20260508-premium-ao" alt="">
           </a>
@@ -876,7 +907,7 @@
   <main class="wrap">
     <section class="hero" aria-label="Relay live status">
       <div>
-        <h1>Live metrics</h1>
+        <h1>Progress</h1>
         <p class="sub" id="summaryLine">Loading the live trend.</p>
       </div>
       <div class="tabs" role="tablist" aria-label="Time range">
@@ -887,14 +918,14 @@
       </div>
     </section>
 
-    <section class="paper-strip" aria-label="Relay paper">
-      <div>
-        <span>Paper</span>
-        <strong>Proof-governed autonomy for live revenue experiments</strong>
-      </div>
-      <div class="paper-actions">
-        <a class="paper-button primary" href="/paper.pdf" download data-event="relay_live_paper_click">Open PDF</a>
-      </div>
+    <section class="grid single-grid" aria-label="Relay autonomous progress">
+      <article class="panel">
+        <div class="panel-head">
+          <h2>Progress toward money</h2>
+          <span id="decisionTime" class="small">latest log</span>
+        </div>
+        <div id="moneyPath" class="money-readout"></div>
+      </article>
     </section>
 
     <section class="grid answer-grid" aria-label="Current answers">
@@ -925,16 +956,6 @@
           <div id="nextMoveValue" class="value">-</div>
         </div>
         <div id="nextMoveHint" class="hint">-</div>
-      </article>
-    </section>
-
-    <section class="grid single-grid" aria-label="Relay autonomous progress">
-      <article class="panel">
-        <div class="panel-head">
-          <h2>Progress toward money</h2>
-          <span id="decisionTime" class="small">latest log</span>
-        </div>
-        <div id="moneyPath" class="money-readout"></div>
       </article>
     </section>
 
@@ -1561,28 +1582,29 @@
 
       function moneyPathHtml(ledger, evidence, currentProgress, replies, payments, gross) {
         var viewsWeek = rolling(evidence, "page_view", 7);
+        var viewsToday = rolling(evidence, "page_view", 1);
+        var sampleToday = rolling(evidence, "sample_click", 1) + rolling(evidence, "showcase_sample_click", 1);
         var sampleWeek = rolling(evidence, "sample_click", 7) + rolling(evidence, "showcase_sample_click", 7);
         var paid = payments > 0 || gross > 0;
         var sample = progressDelta(ledger, currentProgress);
         var sampleDone = String(currentProgress) === "10/10";
         var completed = (viewsWeek ? 1 : 0) + (sampleDone ? 1 : 0) + (replies ? 1 : 0) + (paid ? 1 : 0);
         var fill = Math.max(10, Math.min(100, (completed / 4) * 100));
-        var headline = paid ? "Money happened" : sampleDone && viewsWeek ? "Attention + sample complete" : "Progress started";
+        var headline = paid ? "Money happened" : fmt(completed) + " of 4 complete";
+        var sampleTodayLabel = fmt(sampleToday) + (sampleToday === 1 ? " sample open" : " sample opens");
         return (
           '<span>' + escapeHtml(paid ? "money progress" : "toward money") + '</span>' +
           '<strong>' + escapeHtml(headline) + '</strong>' +
           '<div class="money-rail" aria-hidden="true"><i class="money-fill" style="width:' + fill + '%"></i></div>' +
-          '<div class="money-steps">' +
-            '<span class="' + (viewsWeek ? "done" : "") + '">attention</span>' +
-            '<span class="' + (sampleDone ? "done" : "") + '">sample</span>' +
-            '<span class="' + (replies ? "done" : "next") + '">buyer signal</span>' +
-            '<span class="' + (paid ? "done" : "") + '">money</span>' +
+          '<div class="money-track">' +
+            '<div class="money-step ' + (viewsWeek ? "done" : "") + '"><b>Attention</b><em>' + escapeHtml(fmt(viewsWeek) + " views") + '</em></div>' +
+            '<div class="money-step ' + (sampleDone ? "done" : "") + '"><b>Sample</b><em>' + escapeHtml(sample) + '</em></div>' +
+            '<div class="money-step ' + (replies ? "done" : "next") + '"><b>Buyer signal</b><em>' + escapeHtml(fmt(replies) + " replies") + '</em></div>' +
+            '<div class="money-step ' + (paid ? "done" : "") + '"><b>Money</b><em>' + escapeHtml(money(gross)) + '</em></div>' +
           '</div>' +
-          '<div class="money-metrics">' +
-            '<div class="money-metric"><b>' + escapeHtml(fmt(viewsWeek)) + '</b><span>views</span></div>' +
-            '<div class="money-metric"><b>' + escapeHtml(fmt(sampleWeek)) + '</b><span>sample opens</span></div>' +
-            '<div class="money-metric"><b>' + escapeHtml(sample) + '</b><span>sample sent</span></div>' +
-            '<div class="money-metric"><b>' + escapeHtml(fmt(replies) + " / " + money(gross)) + '</b><span>replies / money</span></div>' +
+          '<div class="money-bottom">' +
+            '<span>Today: <b>' + escapeHtml(fmt(viewsToday)) + '</b> views, <b>' + escapeHtml(sampleTodayLabel) + '</b></span>' +
+            '<span>Week: <b>' + escapeHtml(fmt(sampleWeek)) + '</b> sample opens</span>' +
           '</div>'
         );
       }
@@ -1862,7 +1884,7 @@
         $("nextMoveHint").textContent = move.hint;
         $("summaryLine").textContent = Number(relayMoney.payments || 0) > 0 || Number(relayMoney.gross_usd || 0) > 0
           ? "Money signal exists."
-          : "Attention + sample complete; buyer signal next.";
+          : "2 of 4 complete. Buyer signal next.";
         $("updatedAt").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
         $("rangeLabel").textContent = rangeName();
         $("trendRange").textContent = days === 1 ? "24h / local hours" : rangeName() + " / local dates";
