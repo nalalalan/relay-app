@@ -795,21 +795,13 @@
       </article>
     </section>
 
-    <section class="grid analysis-grid" aria-label="Relay analysis">
+    <section class="grid single-grid" aria-label="Current Relay decision">
       <article class="panel">
         <div class="panel-head">
-          <h2>Changed</h2>
+          <h2>Current decision</h2>
           <span id="decisionTime" class="small">latest log</span>
         </div>
-        <div id="changeList" class="plain-list"></div>
-      </article>
-
-      <article class="panel">
-        <div class="panel-head">
-          <h2>Analysis</h2>
-          <span class="small">from evidence</span>
-        </div>
-        <div id="analysisList" class="signals"></div>
+        <div id="decisionList" class="plain-list"></div>
       </article>
     </section>
 
@@ -1386,6 +1378,32 @@
         return '<div class="plain-row"><strong>' + escapeHtml(label) + '</strong><span>' + escapeHtml(value) + '</span></div>';
       }
 
+      function humanDecision(text) {
+        var value = sentence(text, "");
+        var waitMatch = value.match(/^wait until ([0-9T:.\-+Z]+) before changing copy or targeting\.?$/i);
+        if (waitMatch) {
+          return "wait until " + localTime(waitMatch[1]) + " before changing copy or targeting";
+        }
+        return value;
+      }
+
+      function progressIsComplete(progress) {
+        var match = String(progress || "").match(/^([0-9,.]+)\/([0-9,.]+)$/);
+        if (!match) return false;
+        var current = Number(match[1].replace(/,/g, ""));
+        var target = Number(match[2].replace(/,/g, ""));
+        return target > 0 && current >= target;
+      }
+
+      function humanLane(value) {
+        var raw = String(value || "").trim();
+        var lower = raw.toLowerCase();
+        if (!raw) return "active sample";
+        if (lower.indexOf("revenue") >= 0 || lower.indexOf("paid") >= 0) return "paid-test outreach";
+        if (lower.indexOf("reply") >= 0) return "reply follow-up";
+        return sentence(raw, "active sample");
+      }
+
       function signalHtml(name, meta) {
         return '<div class="signal"><div class="signal-name">' + escapeHtml(name) + '</div><div class="signal-meta">' + escapeHtml(meta) + '</div></div>';
       }
@@ -1513,8 +1531,8 @@
 
         $("actionTime").textContent = latest ? localTime(latest.created_at) : "latest decision";
         $("actedList").innerHTML = [
-          rowHtml("decision", sentence(latestData.decision || latestData.next_action || success.next_action, "no current decision")),
-          rowHtml("active lane", activeVariant + " / " + progress),
+          rowHtml("decision", humanDecision(latestData.decision || latestData.next_action || success.next_action || "no current decision")),
+          rowHtml("active lane", humanLane(activeVariant) + " / " + progress),
           rowHtml("send cap", cap === undefined || cap === null ? "-" : fmt(cap) + " left"),
           rowHtml("money loop", sentence(loopStatus, "unknown") + " / last tick " + lastTick),
           rowHtml("today", fmt(acquisitionDay.custom_outreach_sent_step_1 || 0) + " first touches / " + fmt(acquisitionDay.custom_outreach_sent_step_2 || 0) + " follow-ups"),
@@ -1593,64 +1611,49 @@
         var observation = success.active_reply_observation || {};
         var latest = latestLedger(ledger);
         var latestData = ledgerData(latest);
-        var latestDecision =
+        var latestDecision = humanDecision(
           latestData.decision ||
           latestData.next_action ||
           mandate.primary_action ||
           health.autonomous_recovery_action ||
           success.next_action ||
-          "watch the current proof lane";
+          "watch the current proof lane"
+        );
         var why =
           latestData.why ||
           latestData.proof_health_reason ||
           health.reason ||
           observation.reason ||
           "not enough buyer signal yet";
-        var proofState =
-          latestData.proof_state ||
-          health.state ||
-          mandate.state ||
-          "observing";
-        var progress =
-          latestData.active_progress ||
-          score.active_experiment_progress ||
-          success.active_experiment_progress ||
-          "0/10";
-        var observeUntil = observation.observe_until ? "observe until " + localTime(observation.observe_until) : "";
+        var progress = activeProgressLabel(success, moneySystem, latestData);
+        var observeUntil =
+          observation.observe_until ||
+          latestData.proof_deadline ||
+          health.proof_deadline ||
+          mandate.proof_deadline ||
+          "";
         var move = currentMove(ops, ledger);
-
-        $("decisionTime").textContent = latest ? localTime(latest.created_at) : "latest log";
-        $("changeList").innerHTML = [
-          rowHtml("latest", sentence(latestDecision, "watch the current proof lane")),
-          rowHtml("because", sentence(why, "not enough buyer signal yet")),
-          rowHtml("bottleneck", sentence(latestData.bottleneck || health.reason || success.bottleneck, "buyer signal")),
-          rowHtml("proof", sentence(progress + " / " + proofState + (observeUntil ? " / " + observeUntil : ""), "observing"))
-        ].join("");
-
         var moneyObj = success.money || {};
         var replies = Number((((success.outreach || {}).replies) || latestData.replies || 0));
         var payments = Number(moneyObj.payments || latestData.payments || 0);
         var gross = Number(moneyObj.gross_usd || latestData.gross_usd || 0);
-        var nextMove =
-          latestData.next_money_move ||
-          health.autonomous_recovery_action ||
-          mandate.allowed_autonomous_action ||
-          success.next_action ||
-          "wait for the next clean signal";
-        var hold =
-          observation.pending || observation.seconds_until_observe_until > 0
-            ? "The current send sample is still inside its reply window."
-            : "The current sample can be judged from logged reply and payment data.";
-        var doNext =
-          observation.pending || observation.seconds_until_observe_until > 0
-            ? move.hint
-            : (move.hint || nextMove);
+        var waiting = observation.pending || observation.seconds_until_observe_until > 0 || /reply window/i.test(String(why || ""));
+        var state = progressIsComplete(progress) && waiting
+          ? "sample sent; waiting for replies"
+          : sentence(move.value, "watching current proof lane").toLowerCase();
+        var checkTime = observeUntil ? localTime(observeUntil) : sentence(move.hint, "next logged check");
+        var changeRule = waiting
+          ? "after " + checkTime + ": if still 0 replies and " + money(gross) + ", change one variable"
+          : sentence(humanDecision(latestData.next_money_move || health.autonomous_recovery_action || mandate.allowed_autonomous_action || success.next_action), "change one variable from the evidence");
 
-        $("analysisList").innerHTML = [
-          signalHtml("Read", "Attention exists. Revenue is still " + money(gross) + ". Replies: " + fmt(replies) + ". Payments: " + fmt(payments) + "."),
-          signalHtml("Do next", sentence(doNext, "wait for the next clean signal")),
-          signalHtml("Do not do", "Do not add volume just to make the numbers look bigger."),
-          signalHtml("Timing", hold)
+        $("decisionTime").textContent = latest ? localTime(latest.created_at) : "latest log";
+        $("decisionList").innerHTML = [
+          rowHtml("state", state),
+          rowHtml("observed", progress + " sends / " + fmt(replies) + " replies / " + fmt(payments) + " payments / " + money(gross)),
+          rowHtml("decision", sentence(latestDecision, "watch the current proof lane")),
+          rowHtml("reason", sentence(why, "not enough buyer signal yet")),
+          rowHtml("next check", checkTime),
+          rowHtml("change rule", changeRule)
         ].join("");
       }
 
