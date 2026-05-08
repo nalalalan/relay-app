@@ -608,6 +608,19 @@
       overflow-wrap: anywhere;
     }
 
+    .movement-line {
+      margin: 0 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px 12px;
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.35;
+      font-weight: 820;
+      overflow-wrap: anywhere;
+    }
+
     .plain-list {
       display: grid;
       gap: 10px;
@@ -863,6 +876,7 @@
           <span id="decisionTime" class="small">latest log</span>
         </div>
         <div id="progressTrack" class="progress-track"></div>
+        <div id="movementLine" class="movement-line">-</div>
         <div id="decisionList" class="plain-list"></div>
       </article>
     </section>
@@ -1435,6 +1449,25 @@
         );
       }
 
+      function progressPoint(value) {
+        var match = String(value || "").match(/^([0-9]+)\/([0-9]+)$/);
+        if (!match) return null;
+        return { current: Number(match[1]), target: Number(match[2]), label: match[1] + "/" + match[2] };
+      }
+
+      function movementText(ledger, currentProgress, replies, payments, gross) {
+        var entries = ((ledger || {}).entries || []).slice().reverse();
+        var points = entries.map(function (entry) {
+          return progressPoint(ledgerData(entry).active_progress);
+        }).filter(Boolean);
+        var first = points[0];
+        var last = points[points.length - 1] || progressPoint(currentProgress);
+        var movement = first && last && first.label !== last.label
+          ? "sample moved " + first.label + " -> " + last.label
+          : "sample complete at " + (last ? last.label : currentProgress);
+        return movement + "; current gap is " + fmt(replies) + " replies, " + fmt(payments) + " payments, " + money(gross);
+      }
+
       function humanDecision(text) {
         var value = sentence(text, "");
         var waitMatch = value.match(/^wait until ([0-9T:.\-+Z]+) before changing copy or targeting\.?$/i);
@@ -1680,6 +1713,7 @@
           stageHtml("Buyer signal", replies ? "active" : "waiting", fmt(replies) + " replies", replies ? "done" : "active"),
           stageHtml("Money", payments ? "paid" : "not yet", money(gross), payments ? "done" : "waiting")
         ].join("");
+        $("movementLine").textContent = movementText(ledger, progress, replies, payments, gross);
         $("decisionList").innerHTML = [
           rowHtml("attention", attentionText),
           rowHtml("system", systemText),
@@ -1753,7 +1787,7 @@
           var evidenceDays = Math.max(days, 30);
           var evidenceUrl = API + "/evidence-export?days=" + evidenceDays + "&limit=160&_=" + bust;
           var opsUrl = API + "/ops-check?days=7&_=" + bust;
-          var ledgerUrl = API + "/decision-ledger?days=30&limit=12&_=" + bust;
+          var ledgerUrl = API + "/decision-ledger?days=30&limit=160&_=" + bust;
           var responses = await Promise.all([
             fetch(evidenceUrl, { cache: "no-store" }),
             fetch(opsUrl, { cache: "no-store" }),
