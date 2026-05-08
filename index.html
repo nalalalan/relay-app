@@ -608,16 +608,58 @@
       overflow-wrap: anywhere;
     }
 
-    .movement-line {
+    .movement-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
       margin: 0 0 12px;
+    }
+
+    .movement-card {
       border: 1px solid var(--line);
       border-radius: 8px;
       background: #fff;
       padding: 10px 12px;
+      min-height: 76px;
+    }
+
+    .movement-card.done {
+      border-color: rgba(54, 105, 76, .38);
+      background: #f5faf6;
+    }
+
+    .movement-card.waiting {
+      border-color: rgba(153, 98, 26, .34);
+      background: #fff8ea;
+    }
+
+    .movement-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .movement-card strong {
+      display: block;
+      margin-top: 7px;
       color: var(--ink);
-      font-size: 13px;
-      line-height: 1.35;
-      font-weight: 820;
+      font-size: 18px;
+      line-height: 1.1;
+      font-weight: 920;
+      overflow-wrap: anywhere;
+    }
+
+    .movement-card em {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      font-style: normal;
+      font-size: 12px;
+      line-height: 1.3;
+      font-weight: 720;
       overflow-wrap: anywhere;
     }
 
@@ -742,6 +784,10 @@
 
       .progress-track {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .movement-grid {
+        grid-template-columns: minmax(0, 1fr);
       }
 
       .tabs {
@@ -876,7 +922,7 @@
           <span id="decisionTime" class="small">latest log</span>
         </div>
         <div id="progressTrack" class="progress-track"></div>
-        <div id="movementLine" class="movement-line">-</div>
+        <div id="movementLine" class="movement-grid"></div>
         <div id="decisionList" class="plain-list"></div>
       </article>
     </section>
@@ -1455,17 +1501,34 @@
         return { current: Number(match[1]), target: Number(match[2]), label: match[1] + "/" + match[2] };
       }
 
-      function movementText(ledger, currentProgress, replies, payments, gross) {
+      function movementCard(label, value, meta, cls) {
+        return (
+          '<div class="movement-card ' + escapeHtml(cls || "") + '">' +
+            '<span>' + escapeHtml(label) + '</span>' +
+            '<strong>' + escapeHtml(value) + '</strong>' +
+            '<em>' + escapeHtml(meta) + '</em>' +
+          '</div>'
+        );
+      }
+
+      function movementCardsHtml(ledger, evidence, currentProgress, replies, payments, gross) {
         var entries = ((ledger || {}).entries || []).slice().reverse();
         var points = entries.map(function (entry) {
           return progressPoint(ledgerData(entry).active_progress);
         }).filter(Boolean);
         var first = points[0];
         var last = points[points.length - 1] || progressPoint(currentProgress);
-        var movement = first && last && first.label !== last.label
-          ? "sample moved " + first.label + " -> " + last.label
-          : "sample complete at " + (last ? last.label : currentProgress);
-        return movement + "; current gap is " + fmt(replies) + " replies, " + fmt(payments) + " payments, " + money(gross);
+        var sampleValue = first && last && first.label !== last.label
+          ? first.label + " -> " + last.label
+          : (last ? last.label : currentProgress);
+        var viewsToday = rolling(evidence, "page_view", 1);
+        var viewsWeek = rolling(evidence, "page_view", 7);
+        var sampleWeek = rolling(evidence, "sample_click", 7) + rolling(evidence, "showcase_sample_click", 7);
+        return [
+          movementCard("sample moved", sampleValue, "active outreach", "done"),
+          movementCard("attention", fmt(viewsToday) + " today", fmt(viewsWeek) + " week / " + fmt(sampleWeek) + " samples", viewsToday ? "done" : "waiting"),
+          movementCard("gap", fmt(replies) + " replies / " + money(gross), fmt(payments) + " payments", payments ? "done" : "waiting")
+        ].join("");
       }
 
       function humanDecision(text) {
@@ -1713,7 +1776,7 @@
           stageHtml("Buyer signal", replies ? "active" : "waiting", fmt(replies) + " replies", replies ? "done" : "active"),
           stageHtml("Money", payments ? "paid" : "not yet", money(gross), payments ? "done" : "waiting")
         ].join("");
-        $("movementLine").textContent = movementText(ledger, progress, replies, payments, gross);
+        $("movementLine").innerHTML = movementCardsHtml(ledger, evidence, progress, replies, payments, gross);
         $("decisionList").innerHTML = [
           rowHtml("attention", attentionText),
           rowHtml("system", systemText),
