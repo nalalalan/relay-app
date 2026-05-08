@@ -576,7 +576,61 @@
     .progress-map {
       display: grid;
       gap: 16px;
-      margin-bottom: 20px;
+      margin: 18px 0 22px;
+    }
+
+    .delta-strip {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 1px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--line);
+    }
+
+    .delta-item {
+      min-width: 0;
+      padding: 14px 16px 16px;
+      background: rgba(255, 252, 247, .72);
+    }
+
+    .delta-item.waiting {
+      background: rgba(245, 240, 232, .78);
+    }
+
+    .delta-item span,
+    .delta-item b,
+    .delta-item em {
+      display: block;
+      overflow-wrap: anywhere;
+    }
+
+    .delta-item span {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .06em;
+      line-height: 1.1;
+      text-transform: uppercase;
+    }
+
+    .delta-item b {
+      margin-top: 12px;
+      color: var(--ink);
+      font-size: clamp(22px, 2.2vw, 34px);
+      font-weight: 930;
+      line-height: .92;
+      letter-spacing: 0;
+    }
+
+    .delta-item em {
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 12px;
+      font-style: normal;
+      font-weight: 800;
+      line-height: 1.2;
     }
 
     .progress-lane {
@@ -681,14 +735,14 @@
 
     .history-map {
       display: grid;
-      gap: 12px;
-      margin-top: 12px;
+      gap: 16px;
+      margin-top: 16px;
     }
 
     .history-row {
       display: grid;
-      grid-template-columns: 98px minmax(0, 1fr);
-      gap: 16px;
+      grid-template-columns: 132px minmax(0, 1fr);
+      gap: 20px;
       align-items: end;
     }
 
@@ -722,19 +776,19 @@
       display: grid;
       grid-template-columns: repeat(var(--days), minmax(7px, 1fr));
       align-items: end;
-      gap: 5px;
-      min-height: 48px;
+      gap: 7px;
+      min-height: 70px;
       border-bottom: 1px solid var(--line);
     }
 
     .history-mark {
       display: block;
       width: 100%;
-      max-width: 18px;
+      max-width: 22px;
       height: var(--h);
       min-height: 3px;
       margin: 0 auto;
-      border-radius: 999px 999px 0 0;
+      border-radius: 5px 5px 0 0;
       background: var(--blue);
     }
 
@@ -756,7 +810,7 @@
       display: flex;
       justify-content: space-between;
       gap: 10px;
-      padding-left: 114px;
+      padding-left: 152px;
       color: var(--muted);
       font-size: 11px;
       font-weight: 820;
@@ -983,6 +1037,18 @@
       .progress-lane {
         grid-template-columns: minmax(0, 1fr);
         gap: 8px;
+      }
+
+      .delta-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .delta-item {
+        padding: 13px 14px 15px;
+      }
+
+      .delta-item:last-child {
+        grid-column: 1 / -1;
       }
 
       .lane-steps {
@@ -1789,6 +1855,28 @@
         return '<div class="system-row"><span>' + escapeHtml(label) + '</span><b>' + escapeHtml(value) + '</b></div>';
       }
 
+      function deltaItem(label, value, note, state) {
+        return (
+          '<div class="delta-item ' + escapeHtml(state || "") + '">' +
+            '<span>' + escapeHtml(label) + '</span>' +
+            '<b>' + escapeHtml(value) + '</b>' +
+            '<em>' + escapeHtml(note) + '</em>' +
+          '</div>'
+        );
+      }
+
+      function launchDeltaHtml(metrics) {
+        return (
+          '<div class="delta-strip" aria-label="Relay movement since launch">' +
+            deltaItem("attention", "0 -> " + fmt(metrics.views), "views", metrics.views ? "" : "waiting") +
+            deltaItem("sample opens", "0 -> " + fmt(metrics.samples), "inspection", metrics.samples ? "" : "waiting") +
+            deltaItem("leads", "0 -> " + fmt(metrics.leads), "buyer path", metrics.leads ? "" : "waiting") +
+            deltaItem("system work", "0 -> " + fmt(metrics.system), "logged events", metrics.system ? "" : "waiting") +
+            deltaItem("money", money(metrics.gross || 0), metrics.gross > 0 ? "paid" : "waiting on buyer reply", metrics.gross > 0 ? "" : "waiting") +
+          '</div>'
+        );
+      }
+
       function laneStep(value, label, state) {
         return (
           '<div class="lane-step ' + escapeHtml(state || "done") + '">' +
@@ -1879,6 +1967,9 @@
         var journal = Number(acquisition.relay_research_journal_entry || 0);
         var controls = Number(acquisition.relay_success_control_tick || 0);
         var moneyTicks = Number(acquisition.relay_money_loop_tick || 0);
+        var systemEvents = Object.keys(acquisition).reduce(function (sum, key) {
+          return sum + Number(acquisition[key] || 0);
+        }, 0);
         var sent = Number(acquisition.custom_outreach_sent_step_1 || 0) +
           Number(acquisition.custom_outreach_sent_step_2 || 0) +
           Number(acquisition.custom_outreach_sent_step_3 || 0);
@@ -1886,6 +1977,13 @@
         var nextCheck = checkTime && checkTime !== "-" ? checkTime : "logged by system";
         var buyerFill = paid ? 100 : replies ? 75 : launchLeads ? 50 : launchSamples ? 25 : 0;
         return (
+          launchDeltaHtml({
+            views: launchViews,
+            samples: launchSamples,
+            leads: launchLeads,
+            system: systemEvents,
+            gross: gross
+          }) +
           '<div class="progress-map">' +
             progressLaneHtml("Buyer path", [
               { value: fmt(launchViews), label: "views", state: launchViews ? "done" : "waiting" },
