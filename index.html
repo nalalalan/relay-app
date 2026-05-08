@@ -605,6 +605,80 @@
       font-weight: 900;
     }
 
+    .money-rail {
+      position: relative;
+      height: 10px;
+      margin: 16px 0 12px;
+      border-radius: 999px;
+      background: #e8e2d8;
+      overflow: hidden;
+    }
+
+    .money-fill {
+      display: block;
+      height: 100%;
+      width: 50%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--good), var(--blue));
+    }
+
+    .money-steps {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .money-steps span {
+      display: block;
+      padding: 8px 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--muted);
+      background: #fff;
+      font-size: 12px;
+      font-weight: 850;
+      line-height: 1.2;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .money-steps .done {
+      color: var(--good);
+      border-color: rgba(54, 105, 76, .32);
+      background: #f5faf6;
+    }
+
+    .money-steps .next {
+      color: var(--warn);
+      border-color: rgba(153, 98, 26, .34);
+      background: #fff8ea;
+    }
+
+    .money-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .money-metric {
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+    }
+
+    .money-metric b {
+      display: block;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .money-metric span {
+      margin-top: 6px;
+      font-size: 11px;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
     .plain-list {
       display: grid;
       gap: 10px;
@@ -741,6 +815,11 @@
 
       .answer-grid {
         grid-template-columns: minmax(0, 1fr);
+      }
+
+      .money-steps,
+      .money-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .tab {
@@ -1484,15 +1563,27 @@
         var viewsWeek = rolling(evidence, "page_view", 7);
         var sampleWeek = rolling(evidence, "sample_click", 7) + rolling(evidence, "showcase_sample_click", 7);
         var paid = payments > 0 || gross > 0;
-        var headline = paid ? "Money happened" : "Good progress";
         var sample = progressDelta(ledger, currentProgress);
+        var sampleDone = String(currentProgress) === "10/10";
+        var completed = (viewsWeek ? 1 : 0) + (sampleDone ? 1 : 0) + (replies ? 1 : 0) + (paid ? 1 : 0);
+        var fill = Math.max(10, Math.min(100, (completed / 4) * 100));
+        var headline = paid ? "Money happened" : sampleDone && viewsWeek ? "Attention + sample complete" : "Progress started";
         return (
           '<span>' + escapeHtml(paid ? "money progress" : "toward money") + '</span>' +
           '<strong>' + escapeHtml(headline) + '</strong>' +
-          '<em>' + escapeHtml(paid ? "Paid signal exists. " : "Not paid yet. ") + '<b>' +
-          escapeHtml(fmt(viewsWeek) + " views") + '</b> / <b>' + escapeHtml(fmt(sampleWeek) + " sample opens") +
-          '</b> / sample <b>' + escapeHtml(sample) + '</b>. Waiting on buyer signal: <b>' +
-          escapeHtml(fmt(replies) + " replies") + '</b> / <b>' + escapeHtml(money(gross)) + '</b>.</em>'
+          '<div class="money-rail" aria-hidden="true"><i class="money-fill" style="width:' + fill + '%"></i></div>' +
+          '<div class="money-steps">' +
+            '<span class="' + (viewsWeek ? "done" : "") + '">attention</span>' +
+            '<span class="' + (sampleDone ? "done" : "") + '">sample</span>' +
+            '<span class="' + (replies ? "done" : "next") + '">buyer signal</span>' +
+            '<span class="' + (paid ? "done" : "") + '">money</span>' +
+          '</div>' +
+          '<div class="money-metrics">' +
+            '<div class="money-metric"><b>' + escapeHtml(fmt(viewsWeek)) + '</b><span>views</span></div>' +
+            '<div class="money-metric"><b>' + escapeHtml(fmt(sampleWeek)) + '</b><span>sample opens</span></div>' +
+            '<div class="money-metric"><b>' + escapeHtml(sample) + '</b><span>sample sent</span></div>' +
+            '<div class="money-metric"><b>' + escapeHtml(fmt(replies) + " / " + money(gross)) + '</b><span>replies / money</span></div>' +
+          '</div>'
         );
       }
 
@@ -1737,7 +1828,7 @@
         $("decisionTime").textContent = latest ? localTime(latest.created_at) : "latest log";
         $("moneyPath").className = "money-readout " + (payments || gross ? "good" : "waiting");
         $("moneyPath").innerHTML = moneyPathHtml(ledger, evidence, progress, replies, payments, gross) +
-          '<em>Next check: <b>' + escapeHtml(checkTime) + '</b>.</em>';
+          '<em>Next: <b>buyer signal</b>. Check <b>' + escapeHtml(checkTime) + '</b>.</em>';
       }
 
       function render(evidence, ops, ledger) {
@@ -1771,7 +1862,7 @@
         $("nextMoveHint").textContent = move.hint;
         $("summaryLine").textContent = Number(relayMoney.payments || 0) > 0 || Number(relayMoney.gross_usd || 0) > 0
           ? "Money signal exists."
-          : "Good progress: attention exists; buyer signal next.";
+          : "Attention + sample complete; buyer signal next.";
         $("updatedAt").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
         $("rangeLabel").textContent = rangeName();
         $("trendRange").textContent = days === 1 ? "24h / local hours" : rangeName() + " / local dates";
