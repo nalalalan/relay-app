@@ -573,10 +573,58 @@
       min-width: 0;
     }
 
+    .launch-path {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 7px 11px;
+      margin-bottom: 18px;
+    }
+
+    .path-step {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 6px;
+      min-width: 0;
+      white-space: nowrap;
+    }
+
+    .path-step b {
+      color: var(--ink);
+      font-size: clamp(21px, 2.2vw, 30px);
+      line-height: 1;
+      font-weight: 920;
+    }
+
+    .path-step span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.1;
+      font-weight: 850;
+    }
+
+    .path-step.missing b {
+      color: var(--warn);
+    }
+
+    .path-arrow {
+      color: #beb4a7;
+      font-size: 16px;
+      font-weight: 850;
+    }
+
+    .launch-readline {
+      margin: -6px 0 18px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 760;
+      line-height: 1.35;
+    }
+
     .launch-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.35fr) minmax(260px, .85fr) minmax(220px, .7fr);
-      gap: 26px;
+      grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr);
+      gap: 34px;
       align-items: start;
     }
 
@@ -597,7 +645,7 @@
       display: block;
       margin-top: 8px;
       color: var(--ink);
-      font-size: clamp(20px, 2.2vw, 28px);
+      font-size: clamp(18px, 1.7vw, 24px);
       line-height: 1.05;
       font-weight: 920;
       overflow-wrap: anywhere;
@@ -694,6 +742,11 @@
       display: grid;
       gap: 10px;
       margin-top: 14px;
+    }
+
+    .system-list.compact {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0 24px;
     }
 
     .system-row {
@@ -871,6 +924,14 @@
 
       .launch-stats {
         grid-template-columns: minmax(0, 1fr);
+      }
+
+      .system-list.compact {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .path-step {
+        white-space: normal;
       }
 
       .section-head {
@@ -1656,6 +1717,10 @@
         return '<div class="system-row"><span>' + escapeHtml(label) + '</span><b>' + escapeHtml(value) + '</b></div>';
       }
 
+      function pathStep(value, label, missing) {
+        return '<span class="path-step' + (missing ? " missing" : "") + '"><b>' + escapeHtml(value) + '</b><span>' + escapeHtml(label) + '</span></span>';
+      }
+
       function launchLineHtml(rows) {
         if (!rows.length) {
           return '<div class="launch-chart"><div class="launch-chart-labels"><span>No launch data yet.</span></div></div>';
@@ -1722,13 +1787,23 @@
           Number(acquisition.custom_outreach_sent_step_2 || 0) +
           Number(acquisition.custom_outreach_sent_step_3 || 0);
         var activeSample = progressDelta(ledger, currentProgress);
-        var buyerState = paid ? money(gross) : fmt(replies) + " replies / " + money(gross);
         var nextCheck = checkTime && checkTime !== "-" ? checkTime : "logged by system";
         return (
+          '<div class="launch-path" aria-label="Buyer path since launch">' +
+            pathStep(fmt(launchViews), "views", false) +
+            '<span class="path-arrow">-></span>' +
+            pathStep(fmt(launchSamples), "sample opens", false) +
+            '<span class="path-arrow">-></span>' +
+            pathStep(fmt(launchLeads), "leads", false) +
+            '<span class="path-arrow">-></span>' +
+            pathStep(fmt(replies), "replies", !replies) +
+            '<span class="path-arrow">-></span>' +
+            pathStep(money(gross), "paid", !paid) +
+          '</div>' +
+          '<div class="launch-readline">Reached: traffic, sample opens, leads. Missing: buyer reply and paid test.</div>' +
           '<div class="launch-grid">' +
             '<div class="launch-block">' +
-              '<span class="launch-label">Product</span>' +
-              '<strong class="launch-title">' + escapeHtml(fmt(launchViews) + " views") + '</strong>' +
+              '<span class="launch-label">Product signal</span>' +
               '<div class="launch-stats">' +
                 launchStat("sample opens", fmt(launchSamples), sampleNote) +
                 launchStat("leads", fmt(launchLeads), "captured") +
@@ -1737,28 +1812,19 @@
               launchLineHtml(rows) +
             '</div>' +
             '<div class="launch-block">' +
-              '<span class="launch-label">System</span>' +
-              '<strong class="launch-title">' + escapeHtml(fmt(experiments) + " experiments") + '</strong>' +
-              '<div class="system-list">' +
-                systemRow("performance reviews", fmt(reviews)) +
+              '<span class="launch-label">System work</span>' +
+              '<strong class="launch-title">' + escapeHtml(fmt(experiments) + " experiments / " + fmt(reviews) + " reviews") + '</strong>' +
+              '<div class="system-list compact">' +
                 systemRow("journal entries", fmt(journal)) +
                 systemRow("control checks", fmt(controls)) +
                 systemRow("money loop ticks", fmt(moneyTicks)) +
                 systemRow("active sample", activeSample) +
                 systemRow("outreach sent", fmt(sent)) +
-              '</div>' +
-            '</div>' +
-            '<div class="launch-block">' +
-              '<span class="launch-label">Buyer signal</span>' +
-              '<strong class="launch-title">' + escapeHtml(buyerState) + '</strong>' +
-              '<div class="system-list">' +
-                systemRow("payments", fmt(payments)) +
                 systemRow("next check", nextCheck) +
-                systemRow("change rule", replies || paid ? "close signal" : "one variable") +
               '</div>' +
               '<div class="gap-box">' +
                 '<div class="launch-label">Current limit</div>' +
-                '<div class="launch-title">' + escapeHtml(paid ? "paid buyer exists" : "buyer reply") + '</div>' +
+                '<div class="launch-title">' + escapeHtml(paid ? "paid buyer exists" : "buyer reply first") + '</div>' +
               '</div>' +
             '</div>' +
           '</div>'
@@ -2041,11 +2107,11 @@
         $("nextMoveHint").textContent = move.hint;
         $("summaryLine").textContent = Number(relayMoney.payments || 0) > 0 || Number(relayMoney.gross_usd || 0) > 0
           ? "Money signal exists."
-          : "Since launch: " + fmt(launchTotals.page_view || 0) + " views, " +
+          : fmt(launchTotals.page_view || 0) + " views -> " +
             fmt((launchTotals.sample_click || 0) + (launchTotals.showcase_sample_click || 0)) +
-            " sample opens, " + fmt(launchTotals.lead_capture || 0) + " leads. System: " +
+            " sample opens -> " + fmt(launchTotals.lead_capture || 0) + " leads. System: " +
             fmt(launchSystem.relay_experiment_plan || 0) + " experiments, " +
-            fmt(launchSystem.relay_performance_weekly_review || 0) + " reviews.";
+            fmt(launchSystem.relay_performance_weekly_review || 0) + " reviews. Reply/payment still 0.";
         $("updatedAt").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
         $("rangeLabel").textContent = rangeName();
         $("trendRange").textContent = days === 1 ? "24h / local hours" : rangeName() + " / local dates";
