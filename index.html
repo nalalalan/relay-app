@@ -795,10 +795,10 @@
       </article>
     </section>
 
-    <section class="grid single-grid" aria-label="Current Relay decision">
+    <section class="grid single-grid" aria-label="Relay autonomous decision">
       <article class="panel">
         <div class="panel-head">
-          <h2>Current decision</h2>
+          <h2>Autonomous decision</h2>
           <span id="decisionTime" class="small">latest log</span>
         </div>
         <div id="decisionList" class="plain-list"></div>
@@ -845,16 +845,6 @@
         </div>
         <div id="timingList" class="plain-list"></div>
         <p class="caption">Median time among sessions where that action happened. Empty or weird values mean there is not enough clean data yet.</p>
-      </article>
-    </section>
-
-    <section class="grid single-grid" aria-label="Autonomous loop">
-      <article class="panel">
-        <div class="panel-head">
-          <h2>Autonomous loop</h2>
-          <span class="small">status</span>
-        </div>
-        <div id="loopList" class="plain-list"></div>
       </article>
     </section>
 
@@ -1352,17 +1342,6 @@
         return { value: "Run", hint: sentence(next, "Keep the loop moving.") };
       }
 
-      function sendWindowText(outreach) {
-        if (!outreach) return "not scheduled";
-        if (outreach.send_window_reason === "open" && outreach.send_window_end_local) {
-          return "open until " + localTime(outreach.send_window_end_local);
-        }
-        if (outreach.send_window_next_open_local) {
-          return localTime(outreach.send_window_next_open_local);
-        }
-        return "not scheduled";
-      }
-
       function activeProgressLabel(success, moneySystem, latestData) {
         var outreach = ((success || {}).outreach || {});
         var sample = outreach.active_experiment_sample_sends || outreach.active_experiment_sends;
@@ -1391,14 +1370,6 @@
           return "wait until " + localTime(waitMatch[1]) + " before changing copy or targeting";
         }
         return value;
-      }
-
-      function progressIsComplete(progress) {
-        var match = String(progress || "").match(/^([0-9,.]+)\/([0-9,.]+)$/);
-        if (!match) return false;
-        var current = Number(match[1].replace(/,/g, ""));
-        var target = Number(match[2].replace(/,/g, ""));
-        return target > 0 && current >= target;
       }
 
       function humanLane(value) {
@@ -1460,40 +1431,6 @@
           return (
             rowHtml(row.label, value + (count ? " / " + fmt(count) + " sessions" : ""))
           );
-        }).join("");
-      }
-
-      function renderLoop(ops, ledger) {
-        var success = ((ops || {}).relay_success || {});
-        var moneySystem = ((ops || {}).money_system || {});
-        var outreach = success.outreach || {};
-        var move = currentMove(ops, ledger);
-        var latest = latestLedger(ledger);
-        var latestData = ledgerData(latest);
-        var rows = [
-          {
-            label: "now",
-            value: move.value.toLowerCase()
-          },
-          {
-            label: "why",
-            value: move.hint
-          },
-          {
-            label: "send window",
-            value: sendWindowText(outreach)
-          },
-          {
-            label: "sample progress",
-            value: activeProgressLabel(success, moneySystem, latestData)
-          },
-          {
-            label: "you",
-            value: (((moneySystem.operator_mode || {}).do_not_interrupt_user) || ((success.owner_absence_contract || {}).manual_input_required === false)) ? "not needed right now" : "needed"
-          }
-        ];
-        $("loopList").innerHTML = rows.map(function (row) {
-          return rowHtml(row.label, row.value);
         }).join("");
       }
 
@@ -1608,13 +1545,17 @@
         $("rawSize").textContent = fmt(Math.ceil(text.length / 1024)) + " KB shown";
       }
 
-      function renderAnalysis(ops, ledger) {
+      function renderAnalysis(evidence, ops, ledger) {
         var success = ((ops || {}).relay_success || {});
         var moneySystem = ((ops || {}).money_system || {});
+        var moneyLoop = ((ops || {}).money_loop_runtime || {});
+        var totals = ((evidence || {}).totals || {});
+        var signals = ((evidence || {}).observable_signals || {});
         var mandate = success.money_proof_mandate || moneySystem.money_proof_mandate || {};
         var score = mandate.score || {};
         var health = success.money_proof_health || {};
         var observation = success.active_reply_observation || {};
+        var outreach = success.outreach || {};
         var latest = latestLedger(ledger);
         var latestData = ledgerData(latest);
         var latestDecision = humanDecision(
@@ -1644,22 +1585,31 @@
         var payments = Number(moneyObj.payments || latestData.payments || 0);
         var gross = Number(moneyObj.gross_usd || latestData.gross_usd || 0);
         var waiting = observation.pending || observation.seconds_until_observe_until > 0 || /reply window/i.test(String(why || ""));
-        var state = progressIsComplete(progress) && waiting
-          ? "sample sent; waiting for replies"
-          : sentence(move.value, "watching current proof lane").toLowerCase();
         var checkTime = observeUntil ? localTime(observeUntil) : sentence(move.hint, "next logged check");
         var changeRule = waiting
           ? "after " + checkTime + ": if still 0 replies and " + money(gross) + ", change one variable"
           : sentence(humanDecision(latestData.next_money_move || health.autonomous_recovery_action || mandate.allowed_autonomous_action || success.next_action), "change one variable from the evidence");
+        var productRows = sumCounts(totals.intent_event_counts);
+        var systemRows = sumCounts(totals.acquisition_event_counts);
+        var sessionCount = Number(signals.session_count || 0);
+        var latestSource = String(latestData.source || (latest || {}).source || "");
+        var ledgerTickAt = latest && latestSource.indexOf("money_loop") >= 0 ? latest.created_at : "";
+        var lastTick = moneyLoop.last_tick_at ? localTime(moneyLoop.last_tick_at) : (ledgerTickAt ? localTime(ledgerTickAt) : "-");
+        var loopStatus = moneySystem.loop_status || moneyLoop.status || "unknown";
+        if (loopStatus === "starting" && lastTick !== "-") loopStatus = "ok";
+        var cap = outreach.cap_remaining;
+        var activeVariant = outreach.active_experiment_variant || latestData.active_experiment_variant || "";
+        var activeTest = humanLane(activeVariant) + " / " + progress + " sent / " + fmt(replies) + " replies / " + fmt(payments) + " payments / " + money(gross);
+        var guardrail = (cap === undefined || cap === null ? "send cap tracked" : "send cap " + fmt(cap)) + "; no volume increase before the reply window closes";
 
         $("decisionTime").textContent = latest ? localTime(latest.created_at) : "latest log";
         $("decisionList").innerHTML = [
-          rowHtml("state", state),
-          rowHtml("observed", progress + " sends / " + fmt(replies) + " replies / " + fmt(payments) + " payments / " + money(gross)),
+          rowHtml("reads", fmt(productRows) + " product events / " + fmt(systemRows) + " system events / " + fmt(sessionCount) + " sessions"),
+          rowHtml("loop", sentence(loopStatus, "unknown") + " / last tick " + lastTick),
+          rowHtml("active test", activeTest),
           rowHtml("decision", sentence(latestDecision, "watch the current proof lane")),
-          rowHtml("reason", sentence(why, "not enough buyer signal yet")),
-          rowHtml("next check", checkTime),
-          rowHtml("change rule", changeRule)
+          rowHtml("guardrail", guardrail),
+          rowHtml("next adaptation", changeRule)
         ].join("");
       }
 
@@ -1702,9 +1652,8 @@
         drawLineChart("trendChart", trendRows, trendMode);
         renderFunnel(evidence);
         renderSignals(evidence, ops);
-        renderAnalysis(ops, ledger);
+        renderAnalysis(evidence, ops, ledger);
         renderTiming(evidence);
-        renderLoop(ops, ledger);
         renderDataTrace(evidence, ops, ledger);
         renderRaw(evidence, ops, ledger);
 
