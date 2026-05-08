@@ -352,6 +352,11 @@
       margin-top: 12px;
     }
 
+    .data-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      margin-top: 12px;
+    }
+
     .analysis-grid {
       grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
       margin-top: 12px;
@@ -579,6 +584,45 @@
       overflow-wrap: anywhere;
     }
 
+    .raw-tools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .raw-tab {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 0 10px;
+      font-size: 12px;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .raw-tab.active {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: #fff;
+    }
+
+    .raw-json {
+      width: 100%;
+      max-height: 360px;
+      margin: 0;
+      padding: 12px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfaf6;
+      color: #2d2822;
+      font: 11px/1.45 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
     .links {
       display: flex;
       flex-wrap: wrap;
@@ -613,6 +657,7 @@
       .hero,
       .paper-strip,
       .main-grid,
+      .data-grid,
       .analysis-grid {
         grid-template-columns: minmax(0, 1fr);
       }
@@ -821,6 +866,40 @@
       </article>
     </section>
 
+    <section class="grid data-grid" aria-label="Relay data layer">
+      <article class="panel">
+        <div class="panel-head">
+          <h2>Seen by system</h2>
+          <span id="dataTime" class="small">live feed</span>
+        </div>
+        <div id="seenList" class="plain-list"></div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-head">
+          <h2>Acted on</h2>
+          <span id="actionTime" class="small">latest decision</span>
+        </div>
+        <div id="actedList" class="plain-list"></div>
+      </article>
+    </section>
+
+    <section class="grid single-grid" aria-label="Raw Relay data">
+      <article class="panel">
+        <div class="panel-head">
+          <h2>Raw data</h2>
+          <span id="rawSize" class="small">live payload</span>
+        </div>
+        <div class="raw-tools" role="tablist" aria-label="Raw data source">
+          <button class="raw-tab active" data-raw="summary" type="button">Summary</button>
+          <button class="raw-tab" data-raw="events" type="button">Events</button>
+          <button class="raw-tab" data-raw="ops" type="button">Ops</button>
+          <button class="raw-tab" data-raw="ledger" type="button">Ledger</button>
+        </div>
+        <pre id="rawJson" class="raw-json">Loading.</pre>
+      </article>
+    </section>
+
     <div class="links" aria-label="Relay links">
       <a class="link" href="https://alan-operator-backend-production.up.railway.app/api/relay/evidence-export?days=30&limit=100">Raw export</a>
       <a class="link" href="https://alan-operator-backend-production.up.railway.app/api/relay/decision-ledger?days=30&limit=20">Decision log</a>
@@ -840,6 +919,7 @@
       var lastEvidence = null;
       var lastOps = null;
       var lastLedger = null;
+      var rawView = "summary";
 
       var ACTION_EVENTS = [
         "sample_click",
@@ -951,6 +1031,21 @@
         return ACTION_EVENTS.reduce(function (sum, key) {
           return sum + rolling(data, key, overrideDays);
         }, 0);
+      }
+
+      function sumCounts(obj, keys) {
+        var source = obj || {};
+        var list = keys || Object.keys(source);
+        return list.reduce(function (sum, key) {
+          return sum + Number(source[key] || 0);
+        }, 0);
+      }
+
+      function topCounts(obj, limit) {
+        return Object.keys(obj || {})
+          .map(function (key) { return { key: key, count: Number(obj[key] || 0) }; })
+          .sort(function (a, b) { return b.count - a.count; })
+          .slice(0, limit || 12);
       }
 
       function dateKey(date) {
@@ -1270,6 +1365,23 @@
         return "not scheduled";
       }
 
+      function activeProgressLabel(success, moneySystem, latestData) {
+        var outreach = ((success || {}).outreach || {});
+        var sample = outreach.active_experiment_sample_sends || outreach.active_experiment_sends;
+        var target = outreach.active_experiment_sample_target;
+        if (sample !== undefined && sample !== null && target) {
+          return fmt(sample) + "/" + fmt(target);
+        }
+        return (
+          (latestData || {}).active_progress ||
+          (((success || {}).money_proof_mandate || {}).score || {}).active_experiment_progress ||
+          ((success || {}).active_experiment_progress) ||
+          (((moneySystem || {}).launch_readiness || {}).active_experiment_progress) ||
+          ((moneySystem || {}).active_experiment_progress) ||
+          "0/10"
+        );
+      }
+
       function rowHtml(label, value) {
         return '<div class="plain-row"><strong>' + escapeHtml(label) + '</strong><span>' + escapeHtml(value) + '</span></div>';
       }
@@ -1332,6 +1444,8 @@
         var moneySystem = ((ops || {}).money_system || {});
         var outreach = success.outreach || {};
         var move = currentMove(ops, ledger);
+        var latest = latestLedger(ledger);
+        var latestData = ledgerData(latest);
         var rows = [
           {
             label: "now",
@@ -1347,7 +1461,7 @@
           },
           {
             label: "sample progress",
-            value: success.active_experiment_progress || "0/10"
+            value: activeProgressLabel(success, moneySystem, latestData)
           },
           {
             label: "you",
@@ -1357,6 +1471,117 @@
         $("loopList").innerHTML = rows.map(function (row) {
           return rowHtml(row.label, row.value);
         }).join("");
+      }
+
+      function renderDataTrace(evidence, ops, ledger) {
+        var coverage = (evidence || {}).coverage || {};
+        var totals = (evidence || {}).totals || {};
+        var rollingIntent = (((evidence || {}).rolling || {}).intent_event_counts || {});
+        var rollingAcquisition = (((evidence || {}).rolling || {}).acquisition_event_counts || {});
+        var oneDay = rollingIntent["1d"] || {};
+        var sevenDay = rollingIntent["7d"] || {};
+        var acquisitionDay = rollingAcquisition["1d"] || {};
+        var signals = ((evidence || {}).observable_signals || {});
+        var funnel = signals.funnel_depth || {};
+        var latest = latestLedger(ledger);
+        var latestData = ledgerData(latest);
+        var success = ((ops || {}).relay_success || {});
+        var moneySystem = ((ops || {}).money_system || {});
+        var outreach = success.outreach || {};
+        var moneyLoop = ((ops || {}).money_loop_runtime || {});
+        var launch = (moneySystem.launch_readiness || {});
+        var seenTotal = sumCounts(totals.intent_event_counts);
+        var actedTotal = sumCounts(totals.acquisition_event_counts);
+        var activeVariant = outreach.active_experiment_variant || latestData.active_experiment_variant || "-";
+        var progress = activeProgressLabel(success, moneySystem, latestData);
+        var cap = outreach.cap_remaining;
+        var nextWindow = outreach.send_window_next_open_local || launch.next_autonomous_window || "";
+        var latestSource = String(latestData.source || (latest || {}).source || "");
+        var ledgerTickAt = latest && latestSource.indexOf("money_loop") >= 0 ? latest.created_at : "";
+        var lastTick = moneyLoop.last_tick_at ? localTime(moneyLoop.last_tick_at) : (ledgerTickAt ? localTime(ledgerTickAt) : "-");
+        var loopStatus = moneySystem.loop_status || moneyLoop.status || "unknown";
+        if (loopStatus === "starting" && lastTick !== "-") loopStatus = "ok";
+
+        $("dataTime").textContent = (evidence || {}).generated_at ? localTime((evidence || {}).generated_at) : "live feed";
+        $("seenList").innerHTML = [
+          rowHtml("product table", (coverage.raw_product_events || "relay_intent_events") + " / " + fmt(seenTotal) + " rows in range"),
+          rowHtml("sessions", fmt(signals.session_count || funnel.sessions || 0) + " total / " + fmt(funnel.sessions_with_action || 0) + " with action"),
+          rowHtml("24h", fmt(oneDay.page_view || 0) + " views / " + fmt(sumCounts(oneDay, ACTION_EVENTS)) + " actions"),
+          rowHtml("week", fmt(sevenDay.page_view || 0) + " views / " + fmt(sumCounts(sevenDay, ACTION_EVENTS)) + " actions"),
+          rowHtml("system table", (coverage.outreach_replies_payments_and_journal || "acquisition_events") + " / " + fmt(actedTotal) + " rows in range")
+        ].join("");
+
+        $("actionTime").textContent = latest ? localTime(latest.created_at) : "latest decision";
+        $("actedList").innerHTML = [
+          rowHtml("decision", sentence(latestData.decision || latestData.next_action || success.next_action, "no current decision")),
+          rowHtml("active lane", activeVariant + " / " + progress),
+          rowHtml("send cap", cap === undefined || cap === null ? "-" : fmt(cap) + " left"),
+          rowHtml("money loop", sentence(loopStatus, "unknown") + " / last tick " + lastTick),
+          rowHtml("today", fmt(acquisitionDay.custom_outreach_sent_step_1 || 0) + " first touches / " + fmt(acquisitionDay.custom_outreach_sent_step_2 || 0) + " follow-ups"),
+          rowHtml("next window", nextWindow ? localTime(nextWindow) : "-")
+        ].join("");
+      }
+
+      function trimDaily(daily) {
+        if (!Array.isArray(daily)) return daily || [];
+        return daily.slice(Math.max(0, daily.length - 14));
+      }
+
+      function rawPayload(kind, evidence, ops, ledger) {
+        var ev = evidence || {};
+        var op = ops || {};
+        var led = ledger || {};
+        var signals = ev.observable_signals || {};
+        if (kind === "events") {
+          return {
+            generated_at: ev.generated_at,
+            coverage: ev.coverage,
+            totals: (ev.totals || {}).intent_event_counts || {},
+            rolling: (ev.rolling || {}).intent_event_counts || {},
+            daily: trimDaily(ev.daily),
+            hourly_event_counts_utc: (signals.hourly_event_counts_utc || []).slice(-72),
+            funnel_depth: signals.funnel_depth || {},
+            first_action_timing_seconds: signals.first_action_timing_seconds || {}
+          };
+        }
+        if (kind === "ops") {
+          return {
+            generated_from: "ops-check",
+            money_system: op.money_system || {},
+            money_loop_runtime: op.money_loop_runtime || {},
+            relay_success: op.relay_success || {},
+            recent: op.recent || {},
+            intent: op.intent || {},
+            acquisition: op.acquisition || {}
+          };
+        }
+        if (kind === "ledger") {
+          return {
+            generated_from: "decision-ledger",
+            count: led.count,
+            entries: led.entries || []
+          };
+        }
+        return {
+          generated_at: ev.generated_at,
+          window: ev.window,
+          coverage: ev.coverage,
+          totals: ev.totals,
+          positive_change: ev.positive_change,
+          relay_success: (op.relay_success || {}),
+          latest_decision: latestLedger(led)
+        };
+      }
+
+      function renderRaw(evidence, ops, ledger) {
+        var payload = rawPayload(rawView, evidence, ops, ledger);
+        var text = JSON.stringify(payload, null, 2);
+        var max = 90000;
+        if (text.length > max) {
+          text = text.slice(0, max) + "\n\n... truncated in page. Open Raw export for the full payload.";
+        }
+        $("rawJson").textContent = text;
+        $("rawSize").textContent = fmt(Math.ceil(text.length / 1024)) + " KB shown";
       }
 
       function renderAnalysis(ops, ledger) {
@@ -1471,6 +1696,8 @@
         renderAnalysis(ops, ledger);
         renderTiming(evidence);
         renderLoop(ops, ledger);
+        renderDataTrace(evidence, ops, ledger);
+        renderRaw(evidence, ops, ledger);
 
         $("trendCaption").textContent = trendRows.length
           ? (days === 1
@@ -1516,6 +1743,16 @@
             tab.classList.toggle("active", tab === button);
           });
           load();
+        });
+      });
+
+      Array.prototype.slice.call(document.querySelectorAll("[data-raw]")).forEach(function (button) {
+        button.addEventListener("click", function () {
+          rawView = button.getAttribute("data-raw") || "summary";
+          Array.prototype.slice.call(document.querySelectorAll("[data-raw]")).forEach(function (tab) {
+            tab.classList.toggle("active", tab === button);
+          });
+          renderRaw(lastEvidence || {}, lastOps || {}, lastLedger || {});
         });
       });
 
