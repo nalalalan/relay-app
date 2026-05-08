@@ -679,6 +679,89 @@
       line-height: 1.15;
     }
 
+    .history-map {
+      display: grid;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .history-row {
+      display: grid;
+      grid-template-columns: 98px minmax(0, 1fr);
+      gap: 16px;
+      align-items: end;
+    }
+
+    .history-label {
+      min-width: 0;
+    }
+
+    .history-label b,
+    .history-label span {
+      display: block;
+      overflow-wrap: anywhere;
+    }
+
+    .history-label b {
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1.1;
+    }
+
+    .history-label span {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 820;
+      line-height: 1.15;
+    }
+
+    .history-track {
+      --days: 12;
+      display: grid;
+      grid-template-columns: repeat(var(--days), minmax(7px, 1fr));
+      align-items: end;
+      gap: 5px;
+      min-height: 48px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .history-mark {
+      display: block;
+      width: 100%;
+      max-width: 18px;
+      height: var(--h);
+      min-height: 3px;
+      margin: 0 auto;
+      border-radius: 999px 999px 0 0;
+      background: var(--blue);
+    }
+
+    .history-mark.actions {
+      background: var(--good);
+    }
+
+    .history-mark.system {
+      background: #2d2822;
+      opacity: .82;
+    }
+
+    .history-mark.empty {
+      height: 3px;
+      background: #e4ded5;
+    }
+
+    .history-axis {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding-left: 114px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 820;
+    }
+
     .launch-grid {
       display: grid;
       grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr);
@@ -707,93 +790,6 @@
       line-height: 1.05;
       font-weight: 920;
       overflow-wrap: anywhere;
-    }
-
-    .launch-stats {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-      margin-top: 14px;
-    }
-
-    .launch-stat span,
-    .launch-stat b,
-    .launch-stat em {
-      display: block;
-      overflow-wrap: anywhere;
-    }
-
-    .launch-stat span {
-      color: var(--muted);
-      font-size: 10px;
-      font-weight: 900;
-      letter-spacing: .04em;
-      text-transform: uppercase;
-    }
-
-    .launch-stat b {
-      margin-top: 5px;
-      color: var(--ink);
-      font-size: 19px;
-      line-height: 1.05;
-      font-weight: 920;
-    }
-
-    .launch-stat em {
-      margin-top: 5px;
-      color: var(--muted);
-      font-style: normal;
-      font-size: 12px;
-      font-weight: 760;
-      line-height: 1.3;
-    }
-
-    .launch-chart {
-      margin-top: 14px;
-    }
-
-    .launch-line {
-      width: 100%;
-      height: 96px;
-      display: block;
-    }
-
-    .launch-axis {
-      stroke: #d8d0c5;
-      stroke-width: 1;
-    }
-
-    .launch-views-line {
-      fill: none;
-      stroke: var(--blue);
-      stroke-width: 4;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-
-    .launch-sample-dot {
-      fill: var(--good);
-      stroke: var(--panel);
-      stroke-width: 2;
-    }
-
-    .launch-lead-dot {
-      fill: var(--warn);
-      stroke: var(--panel);
-      stroke-width: 2;
-    }
-
-    .launch-chart-labels {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 820;
-    }
-
-    .launch-chart-labels span:nth-child(2) {
-      text-align: center;
     }
 
     .system-list {
@@ -980,10 +976,6 @@
         grid-template-columns: minmax(0, 1fr);
       }
 
-      .launch-stats {
-        grid-template-columns: minmax(0, 1fr);
-      }
-
       .system-list.compact {
         grid-template-columns: minmax(0, 1fr);
       }
@@ -1017,6 +1009,15 @@
         height: 14px;
         border-width: 2px;
         transform: none;
+      }
+
+      .history-row {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 6px;
+      }
+
+      .history-axis {
+        padding-left: 0;
       }
 
       .section-head {
@@ -1784,20 +1785,6 @@
         return Object.keys(map).sort().map(function (key) { return map[key]; });
       }
 
-      function firstRow(rows, key) {
-        return rows.find(function (row) { return Number(row[key] || 0) > 0; }) || null;
-      }
-
-      function launchStat(label, value, note) {
-        return (
-          '<div class="launch-stat">' +
-            '<span>' + escapeHtml(label) + '</span>' +
-            '<b>' + escapeHtml(value) + '</b>' +
-            '<em>' + escapeHtml(note) + '</em>' +
-          '</div>'
-        );
-      }
-
       function systemRow(label, value) {
         return '<div class="system-row"><span>' + escapeHtml(label) + '</span><b>' + escapeHtml(value) + '</b></div>';
       }
@@ -1829,63 +1816,64 @@
         );
       }
 
-      function launchLineHtml(rows) {
-        if (!rows.length) {
-          return '<div class="launch-chart"><div class="launch-chart-labels"><span>No launch data yet.</span></div></div>';
-        }
-        var width = 560;
-        var height = 108;
-        var padX = 6;
-        var padTop = 10;
-        var padBottom = 22;
-        var max = Math.max.apply(null, rows.map(function (row) {
-          return Number(row.views || 0);
-        }).concat([1]));
-        function x(index) {
-          if (rows.length <= 1) return padX;
-          return padX + (index / (rows.length - 1)) * (width - padX * 2);
-        }
-        function y(value) {
-          return padTop + (1 - (Number(value || 0) / max)) * (height - padTop - padBottom);
-        }
-        var points = rows.map(function (row, index) {
-          return x(index).toFixed(1) + "," + y(row.views).toFixed(1);
-        }).join(" ");
-        var sampleDots = rows.map(function (row, index) {
-          if (!Number(row.samples || 0)) return "";
-          return '<circle class="launch-sample-dot" cx="' + x(index).toFixed(1) + '" cy="' + y(row.views).toFixed(1) + '" r="4"><title>' + escapeHtml(shortDate(row.label) + ": " + fmt(row.samples) + " sample opens") + '</title></circle>';
-        }).join("");
-        var leadDots = rows.map(function (row, index) {
-          if (!Number(row.leads || 0)) return "";
-          return '<circle class="launch-lead-dot" cx="' + x(index).toFixed(1) + '" cy="' + y(row.views).toFixed(1) + '" r="5"><title>' + escapeHtml(shortDate(row.label) + ": " + fmt(row.leads) + " leads") + '</title></circle>';
+      function acquisitionByLaunchDate(evidence, rows) {
+        var map = {};
+        rows.forEach(function (row) {
+          map[row.label] = 0;
+        });
+        var acquisitionRows = ((((evidence || {}).daily || {}).acquisition_event_counts) || []);
+        if (!Array.isArray(acquisitionRows)) return map;
+        acquisitionRows.forEach(function (row) {
+          var key = row.date;
+          if (!Object.prototype.hasOwnProperty.call(map, key)) return;
+          map[key] += Number(row.count || 0);
+        });
+        return map;
+      }
+
+      function historyRowHtml(label, value, kind, rows, getValue, max) {
+        var days = Math.max(1, rows.length);
+        var marks = rows.map(function (row) {
+          var count = Number(getValue(row) || 0);
+          var height = count ? Math.max(6, Math.round((count / Math.max(1, max)) * 42)) : 3;
+          var title = shortDate(row.label) + ": " + fmt(count) + " " + label;
+          return '<i class="history-mark ' + escapeHtml(kind) + (count ? "" : " empty") + '" style="--h:' + height + 'px" title="' + escapeHtml(title) + '"></i>';
         }).join("");
         return (
-          '<div class="launch-chart">' +
-            '<svg class="launch-line" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="Daily views since launch">' +
-              '<line class="launch-axis" x1="' + padX + '" y1="' + (height - padBottom) + '" x2="' + (width - padX) + '" y2="' + (height - padBottom) + '"></line>' +
-              '<polyline class="launch-views-line" points="' + points + '"></polyline>' +
-              sampleDots +
-              leadDots +
-            '</svg>' +
-            '<div class="launch-chart-labels"><span>' + escapeHtml(shortDate(rows[0].label)) + '</span><span>views by day; dots are sample or lead days</span><span>' + escapeHtml(shortDate(rows[rows.length - 1].label)) + '</span></div>' +
+          '<div class="history-row">' +
+            '<div class="history-label"><b>' + escapeHtml(label) + '</b><span>' + escapeHtml(value) + '</span></div>' +
+            '<div class="history-track" style="--days:' + days + '">' + marks + '</div>' +
+          '</div>'
+        );
+      }
+
+      function launchHistoryHtml(evidence, rows) {
+        if (!rows.length) return "";
+        var acquisition = acquisitionByLaunchDate(evidence, rows);
+        var totalViews = rows.reduce(function (sum, row) { return sum + Number(row.views || 0); }, 0);
+        var totalActions = rows.reduce(function (sum, row) { return sum + Number(row.actions || 0); }, 0);
+        var totalSystem = rows.reduce(function (sum, row) { return sum + Number(acquisition[row.label] || 0); }, 0);
+        var maxViews = Math.max.apply(null, rows.map(function (row) { return Number(row.views || 0); }).concat([1]));
+        var maxActions = Math.max.apply(null, rows.map(function (row) { return Number(row.actions || 0); }).concat([1]));
+        var maxSystem = Math.max.apply(null, rows.map(function (row) { return Number(acquisition[row.label] || 0); }).concat([1]));
+        return (
+          '<div class="history-map" aria-label="Launch history by day">' +
+            historyRowHtml("attention", fmt(totalViews) + " views", "views", rows, function (row) { return row.views; }, maxViews) +
+            historyRowHtml("buyer actions", fmt(totalActions) + " actions", "actions", rows, function (row) { return row.actions; }, maxActions) +
+            historyRowHtml("system work", fmt(totalSystem) + " events", "system", rows, function (row) { return acquisition[row.label]; }, maxSystem) +
+            '<div class="history-axis"><span>' + escapeHtml(shortDate(rows[0].label)) + '</span><span>' + escapeHtml(shortDate(rows[rows.length - 1].label)) + '</span></div>' +
           '</div>'
         );
       }
 
       function moneyPathHtml(ledger, evidence, currentProgress, replies, payments, gross, checkTime) {
         var rows = launchRows(evidence);
-        var firstSample = firstRow(rows, "samples");
-        var peak = rows.reduce(function (best, row) {
-          return !best || Number(row.views || 0) > Number(best.views || 0) ? row : best;
-        }, null);
         var totals = ((evidence || {}).totals || {}).intent_event_counts || {};
         var acquisition = ((evidence || {}).totals || {}).acquisition_event_counts || {};
         var launchViews = Number(totals.page_view || 0);
         var launchSamples = Number(totals.sample_click || 0) + Number(totals.showcase_sample_click || 0);
         var launchLeads = Number(totals.lead_capture || 0);
         var paid = payments > 0 || gross > 0;
-        var peakNote = peak ? shortDate(peak.label) + " peak day" : "peak pending";
-        var sampleNote = firstSample ? "first sample " + shortDate(firstSample.label) : "sample pending";
         var experiments = Number(acquisition.relay_experiment_plan || 0);
         var reviews = Number(acquisition.relay_performance_weekly_review || 0);
         var journal = Number(acquisition.relay_research_journal_entry || 0);
@@ -1917,13 +1905,8 @@
           '</div>' +
           '<div class="launch-grid">' +
             '<div class="launch-block">' +
-              '<span class="launch-label">Product signal</span>' +
-              '<div class="launch-stats">' +
-                launchStat("sample opens", fmt(launchSamples), sampleNote) +
-                launchStat("leads", fmt(launchLeads), "captured") +
-                launchStat("peak", peak ? fmt(peak.views || 0) + " views" : "-", peakNote) +
-              '</div>' +
-              launchLineHtml(rows) +
+              '<span class="launch-label">Launch history</span>' +
+              launchHistoryHtml(evidence, rows) +
             '</div>' +
             '<div class="launch-block">' +
               '<span class="launch-label">Current limit</span>' +
