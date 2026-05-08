@@ -678,6 +678,55 @@
       background: var(--good);
     }
 
+    .launch-spark {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(10px, 1fr);
+      align-items: end;
+      gap: 4px;
+      height: 58px;
+      margin: 14px 0 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+    }
+
+    .launch-day {
+      position: relative;
+      min-height: 4px;
+      border-radius: 999px 999px 0 0;
+      background: var(--blue);
+      opacity: .88;
+    }
+
+    .launch-day.action {
+      background: linear-gradient(180deg, var(--blue), var(--good));
+    }
+
+    .launch-day::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -7px;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--line);
+      transform: translateX(-50%);
+    }
+
+    .launch-day.action::after {
+      background: var(--good);
+    }
+
+    .launch-labels {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 820;
+    }
+
     .money-rail {
       position: relative;
       height: 13px;
@@ -928,6 +977,10 @@
         grid-template-columns: minmax(0, 1fr);
       }
 
+      .launch-spark {
+        grid-auto-columns: minmax(6px, 1fr);
+      }
+
       .tab {
         min-width: 0;
         padding: 0 7px;
@@ -997,7 +1050,7 @@
     <section class="grid single-grid" aria-label="Relay autonomous progress">
       <article class="panel">
         <div class="panel-head">
-          <h2>Movement toward money</h2>
+          <h2>Progress since launch</h2>
           <span id="decisionTime" class="small">latest log</span>
         </div>
         <div id="moneyPath" class="money-readout"></div>
@@ -1674,40 +1727,78 @@
         );
       }
 
+      function launchRows(evidence) {
+        var rows = ((((evidence || {}).daily || {}).intent_event_counts) || []);
+        var map = {};
+        if (!Array.isArray(rows)) return [];
+        rows.forEach(function (row) {
+          var key = row.date;
+          if (!key) return;
+          if (!map[key]) map[key] = { label: key, views: 0, samples: 0, leads: 0, actions: 0 };
+          var count = Number(row.count || 0);
+          if (row.event_type === "page_view") map[key].views += count;
+          if (row.event_type === "sample_click" || row.event_type === "showcase_sample_click") map[key].samples += count;
+          if (row.event_type === "lead_capture") map[key].leads += count;
+          if (ACTION_EVENTS.indexOf(row.event_type) >= 0) map[key].actions += count;
+        });
+        return Object.keys(map).sort().map(function (key) { return map[key]; });
+      }
+
+      function firstRow(rows, key) {
+        return rows.find(function (row) { return Number(row[key] || 0) > 0; }) || null;
+      }
+
+      function launchSparkHtml(rows) {
+        if (!rows.length) return "";
+        var max = Math.max.apply(null, rows.map(function (row) {
+          return Math.max(row.views, row.samples, row.leads);
+        }).concat([1]));
+        var bars = rows.map(function (row) {
+          var h = Math.max(7, Math.round((Number(row.views || 0) / max) * 50));
+          var active = Number(row.actions || 0) > 0 ? " action" : "";
+          return '<i class="launch-day' + active + '" title="' + escapeHtml(shortDate(row.label) + ": " + fmt(row.views) + " views, " + fmt(row.samples) + " sample opens") + '" style="height:' + h + 'px"></i>';
+        }).join("");
+        return (
+          '<div class="launch-spark" aria-hidden="true">' + bars + '</div>' +
+          '<div class="launch-labels"><span>' + escapeHtml(shortDate(rows[0].label)) + '</span><span>' + escapeHtml(shortDate(rows[rows.length - 1].label)) + '</span></div>'
+        );
+      }
+
       function moneyPathHtml(ledger, evidence, currentProgress, replies, payments, gross) {
-        var viewsWeek = rolling(evidence, "page_view", 7);
+        var rows = launchRows(evidence);
+        var first = rows[0] || null;
+        var last = rows[rows.length - 1] || null;
+        var firstSample = firstRow(rows, "samples");
+        var peak = rows.reduce(function (best, row) {
+          return !best || Number(row.views || 0) > Number(best.views || 0) ? row : best;
+        }, null);
+        var totals = ((evidence || {}).totals || {}).intent_event_counts || {};
+        var launchViews = Number(totals.page_view || 0);
+        var launchSamples = Number(totals.sample_click || 0) + Number(totals.showcase_sample_click || 0);
+        var launchLeads = Number(totals.lead_capture || 0);
         var viewsToday = rolling(evidence, "page_view", 1);
         var sampleToday = rolling(evidence, "sample_click", 1) + rolling(evidence, "showcase_sample_click", 1);
-        var sampleWeek = rolling(evidence, "sample_click", 7) + rolling(evidence, "showcase_sample_click", 7);
         var paid = payments > 0 || gross > 0;
-        var sample = progressDelta(ledger, currentProgress);
-        var sampleDone = String(currentProgress) === "10/10";
-        var completed = (viewsWeek ? 1 : 0) + (sampleDone ? 1 : 0) + (replies ? 1 : 0) + (paid ? 1 : 0);
+        var completed = (launchViews ? 1 : 0) + (launchSamples ? 1 : 0) + (replies || launchLeads ? 1 : 0) + (paid ? 1 : 0);
         var fill = Math.max(10, Math.min(100, (completed / 4) * 100));
-        var headline = paid ? "Money happened" : "Moved today";
+        var headline = paid ? "Money happened" : "Since launch";
         var sampleTodayLabel = fmt(sampleToday) + (sampleToday === 1 ? " sample open" : " sample opens");
-        var outreachMove = movementSignal(evidence, "custom_outreach_sent_step_1_observed_or_lifted_1d");
-        var sampleMove = movementSignal(evidence, "sample_clicks_present_1d");
-        var outreachValue = outreachMove && outreachMove.baseline !== undefined
-          ? fmt(outreachMove.baseline) + " -> " + fmt(outreachMove.current)
-          : fmt(viewsToday) + " views";
-        var outreachNote = outreachMove && outreachMove.lift
-          ? fmt(outreachMove.lift) + "x first touches"
-          : fmt(viewsToday) + " views today";
-        var outreachPct = outreachMove && outreachMove.current
-          ? Math.min(100, (Number(outreachMove.current) / Math.max(Number(outreachMove.current), Number(outreachMove.baseline || 0), 1)) * 100)
-          : 35;
+        var launchLabel = first && last ? shortDate(first.label) + " -> " + shortDate(last.label) : "live";
+        var peakNote = peak ? shortDate(peak.label) + " peak day" : "peak pending";
+        var sampleNote = firstSample ? "first sample " + shortDate(firstSample.label) : "sample pending";
+        var leadNote = launchLeads ? "captured since launch" : "buyer signal gap";
         return (
           '<span>' + escapeHtml(paid ? "money progress" : "toward money") + '</span>' +
           '<strong>' + escapeHtml(headline) + '</strong>' +
           '<div class="movement-grid">' +
-            movementCard("win", "outreach", outreachValue, outreachNote, outreachPct) +
-            movementCard("win", "sample", sample, sampleDone ? "finished active sample" : "active sample moving", sampleDone ? 100 : 45) +
-            movementCard(sampleToday ? "win" : "next", "inspection", sampleToday ? fmt(sampleMove && sampleMove.current || sampleToday) + " sample open" : "0 sample opens", sampleToday ? "offer opened today" : "next gap", sampleToday ? 65 : 8) +
+            movementCard("win", "visibility", fmt(launchViews) + " views", peakNote, peak && launchViews ? Math.min(100, Number(peak.views || 0) / Math.max(launchViews, 1) * 100) : 35) +
+            movementCard("win", "inspection", fmt(launchSamples) + " sample opens", sampleNote, launchSamples ? 75 : 8) +
+            movementCard(launchLeads || replies ? "win" : "next", "buyer path", fmt(launchLeads) + " leads", leadNote, launchLeads ? 55 : 8) +
           '</div>' +
+          launchSparkHtml(rows) +
           '<div class="money-rail" aria-hidden="true"><i class="money-fill" style="width:' + fill + '%"></i></div>' +
           '<div class="money-bottom">' +
-            '<span>Today: <b>' + escapeHtml(fmt(viewsToday)) + '</b> views, <b>' + escapeHtml(sampleTodayLabel) + '</b></span>' +
+            '<span>' + escapeHtml(launchLabel) + ': <b>' + escapeHtml(fmt(viewsToday)) + '</b> views today, <b>' + escapeHtml(sampleTodayLabel) + '</b></span>' +
             '<span>Gap: <b>buyer signal</b>, <b>' + escapeHtml(fmt(replies)) + '</b> replies, <b>' + escapeHtml(money(gross)) + '</b></span>' +
           '</div>'
         );
@@ -1959,6 +2050,7 @@
 
       function render(evidence, ops, ledger) {
         var positive = (evidence || {}).positive_change || {};
+        var launchTotals = (((evidence || {}).totals || {}).intent_event_counts || {});
         var relayMoney = (((ops || {}).relay_success || {}).money || {});
         var success = ((ops || {}).relay_success || {});
         var move = currentMove(ops, ledger);
@@ -1988,7 +2080,9 @@
         $("nextMoveHint").textContent = move.hint;
         $("summaryLine").textContent = Number(relayMoney.payments || 0) > 0 || Number(relayMoney.gross_usd || 0) > 0
           ? "Money signal exists."
-          : "Outreach moved. Sample finished. Buyer signal next.";
+          : "Since launch: " + fmt(launchTotals.page_view || 0) + " views, " +
+            fmt((launchTotals.sample_click || 0) + (launchTotals.showcase_sample_click || 0)) +
+            " samples, " + fmt(launchTotals.lead_capture || 0) + " leads.";
         $("updatedAt").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
         $("rangeLabel").textContent = rangeName();
         $("trendRange").textContent = days === 1 ? "24h / local hours" : rangeName() + " / local dates";
@@ -2017,7 +2111,7 @@
         try {
           setStatus("", "updating");
           var bust = Date.now();
-          var evidenceDays = Math.max(days, 30);
+          var evidenceDays = Math.max(days, 365);
           var evidenceUrl = API + "/evidence-export?days=" + evidenceDays + "&limit=160&_=" + bust;
           var opsUrl = API + "/ops-check?days=7&_=" + bust;
           var ledgerUrl = API + "/decision-ledger?days=30&limit=160&_=" + bust;
