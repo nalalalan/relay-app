@@ -327,7 +327,7 @@
 
     .value {
       margin-top: 7px;
-      font-size: clamp(26px, 3.5vw, 38px);
+      font-size: clamp(22px, 2.4vw, 30px);
       line-height: 1;
       font-weight: 900;
     }
@@ -556,7 +556,7 @@
 
     .launch-section {
       margin-top: 20px;
-      padding: 18px 0 20px;
+      padding: 18px 0 22px;
       border-top: 1px solid var(--line);
       border-bottom: 1px solid var(--line);
     }
@@ -575,33 +575,38 @@
 
     .progress-map {
       display: grid;
-      gap: 16px;
-      margin: 18px 0 22px;
+      gap: 18px;
+      margin: 22px 0 24px;
     }
 
     .delta-strip {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 1px;
+      gap: 0;
       border: 1px solid var(--line);
-      border-radius: 8px;
-      overflow: hidden;
-      background: var(--line);
+      border-radius: 0;
+      background: rgba(255, 252, 247, .56);
     }
 
     .delta-item {
       min-width: 0;
-      padding: 14px 16px 16px;
-      background: rgba(255, 252, 247, .72);
+      padding: 12px 15px 14px;
+      border-right: 1px solid var(--line);
+      background: transparent;
+    }
+
+    .delta-item:last-child {
+      border-right: 0;
     }
 
     .delta-item.waiting {
-      background: rgba(245, 240, 232, .78);
+      background: rgba(245, 242, 237, .62);
     }
 
     .delta-item span,
     .delta-item b,
-    .delta-item em {
+    .delta-item em,
+    .delta-item small {
       display: block;
       overflow-wrap: anywhere;
     }
@@ -616,16 +621,16 @@
     }
 
     .delta-item b {
-      margin-top: 12px;
+      margin-top: 10px;
       color: var(--ink);
-      font-size: clamp(22px, 2.2vw, 34px);
+      font-size: clamp(20px, 1.8vw, 28px);
       font-weight: 930;
-      line-height: .92;
+      line-height: 1;
       letter-spacing: 0;
     }
 
     .delta-item em {
-      margin-top: 9px;
+      margin-top: 5px;
       color: var(--muted);
       font-size: 12px;
       font-style: normal;
@@ -633,10 +638,18 @@
       line-height: 1.2;
     }
 
+    .delta-item small {
+      margin-top: 12px;
+      color: #7d766d;
+      font-size: 10px;
+      font-weight: 780;
+      line-height: 1.15;
+    }
+
     .progress-lane {
       display: grid;
-      grid-template-columns: 104px minmax(0, 1fr);
-      gap: 18px;
+      grid-template-columns: 112px minmax(0, 1fr);
+      gap: 20px;
       align-items: start;
     }
 
@@ -664,52 +677,52 @@
       position: absolute;
       left: calc(50% / var(--steps));
       right: calc(50% / var(--steps));
-      top: 15px;
-      height: 4px;
+      top: 12px;
+      height: 2px;
       border-radius: 999px;
-      background: #e7e1d8;
+      background: #d7d0c6;
     }
 
     .lane-fill {
       right: auto;
       width: var(--fill-width);
-      background: linear-gradient(90deg, var(--good), var(--blue));
+      background: #2d2822;
     }
 
     .lane-step {
       position: relative;
       z-index: 1;
       min-width: 0;
-      padding-top: 32px;
+      padding-top: 28px;
       text-align: center;
     }
 
     .lane-dot {
       position: absolute;
-      top: 7px;
+      top: 6px;
       left: 50%;
-      width: 20px;
-      height: 20px;
-      border: 3px solid var(--panel);
+      width: 13px;
+      height: 13px;
+      border: 2px solid var(--panel);
       border-radius: 50%;
-      background: var(--good);
-      box-shadow: 0 0 0 1px rgba(54, 105, 76, .3);
+      background: #2d2822;
+      box-shadow: 0 0 0 1px #2d2822;
       transform: translateX(-50%);
     }
 
     .lane-step.active .lane-dot {
-      background: var(--blue);
-      box-shadow: 0 0 0 1px rgba(58, 96, 139, .34);
+      background: var(--panel);
+      box-shadow: 0 0 0 2px var(--blue);
     }
 
     .lane-step.waiting .lane-dot {
       background: var(--panel);
-      box-shadow: 0 0 0 2px #d8d0c5;
+      box-shadow: 0 0 0 1px #958b7f;
     }
 
     .lane-step.missing .lane-dot {
-      background: var(--warn);
-      box-shadow: 0 0 0 1px rgba(153, 98, 26, .34);
+      background: var(--panel);
+      box-shadow: 0 0 0 2px var(--warn);
     }
 
     .lane-step b,
@@ -720,7 +733,7 @@
 
     .lane-step b {
       color: var(--ink);
-      font-size: clamp(18px, 1.8vw, 26px);
+      font-size: clamp(16px, 1.45vw, 22px);
       line-height: 1;
       font-weight: 920;
     }
@@ -736,7 +749,7 @@
     .history-map {
       display: grid;
       gap: 16px;
-      margin-top: 16px;
+      margin-top: 18px;
     }
 
     .history-row {
@@ -777,8 +790,11 @@
       grid-template-columns: repeat(var(--days), minmax(7px, 1fr));
       align-items: end;
       gap: 7px;
-      min-height: 70px;
-      border-bottom: 1px solid var(--line);
+      min-height: 76px;
+      border-left: 1px solid #b7afa4;
+      border-bottom: 1px solid #b7afa4;
+      background-image:
+        linear-gradient(to top, transparent calc(50% - .5px), rgba(183, 175, 164, .34) calc(50% - .5px), rgba(183, 175, 164, .34) calc(50% + .5px), transparent calc(50% + .5px));
     }
 
     .history-mark {
@@ -788,7 +804,7 @@
       height: var(--h);
       min-height: 3px;
       margin: 0 auto;
-      border-radius: 5px 5px 0 0;
+      border-radius: 0;
       background: var(--blue);
     }
 
@@ -819,7 +835,7 @@
     .launch-grid {
       display: grid;
       grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr);
-      gap: 34px;
+      gap: 42px;
       align-items: start;
     }
 
@@ -1052,29 +1068,28 @@
       }
 
       .lane-steps {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px 14px;
-        min-height: 0;
+        grid-template-columns: repeat(var(--steps), minmax(0, 1fr));
+        min-height: 66px;
       }
 
       .lane-steps::before,
       .lane-fill {
-        display: none;
+        display: block;
       }
 
       .lane-step {
-        padding-top: 0;
-        padding-left: 24px;
-        text-align: left;
+        padding-top: 26px;
+        padding-left: 0;
+        text-align: center;
       }
 
       .lane-dot {
-        top: 1px;
-        left: 0;
-        width: 14px;
-        height: 14px;
+        top: 7px;
+        left: 50%;
+        width: 9px;
+        height: 9px;
         border-width: 2px;
-        transform: none;
+        transform: translateX(-50%);
       }
 
       .history-row {
@@ -1855,12 +1870,13 @@
         return '<div class="system-row"><span>' + escapeHtml(label) + '</span><b>' + escapeHtml(value) + '</b></div>';
       }
 
-      function deltaItem(label, value, note, state) {
+      function deltaItem(label, value, unit, state) {
         return (
           '<div class="delta-item ' + escapeHtml(state || "") + '">' +
             '<span>' + escapeHtml(label) + '</span>' +
             '<b>' + escapeHtml(value) + '</b>' +
-            '<em>' + escapeHtml(note) + '</em>' +
+            '<em>' + escapeHtml(unit) + '</em>' +
+            '<small>baseline 0</small>' +
           '</div>'
         );
       }
@@ -1868,10 +1884,10 @@
       function launchDeltaHtml(metrics) {
         return (
           '<div class="delta-strip" aria-label="Relay movement since launch">' +
-            deltaItem("attention", "0 -> " + fmt(metrics.views), "views", metrics.views ? "" : "waiting") +
-            deltaItem("sample opens", "0 -> " + fmt(metrics.samples), "inspection", metrics.samples ? "" : "waiting") +
-            deltaItem("leads", "0 -> " + fmt(metrics.leads), "buyer path", metrics.leads ? "" : "waiting") +
-            deltaItem("system work", "0 -> " + fmt(metrics.system), "logged events", metrics.system ? "" : "waiting") +
+            deltaItem("attention", fmt(metrics.views), "views", metrics.views ? "" : "waiting") +
+            deltaItem("sample opens", fmt(metrics.samples), "inspection", metrics.samples ? "" : "waiting") +
+            deltaItem("leads", fmt(metrics.leads), "buyer path", metrics.leads ? "" : "waiting") +
+            deltaItem("system work", fmt(metrics.system), "logged events", metrics.system ? "" : "waiting") +
             deltaItem("money", money(metrics.gross || 0), metrics.gross > 0 ? "paid" : "waiting on buyer reply", metrics.gross > 0 ? "" : "waiting") +
           '</div>'
         );
@@ -1987,7 +2003,7 @@
           '<div class="progress-map">' +
             progressLaneHtml("Buyer path", [
               { value: fmt(launchViews), label: "views", state: launchViews ? "done" : "waiting" },
-              { value: fmt(launchSamples), label: "sample opens", state: launchSamples ? "done" : "waiting" },
+              { value: fmt(launchSamples), label: "sample", state: launchSamples ? "done" : "waiting" },
               { value: fmt(launchLeads), label: "leads", state: launchLeads ? "done" : "waiting" },
               { value: fmt(replies), label: "replies", state: replies ? "done" : "missing" },
               { value: money(gross), label: "paid", state: paid ? "done" : "missing" }
@@ -1995,7 +2011,7 @@
             progressLaneHtml("System loop", [
               { value: fmt(sent), label: "sent", state: sent ? "done" : "waiting" },
               { value: activeSample, label: "sample", state: "active" },
-              { value: fmt(experiments), label: "experiments", state: experiments ? "done" : "waiting" },
+              { value: fmt(experiments), label: "expts.", state: experiments ? "done" : "waiting" },
               { value: fmt(reviews), label: "reviews", state: reviews ? "done" : "waiting" },
               { value: fmt(journal), label: "journal", state: journal ? "done" : "waiting" },
               { value: fmt(controls), label: "checks", state: controls ? "active" : "waiting" }
@@ -2295,11 +2311,11 @@
         $("nextMoveHint").textContent = move.hint;
         $("summaryLine").textContent = Number(relayMoney.payments || 0) > 0 || Number(relayMoney.gross_usd || 0) > 0
           ? "Money signal exists."
-          : fmt(launchTotals.page_view || 0) + " views -> " +
+          : "n=" + fmt(launchTotals.page_view || 0) + " views; " +
             fmt((launchTotals.sample_click || 0) + (launchTotals.showcase_sample_click || 0)) +
-            " sample opens -> " + fmt(launchTotals.lead_capture || 0) + " leads. System: " +
+            " sample opens; " + fmt(launchTotals.lead_capture || 0) + " leads. System: " +
             fmt(launchSystem.relay_experiment_plan || 0) + " experiments, " +
-            fmt(launchSystem.relay_performance_weekly_review || 0) + " reviews. Reply/payment still 0.";
+            fmt(launchSystem.relay_performance_weekly_review || 0) + " reviews. Replies/payments=0.";
         $("updatedAt").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
         $("rangeLabel").textContent = rangeName();
         $("trendRange").textContent = days === 1 ? "24h / local hours" : rangeName() + " / local dates";
