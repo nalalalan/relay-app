@@ -553,6 +553,61 @@
       overflow-wrap: anywhere;
     }
 
+    .progress-track {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .stage {
+      min-height: 82px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px;
+    }
+
+    .stage.done {
+      border-color: rgba(54, 105, 76, .38);
+      background: #f5faf6;
+    }
+
+    .stage.active {
+      border-color: rgba(153, 98, 26, .44);
+      background: #fff8ea;
+    }
+
+    .stage.waiting {
+      background: var(--soft);
+    }
+
+    .stage-state {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .stage strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 14px;
+      line-height: 1.15;
+      font-weight: 900;
+    }
+
+    .stage span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+      font-weight: 720;
+      overflow-wrap: anywhere;
+    }
+
     .plain-list {
       display: grid;
       gap: 10px;
@@ -669,6 +724,10 @@
       }
 
       .answer-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .progress-track {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
@@ -803,6 +862,7 @@
           <h2>Progress</h2>
           <span id="decisionTime" class="small">latest log</span>
         </div>
+        <div id="progressTrack" class="progress-track"></div>
         <div id="decisionList" class="plain-list"></div>
       </article>
     </section>
@@ -1365,6 +1425,16 @@
         return '<div class="plain-row"><strong>' + escapeHtml(label) + '</strong><span>' + escapeHtml(value) + '</span></div>';
       }
 
+      function stageHtml(label, state, meta, cls) {
+        return (
+          '<div class="stage ' + escapeHtml(cls || "") + '">' +
+            '<div class="stage-state">' + escapeHtml(state) + '</div>' +
+            '<strong>' + escapeHtml(label) + '</strong>' +
+            '<span>' + escapeHtml(meta) + '</span>' +
+          '</div>'
+        );
+      }
+
       function humanDecision(text) {
         var value = sentence(text, "");
         var waitMatch = value.match(/^wait until ([0-9T:.\-+Z]+) before changing copy or targeting\.?$/i);
@@ -1594,13 +1664,22 @@
         var cap = outreach.cap_remaining;
         var activeVariant = outreach.active_experiment_variant || latestData.active_experiment_variant || "";
         var failures = Number(activeSignal.send_failures || outreach.send_failures_today || 0);
-        var attentionText = fmt(rolling(evidence, "page_view", 1)) + " views today / " + fmt(rolling(evidence, "page_view", 7)) + " views week / " + fmt(rolling(evidence, "sample_click", 7) + rolling(evidence, "showcase_sample_click", 7)) + " sample clicks week";
+        var viewsToday = rolling(evidence, "page_view", 1);
+        var viewsWeek = rolling(evidence, "page_view", 7);
+        var sampleWeek = rolling(evidence, "sample_click", 7) + rolling(evidence, "showcase_sample_click", 7);
+        var attentionText = fmt(viewsToday) + " views today / " + fmt(viewsWeek) + " views week / " + fmt(sampleWeek) + " sample clicks week";
         var systemText = fmt(systemRows) + " system events / loop " + sentence(loopStatus, "unknown") + " / last tick " + lastTick;
         var sendText = humanLane(activeVariant) + " / " + progress + " sent / " + fmt(failures) + " send failures";
         var buyerText = fmt(replies) + " replies / " + fmt(payments) + " payments / " + money(gross);
         var guardrail = (cap === undefined || cap === null ? "cap tracked" : "cap " + fmt(cap)) + "; no scale before reply signal";
 
         $("decisionTime").textContent = latest ? localTime(latest.created_at) : "latest log";
+        $("progressTrack").innerHTML = [
+          stageHtml("Attention", viewsWeek ? "moving" : "empty", fmt(viewsWeek) + " views / " + fmt(sampleWeek) + " samples", viewsWeek ? "done" : "waiting"),
+          stageHtml("Sample", progress === "10/10" ? "complete" : "running", progress + " sent", progress === "10/10" ? "done" : "active"),
+          stageHtml("Buyer signal", replies ? "active" : "waiting", fmt(replies) + " replies", replies ? "done" : "active"),
+          stageHtml("Money", payments ? "paid" : "not yet", money(gross), payments ? "done" : "waiting")
+        ].join("");
         $("decisionList").innerHTML = [
           rowHtml("attention", attentionText),
           rowHtml("system", systemText),
