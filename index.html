@@ -797,10 +797,10 @@
       </article>
     </section>
 
-    <section class="grid single-grid" aria-label="Relay autonomous decision">
+    <section class="grid single-grid" aria-label="Relay autonomous progress">
       <article class="panel">
         <div class="panel-head">
-          <h2>Autonomous decision</h2>
+          <h2>Progress</h2>
           <span id="decisionTime" class="small">latest log</span>
         </div>
         <div id="decisionList" class="plain-list"></div>
@@ -1560,14 +1560,6 @@
         var outreach = success.outreach || {};
         var latest = latestLedger(ledger);
         var latestData = ledgerData(latest);
-        var latestDecision = humanDecision(
-          latestData.decision ||
-          latestData.next_action ||
-          mandate.primary_action ||
-          health.autonomous_recovery_action ||
-          success.next_action ||
-          "watch the current proof lane"
-        );
         var why =
           latestData.why ||
           latestData.proof_health_reason ||
@@ -1583,6 +1575,7 @@
           "";
         var move = currentMove(ops, ledger);
         var moneyObj = success.money || {};
+        var activeSignal = (((ops || {}).relay_performance || {}).active_experiment_signal || {});
         var replies = Number((((success.outreach || {}).replies) || latestData.replies || 0));
         var payments = Number(moneyObj.payments || latestData.payments || 0);
         var gross = Number(moneyObj.gross_usd || latestData.gross_usd || 0);
@@ -1591,7 +1584,6 @@
         var changeRule = waiting
           ? "after " + checkTime + ": if still 0 replies and " + money(gross) + ", change one variable"
           : sentence(humanDecision(latestData.next_money_move || health.autonomous_recovery_action || mandate.allowed_autonomous_action || success.next_action), "change one variable from the evidence");
-        var productRows = sumCounts(totals.intent_event_counts);
         var systemRows = sumCounts(totals.acquisition_event_counts);
         var sessionCount = Number(signals.session_count || 0);
         var latestSource = String(latestData.source || (latest || {}).source || "");
@@ -1601,17 +1593,21 @@
         if (loopStatus === "starting" && lastTick !== "-") loopStatus = "ok";
         var cap = outreach.cap_remaining;
         var activeVariant = outreach.active_experiment_variant || latestData.active_experiment_variant || "";
-        var activeTest = humanLane(activeVariant) + " / " + progress + " sent / " + fmt(replies) + " replies / " + fmt(payments) + " payments / " + money(gross);
-        var guardrail = (cap === undefined || cap === null ? "send cap tracked" : "send cap " + fmt(cap)) + "; no volume increase before the reply window closes";
+        var failures = Number(activeSignal.send_failures || outreach.send_failures_today || 0);
+        var attentionText = fmt(rolling(evidence, "page_view", 1)) + " views today / " + fmt(rolling(evidence, "page_view", 7)) + " views week / " + fmt(rolling(evidence, "sample_click", 7) + rolling(evidence, "showcase_sample_click", 7)) + " sample clicks week";
+        var systemText = fmt(systemRows) + " system events / loop " + sentence(loopStatus, "unknown") + " / last tick " + lastTick;
+        var sendText = humanLane(activeVariant) + " / " + progress + " sent / " + fmt(failures) + " send failures";
+        var buyerText = fmt(replies) + " replies / " + fmt(payments) + " payments / " + money(gross);
+        var guardrail = (cap === undefined || cap === null ? "cap tracked" : "cap " + fmt(cap)) + "; no scale before reply signal";
 
         $("decisionTime").textContent = latest ? localTime(latest.created_at) : "latest log";
         $("decisionList").innerHTML = [
-          rowHtml("reads", fmt(productRows) + " product events / " + fmt(systemRows) + " system events / " + fmt(sessionCount) + " sessions"),
-          rowHtml("loop", sentence(loopStatus, "unknown") + " / last tick " + lastTick),
-          rowHtml("active test", activeTest),
-          rowHtml("decision", sentence(latestDecision, "watch the current proof lane")),
+          rowHtml("attention", attentionText),
+          rowHtml("system", systemText),
+          rowHtml("sample", sendText),
+          rowHtml("buyer signal", buyerText),
           rowHtml("guardrail", guardrail),
-          rowHtml("next adaptation", changeRule)
+          rowHtml("next", changeRule)
         ].join("");
       }
 
