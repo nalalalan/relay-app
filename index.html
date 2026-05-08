@@ -663,6 +663,72 @@
       overflow-wrap: anywhere;
     }
 
+    .money-path {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .money-step {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 14px;
+      min-height: 96px;
+    }
+
+    .money-step.good {
+      border-color: rgba(54, 105, 76, .38);
+      background: #f5faf6;
+    }
+
+    .money-step.waiting {
+      border-color: rgba(153, 98, 26, .34);
+      background: #fff8ea;
+    }
+
+    .money-step.pending {
+      background: var(--soft);
+    }
+
+    .money-step span {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .money-step strong {
+      display: block;
+      margin-top: 7px;
+      color: var(--ink);
+      font-size: 19px;
+      line-height: 1.1;
+      font-weight: 920;
+      overflow-wrap: anywhere;
+    }
+
+    .money-step em {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      font-style: normal;
+      font-size: 12px;
+      line-height: 1.3;
+      font-weight: 720;
+      overflow-wrap: anywhere;
+    }
+
+    .money-note {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+      font-weight: 780;
+    }
+
     .plain-list {
       display: grid;
       gap: 10px;
@@ -790,6 +856,10 @@
         grid-template-columns: minmax(0, 1fr);
       }
 
+      .money-path {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
       .tabs {
         width: 100%;
       }
@@ -806,6 +876,10 @@
       }
 
       .answer-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .money-path {
         grid-template-columns: minmax(0, 1fr);
       }
 
@@ -918,12 +992,11 @@
     <section class="grid single-grid" aria-label="Relay autonomous progress">
       <article class="panel">
         <div class="panel-head">
-          <h2>Progress</h2>
+          <h2>Progress toward money</h2>
           <span id="decisionTime" class="small">latest log</span>
         </div>
-        <div id="progressTrack" class="progress-track"></div>
-        <div id="movementLine" class="movement-grid"></div>
-        <div id="decisionList" class="plain-list"></div>
+        <div id="moneyPath" class="money-path"></div>
+        <p id="moneyPathNote" class="money-note">-</p>
       </article>
     </section>
 
@@ -1531,6 +1604,38 @@
         ].join("");
       }
 
+      function moneyStepHtml(label, value, meta, cls) {
+        return (
+          '<div class="money-step ' + escapeHtml(cls || "") + '">' +
+            '<span>' + escapeHtml(label) + '</span>' +
+            '<strong>' + escapeHtml(value) + '</strong>' +
+            '<em>' + escapeHtml(meta) + '</em>' +
+          '</div>'
+        );
+      }
+
+      function progressDelta(ledger, currentProgress) {
+        var entries = ((ledger || {}).entries || []).slice().reverse();
+        var points = entries.map(function (entry) {
+          return progressPoint(ledgerData(entry).active_progress);
+        }).filter(Boolean);
+        var first = points[0];
+        var last = points[points.length - 1] || progressPoint(currentProgress);
+        if (!last) return currentProgress;
+        return first && first.label !== last.label ? first.label + " -> " + last.label : last.label;
+      }
+
+      function moneyPathHtml(ledger, evidence, currentProgress, replies, payments, gross) {
+        var viewsWeek = rolling(evidence, "page_view", 7);
+        var sampleWeek = rolling(evidence, "sample_click", 7) + rolling(evidence, "showcase_sample_click", 7);
+        return [
+          moneyStepHtml("working", "Attention", fmt(viewsWeek) + " views / " + fmt(sampleWeek) + " samples", viewsWeek ? "good" : "pending"),
+          moneyStepHtml("complete", "Sample", progressDelta(ledger, currentProgress), currentProgress === "10/10" ? "good" : "pending"),
+          moneyStepHtml("waiting", "Buyer signal", fmt(replies) + " replies", replies ? "good" : "waiting"),
+          moneyStepHtml("not yet", "Money", money(gross), payments ? "good" : "pending")
+        ].join("");
+      }
+
       function humanDecision(text) {
         var value = sentence(text, "");
         var waitMatch = value.match(/^wait until ([0-9T:.\-+Z]+) before changing copy or targeting\.?$/i);
@@ -1770,21 +1875,10 @@
         var guardrail = (cap === undefined || cap === null ? "cap tracked" : "cap " + fmt(cap)) + "; no scale before reply signal";
 
         $("decisionTime").textContent = latest ? localTime(latest.created_at) : "latest log";
-        $("progressTrack").innerHTML = [
-          stageHtml("Attention", viewsWeek ? "moving" : "empty", fmt(viewsWeek) + " views / " + fmt(sampleWeek) + " samples", viewsWeek ? "done" : "waiting"),
-          stageHtml("Sample", progress === "10/10" ? "complete" : "running", progress + " sent", progress === "10/10" ? "done" : "active"),
-          stageHtml("Buyer signal", replies ? "active" : "waiting", fmt(replies) + " replies", replies ? "done" : "active"),
-          stageHtml("Money", payments ? "paid" : "not yet", money(gross), payments ? "done" : "waiting")
-        ].join("");
-        $("movementLine").innerHTML = movementCardsHtml(ledger, evidence, progress, replies, payments, gross);
-        $("decisionList").innerHTML = [
-          rowHtml("attention", attentionText),
-          rowHtml("system", systemText),
-          rowHtml("sample", sendText),
-          rowHtml("buyer signal", buyerText),
-          rowHtml("guardrail", guardrail),
-          rowHtml("next", changeRule)
-        ].join("");
+        $("moneyPath").innerHTML = moneyPathHtml(ledger, evidence, progress, replies, payments, gross);
+        $("moneyPathNote").textContent =
+          "Good progress toward money: attention exists and the sample is complete. Missing buyer signal: " +
+          fmt(replies) + " replies / " + money(gross) + ". Review " + checkTime + ".";
       }
 
       function render(evidence, ops, ledger) {
