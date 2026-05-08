@@ -1057,9 +1057,36 @@
         return "90 days";
       }
 
+      function dailyIntentCounts(data, requestedDays) {
+        var rows = ((((data || {}).daily || {}).intent_event_counts) || []);
+        if (!Array.isArray(rows) || !rows.length) return {};
+        var cutoff = Date.now() - Number(requestedDays || 1) * 86400000;
+        var counts = {};
+        rows.forEach(function (row) {
+          var date = new Date(String(row.date || "") + "T12:00:00");
+          if (Number.isNaN(date.getTime()) || date.getTime() < cutoff) return;
+          var key = row.event_type;
+          counts[key] = Number(counts[key] || 0) + Number(row.count || 0);
+        });
+        return counts;
+      }
+
+      function selectedCounts(data, overrideDays) {
+        var requestedDays = Number(overrideDays || days || 1);
+        var windowKey = requestedDays + "d";
+        var rollingCounts = (((data || {}).rolling || {}).intent_event_counts || {})[windowKey];
+        if (rollingCounts) return rollingCounts;
+        var dailyCounts = dailyIntentCounts(data, requestedDays);
+        if (Object.keys(dailyCounts).length) return dailyCounts;
+        var windowDays = Number(((data || {}).window || {}).days || 0);
+        if (windowDays && requestedDays >= windowDays) {
+          return (((data || {}).totals || {}).intent_event_counts || {});
+        }
+        return {};
+      }
+
       function rolling(data, key, overrideDays) {
-        var windowKey = (overrideDays || days) + "d";
-        var counts = (((data || {}).rolling || {}).intent_event_counts || {})[windowKey] || {};
+        var counts = selectedCounts(data, overrideDays);
         return Number(counts[key] || 0);
       }
 
@@ -1118,7 +1145,26 @@
         });
       }
 
+      function dailyRows(evidence) {
+        var lookbackDays = Math.max(days, 1);
+        var cutoff = Date.now() - lookbackDays * 86400000;
+        var rows = ((((evidence || {}).daily || {}).intent_event_counts) || []);
+        var map = {};
+        if (!Array.isArray(rows)) return [];
+        rows.forEach(function (row) {
+          var date = new Date(String(row.date || "") + "T12:00:00");
+          if (Number.isNaN(date.getTime()) || date.getTime() < cutoff) return;
+          var key = row.date;
+          if (!map[key]) map[key] = { label: key, views: 0, actions: 0 };
+          if (row.event_type === "page_view") map[key].views += Number(row.count || 0);
+          if (ACTION_EVENTS.indexOf(row.event_type) >= 0) map[key].actions += Number(row.count || 0);
+        });
+        return Object.keys(map).sort().map(function (key) { return map[key]; });
+      }
+
       function dailySeries(evidence) {
+        var fromDaily = dailyRows(evidence);
+        if (fromDaily.length) return fromDaily;
         var lookbackDays = Math.max(days, 1);
         var cutoff = Date.now() - lookbackDays * 86400000;
         var map = {};
