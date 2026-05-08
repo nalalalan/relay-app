@@ -573,52 +573,110 @@
       min-width: 0;
     }
 
-    .launch-path {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: 7px 11px;
-      margin-bottom: 18px;
+    .progress-map {
+      display: grid;
+      gap: 16px;
+      margin-bottom: 20px;
     }
 
-    .path-step {
-      display: inline-flex;
-      align-items: baseline;
-      gap: 6px;
+    .progress-lane {
+      display: grid;
+      grid-template-columns: 104px minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .lane-title {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .06em;
+      line-height: 1.15;
+      text-transform: uppercase;
+    }
+
+    .lane-steps {
+      --steps: 5;
+      --fill-width: 0%;
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(var(--steps), minmax(0, 1fr));
+      min-height: 70px;
+    }
+
+    .lane-steps::before,
+    .lane-fill {
+      content: "";
+      position: absolute;
+      left: calc(50% / var(--steps));
+      right: calc(50% / var(--steps));
+      top: 15px;
+      height: 4px;
+      border-radius: 999px;
+      background: #e7e1d8;
+    }
+
+    .lane-fill {
+      right: auto;
+      width: var(--fill-width);
+      background: linear-gradient(90deg, var(--good), var(--blue));
+    }
+
+    .lane-step {
+      position: relative;
+      z-index: 1;
       min-width: 0;
-      white-space: nowrap;
+      padding-top: 32px;
+      text-align: center;
     }
 
-    .path-step b {
+    .lane-dot {
+      position: absolute;
+      top: 7px;
+      left: 50%;
+      width: 20px;
+      height: 20px;
+      border: 3px solid var(--panel);
+      border-radius: 50%;
+      background: var(--good);
+      box-shadow: 0 0 0 1px rgba(54, 105, 76, .3);
+      transform: translateX(-50%);
+    }
+
+    .lane-step.active .lane-dot {
+      background: var(--blue);
+      box-shadow: 0 0 0 1px rgba(58, 96, 139, .34);
+    }
+
+    .lane-step.waiting .lane-dot {
+      background: var(--panel);
+      box-shadow: 0 0 0 2px #d8d0c5;
+    }
+
+    .lane-step.missing .lane-dot {
+      background: var(--warn);
+      box-shadow: 0 0 0 1px rgba(153, 98, 26, .34);
+    }
+
+    .lane-step b,
+    .lane-step span {
+      display: block;
+      overflow-wrap: anywhere;
+    }
+
+    .lane-step b {
       color: var(--ink);
-      font-size: clamp(21px, 2.2vw, 30px);
+      font-size: clamp(18px, 1.8vw, 26px);
       line-height: 1;
       font-weight: 920;
     }
 
-    .path-step span {
+    .lane-step span {
+      margin-top: 4px;
       color: var(--muted);
-      font-size: 12px;
-      line-height: 1.1;
+      font-size: 11px;
       font-weight: 850;
-    }
-
-    .path-step.missing b {
-      color: var(--warn);
-    }
-
-    .path-arrow {
-      color: #beb4a7;
-      font-size: 16px;
-      font-weight: 850;
-    }
-
-    .launch-readline {
-      margin: -6px 0 18px;
-      color: var(--muted);
-      font-size: 14px;
-      font-weight: 760;
-      line-height: 1.35;
+      line-height: 1.15;
     }
 
     .launch-grid {
@@ -778,7 +836,7 @@
     }
 
     .gap-box {
-      padding: 12px 0 0;
+      padding: 14px 0 0;
       border-top: 1px solid var(--line);
       margin-top: 14px;
     }
@@ -930,8 +988,35 @@
         grid-template-columns: minmax(0, 1fr);
       }
 
-      .path-step {
-        white-space: normal;
+      .progress-lane {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+      }
+
+      .lane-steps {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px 14px;
+        min-height: 0;
+      }
+
+      .lane-steps::before,
+      .lane-fill {
+        display: none;
+      }
+
+      .lane-step {
+        padding-top: 0;
+        padding-left: 24px;
+        text-align: left;
+      }
+
+      .lane-dot {
+        top: 1px;
+        left: 0;
+        width: 14px;
+        height: 14px;
+        border-width: 2px;
+        transform: none;
       }
 
       .section-head {
@@ -1717,8 +1802,31 @@
         return '<div class="system-row"><span>' + escapeHtml(label) + '</span><b>' + escapeHtml(value) + '</b></div>';
       }
 
-      function pathStep(value, label, missing) {
-        return '<span class="path-step' + (missing ? " missing" : "") + '"><b>' + escapeHtml(value) + '</b><span>' + escapeHtml(label) + '</span></span>';
+      function laneStep(value, label, state) {
+        return (
+          '<div class="lane-step ' + escapeHtml(state || "done") + '">' +
+            '<i class="lane-dot" aria-hidden="true"></i>' +
+            '<b>' + escapeHtml(value) + '</b>' +
+            '<span>' + escapeHtml(label) + '</span>' +
+          '</div>'
+        );
+      }
+
+      function progressLaneHtml(title, steps, fill) {
+        var safeFill = Math.max(0, Math.min(100, Number(fill || 0)));
+        var railWidth = 100 - (100 / Math.max(1, steps.length));
+        var fillWidth = (safeFill * railWidth / 100).toFixed(3) + "%";
+        return (
+          '<div class="progress-lane">' +
+            '<div class="lane-title">' + escapeHtml(title) + '</div>' +
+            '<div class="lane-steps" style="--steps:' + steps.length + ';--fill-width:' + fillWidth + '">' +
+              '<i class="lane-fill" aria-hidden="true"></i>' +
+              steps.map(function (step) {
+                return laneStep(step.value, step.label, step.state);
+              }).join("") +
+            '</div>' +
+          '</div>'
+        );
       }
 
       function launchLineHtml(rows) {
@@ -1788,19 +1896,25 @@
           Number(acquisition.custom_outreach_sent_step_3 || 0);
         var activeSample = progressDelta(ledger, currentProgress);
         var nextCheck = checkTime && checkTime !== "-" ? checkTime : "logged by system";
+        var buyerFill = paid ? 100 : replies ? 75 : launchLeads ? 50 : launchSamples ? 25 : 0;
         return (
-          '<div class="launch-path" aria-label="Buyer path since launch">' +
-            pathStep(fmt(launchViews), "views", false) +
-            '<span class="path-arrow">-></span>' +
-            pathStep(fmt(launchSamples), "sample opens", false) +
-            '<span class="path-arrow">-></span>' +
-            pathStep(fmt(launchLeads), "leads", false) +
-            '<span class="path-arrow">-></span>' +
-            pathStep(fmt(replies), "replies", !replies) +
-            '<span class="path-arrow">-></span>' +
-            pathStep(money(gross), "paid", !paid) +
+          '<div class="progress-map">' +
+            progressLaneHtml("Buyer path", [
+              { value: fmt(launchViews), label: "views", state: launchViews ? "done" : "waiting" },
+              { value: fmt(launchSamples), label: "sample opens", state: launchSamples ? "done" : "waiting" },
+              { value: fmt(launchLeads), label: "leads", state: launchLeads ? "done" : "waiting" },
+              { value: fmt(replies), label: "replies", state: replies ? "done" : "missing" },
+              { value: money(gross), label: "paid", state: paid ? "done" : "missing" }
+            ], buyerFill) +
+            progressLaneHtml("System loop", [
+              { value: fmt(sent), label: "sent", state: sent ? "done" : "waiting" },
+              { value: activeSample, label: "sample", state: "active" },
+              { value: fmt(experiments), label: "experiments", state: experiments ? "done" : "waiting" },
+              { value: fmt(reviews), label: "reviews", state: reviews ? "done" : "waiting" },
+              { value: fmt(journal), label: "journal", state: journal ? "done" : "waiting" },
+              { value: fmt(controls), label: "checks", state: controls ? "active" : "waiting" }
+            ], 100) +
           '</div>' +
-          '<div class="launch-readline">Reached: traffic, sample opens, leads. Missing: buyer reply and paid test.</div>' +
           '<div class="launch-grid">' +
             '<div class="launch-block">' +
               '<span class="launch-label">Product signal</span>' +
@@ -1812,19 +1926,12 @@
               launchLineHtml(rows) +
             '</div>' +
             '<div class="launch-block">' +
-              '<span class="launch-label">System work</span>' +
-              '<strong class="launch-title">' + escapeHtml(fmt(experiments) + " experiments / " + fmt(reviews) + " reviews") + '</strong>' +
+              '<span class="launch-label">Current limit</span>' +
+              '<strong class="launch-title">' + escapeHtml(paid ? "paid buyer exists" : "buyer reply first") + '</strong>' +
               '<div class="system-list compact">' +
-                systemRow("journal entries", fmt(journal)) +
-                systemRow("control checks", fmt(controls)) +
                 systemRow("money loop ticks", fmt(moneyTicks)) +
                 systemRow("active sample", activeSample) +
-                systemRow("outreach sent", fmt(sent)) +
                 systemRow("next check", nextCheck) +
-              '</div>' +
-              '<div class="gap-box">' +
-                '<div class="launch-label">Current limit</div>' +
-                '<div class="launch-title">' + escapeHtml(paid ? "paid buyer exists" : "buyer reply first") + '</div>' +
               '</div>' +
             '</div>' +
           '</div>'
