@@ -451,14 +451,6 @@
       stroke-width: 2;
     }
 
-    .bar-view {
-      fill: var(--blue);
-    }
-
-    .bar-action {
-      fill: var(--good);
-    }
-
     .legend {
       display: flex;
       flex-wrap: wrap;
@@ -486,45 +478,78 @@
 
     .funnel {
       display: grid;
-      gap: 10px;
+      gap: 12px;
     }
 
-    .funnel-row {
+    .funnel-path {
+      position: relative;
       display: grid;
-      grid-template-columns: 112px minmax(0, 1fr) 76px;
-      gap: 10px;
-      align-items: center;
-      min-height: 30px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 760;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 0;
+      padding: 8px 0 2px;
     }
 
-    .track {
-      height: 10px;
-      border-radius: 999px;
-      background: var(--soft);
-      overflow: hidden;
+    .funnel-path::before {
+      position: absolute;
+      top: 19px;
+      right: 8%;
+      left: 8%;
+      height: 2px;
+      background: var(--line);
+      content: "";
     }
 
-    .bar {
-      display: block;
-      height: 100%;
-      border-radius: inherit;
-      background: var(--ink);
-    }
-
-    .count {
-      display: inline-flex;
-      justify-content: flex-end;
+    .funnel-node {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      min-width: 0;
+      justify-items: center;
       gap: 4px;
-      color: var(--ink);
-      font-weight: 850;
-      white-space: nowrap;
+      text-align: center;
     }
 
-    .pct {
+    .funnel-dot {
+      display: block;
+      width: 13px;
+      height: 13px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: var(--panel);
+    }
+
+    .funnel-node.active .funnel-dot {
+      border-color: var(--good);
+      background: var(--good);
+    }
+
+    .funnel-node b,
+    .funnel-node span,
+    .funnel-node em {
+      display: block;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+    }
+
+    .funnel-node b {
+      color: var(--ink);
+      font-size: 18px;
+      line-height: 1;
+      font-weight: 910;
+    }
+
+    .funnel-node span {
       color: var(--muted);
+      font-size: 11px;
+      line-height: 1.1;
+      font-weight: 850;
+      text-transform: lowercase;
+    }
+
+    .funnel-node em {
+      color: var(--muted);
+      font-size: 10px;
+      font-style: normal;
       font-weight: 700;
     }
 
@@ -697,41 +722,63 @@
     }
 
     .history-track {
-      --days: 12;
-      display: grid;
-      grid-template-columns: repeat(var(--days), minmax(7px, 1fr));
-      align-items: end;
-      gap: 7px;
-      min-height: 76px;
-      border-left: 1px solid #b7afa4;
-      border-bottom: 1px solid #b7afa4;
-      background-image:
-        linear-gradient(to top, transparent calc(50% - .5px), rgba(183, 175, 164, .34) calc(50% - .5px), rgba(183, 175, 164, .34) calc(50% + .5px), transparent calc(50% + .5px));
+      min-width: 0;
     }
 
-    .history-mark {
+    .history-svg {
       display: block;
       width: 100%;
-      max-width: 22px;
-      height: var(--h);
-      min-height: 3px;
-      margin: 0 auto;
-      border-radius: 0;
-      background: var(--blue);
+      height: 82px;
+      overflow: visible;
     }
 
-    .history-mark.actions {
-      background: var(--good);
+    .history-grid {
+      stroke: rgba(183, 175, 164, .32);
+      stroke-width: 1;
+      vector-effect: non-scaling-stroke;
     }
 
-    .history-mark.system {
-      background: #2d2822;
-      opacity: .82;
+    .history-axis-line {
+      stroke: #b7afa4;
+      stroke-width: 1;
+      vector-effect: non-scaling-stroke;
     }
 
-    .history-mark.empty {
-      height: 3px;
-      background: #e4ded5;
+    .history-line {
+      fill: none;
+      stroke: var(--blue);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 2.8;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .history-line.activity {
+      stroke: var(--good);
+    }
+
+    .history-line.system {
+      stroke: #56504a;
+    }
+
+    .history-point {
+      stroke: var(--blue);
+      stroke-linecap: round;
+      stroke-width: 2.4;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .history-point.activity {
+      stroke: var(--good);
+    }
+
+    .history-point.system {
+      stroke: #56504a;
+    }
+
+    .history-point.empty {
+      stroke: #d9d2c8;
+      stroke-width: 1.5;
     }
 
     .history-axis {
@@ -928,6 +975,36 @@
         padding-left: 0;
       }
 
+      .history-svg {
+        height: 72px;
+      }
+
+      .funnel-path {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+        padding: 0 0 0 16px;
+      }
+
+      .funnel-path::before {
+        top: 8px;
+        bottom: 8px;
+        left: 6px;
+        right: auto;
+        width: 2px;
+        height: auto;
+      }
+
+      .funnel-node {
+        grid-template-columns: 18px minmax(0, 82px) minmax(0, 1fr) minmax(0, 64px);
+        justify-items: start;
+        gap: 7px;
+        text-align: left;
+      }
+
+      .funnel-node b {
+        font-size: 16px;
+      }
+
       .section-head {
         align-items: start;
       }
@@ -949,10 +1026,6 @@
 
       .chart {
         height: 200px;
-      }
-
-      .funnel-row {
-        grid-template-columns: 86px minmax(0, 1fr) 62px;
       }
 
       footer {
@@ -1019,7 +1092,7 @@
           <div class="label">Offer clicks / 24h</div>
           <div id="clicksValue" class="value good">-</div>
         </div>
-        <div id="clicksHint" class="hint">Sample, notes, checkout, or lead action.</div>
+        <div id="clicksHint" class="hint">Sample, notes, checkout, or lead event.</div>
       </article>
       <article class="card">
         <div>
@@ -1040,10 +1113,10 @@
     <section class="grid main-grid" aria-label="Live trend charts">
       <article class="panel tall">
         <div class="panel-head">
-          <h2>Views and actions over time</h2>
+          <h2>Views and offer activity over time</h2>
           <span id="trendRange" class="small">local dates</span>
         </div>
-        <svg id="trendChart" class="chart" role="img" aria-label="Line chart of page views and action clicks by date"></svg>
+        <svg id="trendChart" class="chart" role="img" aria-label="Line chart of page views and offer activity by date"></svg>
         <div class="legend">
           <span><i class="key"></i>views</span>
           <span><i class="key action"></i>offer clicks</span>
@@ -1060,10 +1133,10 @@
       </article>
     </section>
 
-    <section class="grid main-grid" aria-label="Funnel and timing">
+    <section class="grid main-grid" aria-label="Offer path and timing">
       <article class="panel">
         <div class="panel-head">
-          <h2>Funnel</h2>
+          <h2>Offer path</h2>
           <span id="rangeLabel" class="small">selected range</span>
         </div>
         <div id="funnelRows" class="funnel"></div>
@@ -1484,18 +1557,17 @@
           { label: "checkout", value: rolling(evidence, "checkout_click") },
           { label: "leads", value: rolling(evidence, "lead_capture") }
         ];
-        var max = Math.max.apply(null, rows.map(function (row) { return row.value; }).concat([1]));
-        $("funnelRows").innerHTML = rows.map(function (row, index) {
-          var width = Math.max((row.value / max) * 100, row.value ? 2 : 0);
-          var conversion = index === 0 || !views ? "" : '<span class="pct">' + pct((row.value / views) * 100) + '</span>';
+        $("funnelRows").innerHTML = '<div class="funnel-path">' + rows.map(function (row, index) {
+          var conversion = index === 0 || !views ? "range" : pct((row.value / views) * 100);
           return (
-            '<div class="funnel-row">' +
-              '<span>' + row.label + '</span>' +
-              '<span class="track"><span class="bar" style="width:' + width + '%"></span></span>' +
-              '<span class="count">' + fmt(row.value) + conversion + '</span>' +
+            '<div class="funnel-node ' + (row.value ? "active" : "") + '">' +
+              '<i class="funnel-dot" aria-hidden="true"></i>' +
+              '<span>' + escapeHtml(row.label) + '</span>' +
+              '<b>' + fmt(row.value) + '</b>' +
+              '<em>' + escapeHtml(conversion) + '</em>' +
             '</div>'
           );
-        }).join("");
+        }).join("") + '</div>';
 
         var checkout = rolling(evidence, "checkout_click");
         var leads = rolling(evidence, "lead_capture");
@@ -1695,18 +1767,51 @@
         return map;
       }
 
+      function svgNumber(value) {
+        return Number(value || 0).toFixed(1).replace(/\.0$/, "");
+      }
+
       function historyRowHtml(label, value, kind, rows, getValue, max) {
-        var days = Math.max(1, rows.length);
-        var marks = rows.map(function (row) {
+        var width = 560;
+        var height = 82;
+        var left = 2;
+        var right = 2;
+        var top = 8;
+        var bottom = 15;
+        var plotW = width - left - right;
+        var plotH = height - top - bottom;
+        var yMax = Math.max(1, Number(max || 0));
+        var points = rows.map(function (row, index) {
           var count = Number(getValue(row) || 0);
-          var height = count ? Math.max(6, Math.round((count / Math.max(1, max)) * 42)) : 3;
-          var title = shortDate(row.label) + ": " + fmt(count) + " " + label;
-          return '<i class="history-mark ' + escapeHtml(kind) + (count ? "" : " empty") + '" style="--h:' + height + 'px" title="' + escapeHtml(title) + '"></i>';
+          var x = rows.length <= 1 ? left : left + (index / (rows.length - 1)) * plotW;
+          var y = top + plotH - Math.min(1, count / yMax) * plotH;
+          return { x: x, y: y, count: count, label: row.label };
+        });
+        var path = points.map(function (point, index) {
+          return (index ? "L" : "M") + svgNumber(point.x) + " " + svgNumber(point.y);
+        }).join(" ");
+        var markers = points.map(function (point) {
+          var title = shortDate(point.label) + ": " + fmt(point.count);
+          var markerSize = point.count ? 4 : 2.5;
+          return (
+            '<line class="history-point ' + escapeHtml(kind) + (point.count ? "" : " empty") + '" ' +
+            'x1="' + svgNumber(point.x) + '" y1="' + svgNumber(point.y - markerSize) + '" ' +
+            'x2="' + svgNumber(point.x) + '" y2="' + svgNumber(point.y + markerSize) + '">' +
+            '<title>' + escapeHtml(title) + '</title></line>'
+          );
         }).join("");
         return (
           '<div class="history-row">' +
             '<div class="history-label"><b>' + escapeHtml(label) + '</b><span>' + escapeHtml(value) + '</span></div>' +
-            '<div class="history-track" style="--days:' + days + '">' + marks + '</div>' +
+            '<div class="history-track">' +
+              '<svg class="history-svg" viewBox="0 0 ' + width + ' ' + height + '" preserveAspectRatio="none" role="img" aria-label="' + escapeHtml(label + " by day") + '">' +
+                '<line class="history-grid" x1="' + left + '" y1="' + top + '" x2="' + (width - right) + '" y2="' + top + '"></line>' +
+                '<line class="history-grid" x1="' + left + '" y1="' + svgNumber(top + plotH / 2) + '" x2="' + (width - right) + '" y2="' + svgNumber(top + plotH / 2) + '"></line>' +
+                '<line class="history-axis-line" x1="' + left + '" y1="' + (height - bottom) + '" x2="' + (width - right) + '" y2="' + (height - bottom) + '"></line>' +
+                '<path class="history-line ' + escapeHtml(kind) + '" d="' + escapeHtml(path) + '"></path>' +
+                markers +
+              '</svg>' +
+            '</div>' +
           '</div>'
         );
       }
@@ -1723,7 +1828,7 @@
         return (
           '<div class="history-map" aria-label="Launch history by day">' +
             historyRowHtml("attention", fmt(totalViews) + " views", "views", rows, function (row) { return row.views; }, maxViews) +
-            historyRowHtml("buyer actions", fmt(totalActions) + " actions", "actions", rows, function (row) { return row.actions; }, maxActions) +
+            historyRowHtml("offer activity", fmt(totalActions) + " events", "activity", rows, function (row) { return row.actions; }, maxActions) +
             historyRowHtml("system work", fmt(totalSystem) + " events", "system", rows, function (row) { return acquisition[row.label]; }, maxSystem) +
             '<div class="history-axis"><span>' + escapeHtml(shortDate(rows[0].label)) + '</span><span>' + escapeHtml(shortDate(rows[rows.length - 1].label)) + '</span></div>' +
           '</div>'
@@ -1865,9 +1970,9 @@
         $("dataTime").textContent = (evidence || {}).generated_at ? localTime((evidence || {}).generated_at) : "live feed";
         $("seenList").innerHTML = [
           rowHtml("product table", (coverage.raw_product_events || "relay_intent_events") + " / " + fmt(seenTotal) + " rows in range"),
-          rowHtml("sessions", fmt(signals.session_count || funnel.sessions || 0) + " total / " + fmt(funnel.sessions_with_action || 0) + " with action"),
-          rowHtml("24h", fmt(oneDay.page_view || 0) + " views / " + fmt(sumCounts(oneDay, ACTION_EVENTS)) + " actions"),
-          rowHtml("week", fmt(sevenDay.page_view || 0) + " views / " + fmt(sumCounts(sevenDay, ACTION_EVENTS)) + " actions"),
+          rowHtml("sessions", fmt(signals.session_count || funnel.sessions || 0) + " total / " + fmt(funnel.sessions_with_action || 0) + " with offer activity"),
+          rowHtml("24h", fmt(oneDay.page_view || 0) + " views / " + fmt(sumCounts(oneDay, ACTION_EVENTS)) + " offer events"),
+          rowHtml("week", fmt(sevenDay.page_view || 0) + " views / " + fmt(sumCounts(sevenDay, ACTION_EVENTS)) + " offer events"),
           rowHtml("system table", (coverage.outreach_replies_payments_and_journal || "acquisition_events") + " / " + fmt(actedTotal) + " rows in range")
         ].join("");
 
@@ -2058,7 +2163,7 @@
         $("trendCaption").textContent = trendRows.length
           ? (days === 1
               ? "Last 24h: " + fmt(viewsToday) + " views and " + fmt(clicksToday) + " offer clicks, plotted by local hour."
-              : "Views changed by " + (delta >= 0 ? "+" : "") + fmt(delta) + " from " + shortDate(first.label) + " to " + shortDate(last.label) + ". Offer clicks are sample, notes, checkout, and lead actions.")
+              : "Views changed by " + (delta >= 0 ? "+" : "") + fmt(delta) + " from " + shortDate(first.label) + " to " + shortDate(last.label) + ". Offer activity is sample, notes, checkout, and lead events.")
           : "No trend data in this range.";
       }
 
