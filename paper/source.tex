@@ -138,7 +138,7 @@
 \end{center}
 
 \vspace{0.35em}
-\noindent\textbf{Autonomous agents are increasingly able to use tools, write messages, and execute workflows, but deployed claims of autonomy are difficult to evaluate when actions, constraints, market signals, and commercial outcomes are scattered across product analytics and human memory. We report Relay, a continuously updated deployment record for a notes-first revenue agent governed by an explicit proof contract. The system converts a broad commercial goal into a state machine with recorded bottlenecks, permitted actions, forbidden actions, proof deadlines, buyer-intent signals, payment outcomes, and compact research-journal entries. At the initial evidence lock, Relay exposed nine production routes, had all eleven checked environment requirements present, retained 30-day telemetry including 56 page views, 8 link clicks, 3 checkout clicks, and 3 lead-capture events, and recorded four compact research-journal entries. In the latest live check, the seven-day public-intent window contained 116 page views, 7 sample clicks, 3 note-intake clicks, 2 checkout clicks, and 1 lead, while the money state remained USD~0.00 with zero payments. The controller autonomously rotated a zero-signal \texttt{stalled\_opportunity\_direct} proof into \texttt{revenue\_leak\_direct}, but the new sample was only 1/10 complete after the daily cap was consumed. The contribution is therefore not a claim that the system already makes money. It is a falsifiable protocol for making autonomous commercial experimentation auditable enough that future success, failure, and execution regressions can be interpreted.}
+\noindent\textbf{Autonomous agents are increasingly able to use tools, write messages, and execute workflows, but deployed claims of autonomy are difficult to evaluate when actions, constraints, market signals, and commercial outcomes are scattered across product analytics and human memory. We report Relay, a continuously updated deployment record for a notes-first revenue agent governed by an explicit proof contract. The system converts a broad commercial goal into a state machine with recorded bottlenecks, permitted actions, forbidden actions, proof deadlines, buyer-intent signals, payment outcomes, and compact research-journal entries. At the initial evidence lock, Relay exposed nine production routes, had all eleven checked environment requirements present, retained 30-day telemetry including 56 page views, 8 link clicks, 3 checkout clicks, and 3 lead-capture events, and recorded four compact research-journal entries. In the latest live check, the seven-day public-intent window contained 100 page views and 8 sample clicks, while the current active outbound proof was \texttt{paid\_test\_explicit} at 10/20 active-sample sends with 0 replies, 0 payments, and USD~0.00 gross revenue. Source inspection also identified a send-day accounting fault: the post-window controller could mark the local send window as missed after UTC date rollover even when active sends had occurred earlier in Eastern time. The contribution is therefore not a claim that the system already makes money. It is a falsifiable protocol for making autonomous commercial experimentation auditable enough that future success, failure, and execution regressions can be interpreted.}
 
 \newpage
 \pagestyle{fancy}
@@ -273,7 +273,7 @@ Manual owner intervention & Experiment becomes contaminated. & Mark the window a
 
 \subsection{Current operating state}
 
-The latest live check was read from the production Relay API at approximately 2026-05-07T17:20Z. It updates the paper beyond the initial May 4 evidence lock without changing the interpretation standard. The system has more observed intent than the initial snapshot, but it still has no revenue. The prior active experiment, \texttt{stalled\_opportunity\_direct}, completed 10 of 10 sends with 0 replies and 0 payments. After its reply-observation window matured, the controller rotated to \texttt{revenue\_leak\_direct}. That is evidence of autonomous adaptation, not evidence of revenue. The new proof lane remains execution-limited: it is 1/10 complete, the daily cap is already exhausted, and the controller state is \texttt{active\_experiment\_sample}.
+The latest live check was read from the production Relay API at approximately 2026-05-12T01:43Z. It updates the paper beyond the initial May 4 evidence lock without changing the interpretation standard. The system has more observed intent than the initial snapshot, but it still has no revenue. The current active experiment is \texttt{paid\_test\_explicit}: ten active first-touch sends were observed, ten active first-touch leads remained queued for the next send window, and no buyer replies or payments had arrived. The most important current observation is therefore operational rather than commercial. The send sample is halfway complete, and the paid outcome is still zero.
 
 \begin{table}[tbp]
 \centering
@@ -286,22 +286,22 @@ The latest live check was read from the production Relay API at approximately 20
 \rowcolor{ClayLine}
 \textbf{Field} & \textbf{Live value} \\
 \midrule
-One-day intent & 29 page views, 48 page-engagement events, 3 sample clicks, 0 real leads. \\
-Seven-day intent & 116 page views, 7 sample clicks, 3 note-intake clicks, 2 checkout clicks, 1 lead. \\
+One-day intent & 6 page views, 7 page-engagement events, 1 sample click, 0 leads. \\
+Seven-day intent & 100 page views, 96 page-engagement events, 8 sample clicks, 0 note-intake clicks, 0 checkout clicks, 0 leads. \\
 Revenue & USD~0.00 gross revenue; 0 payments. \\
-Rolling outbound & 60 sends over seven days; 0 replies; 0 payments; 0 send failures. \\
-Active experiment & \texttt{revenue\_leak\_direct}; 1/10 active-sample sends observed; 10 active-proof leads queued. \\
-Controller state & The bottleneck is \texttt{active\_experiment\_sample}. The next money move is to build the active proof sample before old follow-ups. \\
+Rolling outbound & 50 sends over seven days; 0 replies; 0 payments; 0 send failures. \\
+Active experiment & \texttt{paid\_test\_explicit}; 10/20 active-sample sends observed; 10 active-proof leads queued for the next window. \\
+Controller state & The live controller reported \texttt{outbound\_window\_missed}, but source inspection found this could be caused by UTC-day reset after the Eastern send window. \\
 Public offer path & Landing page, sample PDF, checkout path, notes form, lead API, payment-webhook preflight, reply-autoclose preflight, and outbound preflight were reported as configured or OK. \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\subsection{A cap-reservation regression became part of the evidence}
+\subsection{A send-day accounting fault became part of the evidence}
 
-The May 7 rotation exposed an execution fault rather than a market conclusion. The controller selected a new active proof lane, but only one active first-touch lead was sent before the 10/day cap was exhausted. The journaled state therefore read as \texttt{revenue\_leak\_direct}, 1/10 active progress, 0 replies, 0 payments, 10 active-proof leads still due, and 0 remaining cap. The correct interpretation is not that the new lane failed; it had not been tested.
+The May 11 operating read exposed an execution-accounting fault rather than a market conclusion. The controller showed \texttt{paid\_test\_explicit} at 10/20 active progress with ten queued active leads and no replies or payments. After UTC midnight, however, the live state also reported \texttt{outbound\_window\_missed} because the daily send counter could reset on the UTC day instead of the configured Eastern send day. The correct interpretation is not that the active lane failed; the sample had not completed, and the post-window miss state could be a time-accounting artefact.
 
-The send-priority code was changed in commit \texttt{\seqsplit{cf74a30341c86b4678613ebfa64bb1637904f5e5}} so older direct-due follow-ups cannot consume remaining cap unless the active proof sample can be completed first. The autonomous runner prompt was also updated to treat any recurrence---daily cap exhausted while \texttt{active\_experiment\_needs\_sample} remains true---as an execution blocker. This update is recorded because an autonomous money-making system must learn from readiness and execution failures, not only from buyer outcomes.
+The send-day accounting was revised so daily send counts begin at midnight in the configured send timezone rather than midnight UTC. The active paid-test first-touch copy was also revised to expose the direct USD~40 checkout link while retaining the rough-notes fallback. This update is recorded because an autonomous money-making system must learn from readiness, buyer-friction, and execution-accounting failures, not only from buyer outcomes.
 
 \subsection{Report language is part of the control surface}
 
@@ -336,7 +336,7 @@ Relay is not yet evidence that an autonomous agent can make money without an ope
 
 The broader implication is that agentic systems need proof contracts when deployed in domains with real-world consequences. A proof contract makes autonomy less theatrical and more scientific. It identifies what the system may do, what it must not do, when the result can be judged, and what evidence changes the next state. This structure could apply beyond Relay to other live agent deployments where market response, human intervention, or hidden tool actions make claims difficult to interpret.
 
-The current deployment remains preliminary. It is a single system, a single offer, and a small descriptive dataset. It contains zero real revenue at the initial evidence lock and zero real revenue in the latest live check. It does not provide inferential statistics, external replication, or a mature ethics protocol. A Nature-level version of this work would need repeated journaled rotations, non-test buyer outcomes, a comparison with manual or dashboard-only operation, a privacy-preserving dataset, independent review of code and logs, a clear institutional position on commercial outreach and data retention, and confirmed resolution of the cap-reservation execution fault in a later send window.
+The current deployment remains preliminary. It is a single system, a single offer, and a small descriptive dataset. It contains zero real revenue at the initial evidence lock and zero real revenue in the latest live check. It does not provide inferential statistics, external replication, or a mature ethics protocol. A Nature-level version of this work would need repeated journaled rotations, non-test buyer outcomes, a comparison with manual or dashboard-only operation, a privacy-preserving dataset, independent review of code and logs, a clear institutional position on commercial outreach and data retention, and confirmed completion of the current active paid-test sample in a later send window.
 
 \section{Methods}
 
@@ -362,7 +362,7 @@ Relay is now treated as a paper-backed operational system. Any substantive chang
 
 \subsection{Statistics and sample size}
 
-No hypothesis test was performed. The initial evidence-lock observations were descriptive: 56 page views, 18 filtered real page views, 8 link clicks, 3 checkout clicks, 3 lead-capture events, 1 filtered real lead, 60 rolling seven-day outbound sends, 0 replies, 0 payments, and 0 send failures. The latest live operating observations are also descriptive: 116 seven-day page views, 7 sample clicks, 3 note-intake clicks, 2 checkout clicks, 1 lead, 60 rolling seven-day outbound sends, 0 replies, 0 payments, and 0 send failures. The active outbound state changed from a completed zero-signal \texttt{stalled\_opportunity\_direct} sample to a \texttt{revenue\_leak\_direct} sample at 1/10 progress after the daily cap was exhausted. Future statistical claims require completed samples, matured observation windows, and a predeclared analysis plan.
+No hypothesis test was performed. The initial evidence-lock observations were descriptive: 56 page views, 18 filtered real page views, 8 link clicks, 3 checkout clicks, 3 lead-capture events, 1 filtered real lead, 60 rolling seven-day outbound sends, 0 replies, 0 payments, and 0 send failures. The latest live operating observations are also descriptive: 100 seven-day page views, 8 sample clicks, 0 note-intake clicks, 0 checkout clicks, 0 leads, 50 rolling seven-day outbound sends, 0 replies, 0 payments, and 0 send failures. The active outbound state is \texttt{paid\_test\_explicit} at 10/20 progress with ten queued active first-touch leads. Future statistical claims require completed samples, matured observation windows, and a predeclared analysis plan.
 
 \subsection{AI assistance disclosure}
 

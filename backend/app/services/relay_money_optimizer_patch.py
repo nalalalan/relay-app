@@ -234,7 +234,9 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
                 "I am testing a $40 done-for-you Relay: send rough notes from one sales or client call, get back the recap, follow-up draft, next steps, and CRM-ready update.\n\n"
                 "Sample:\n"
                 "{sample_url}\n\n"
-                "If one messy call from this week is worth trying, send it here:\n"
+                "Buy the $40 packet:\n"
+                "{packet_checkout_url}\n\n"
+                "Or send rough notes first:\n"
                 "{notes_url}\n\n"
                 "- Alan"
             ),
@@ -258,7 +260,9 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
             body=(
                 "Last note from me.\n\n"
                 "If this is not relevant, no worries - I will not keep chasing.\n\n"
-                "If it is relevant later, the sample is here:\n"
+                "If it is relevant later, the paid test is here:\n"
+                "{packet_checkout_url}\n\n"
+                "Sample:\n"
                 "{sample_url}\n\n"
                 "- Alan"
             ),

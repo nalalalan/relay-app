@@ -215,7 +215,10 @@ STEP_TEMPLATE_VARIANTS: dict[str, list[StepTemplate]] = {
                 "I am testing a $40 done-for-you Relay: send rough notes from one sales or client call, get back the recap, follow-up draft, next steps, and CRM-ready update.\n\n"
                 "Sample:\n"
                 "{sample_url}\n\n"
-                "Would one messy call from this week be worth trying?\n\n"
+                "Buy the $40 packet:\n"
+                "{packet_checkout_url}\n\n"
+                "Or send rough notes first:\n"
+                "{notes_url}\n\n"
                 "- Alan"
             ),
             delay_after_prev_days=0,
@@ -238,7 +241,9 @@ STEP_TEMPLATE_VARIANTS: dict[str, list[StepTemplate]] = {
             body=(
                 "Last note from me.\n\n"
                 "If this is not relevant, no worries - I will not keep chasing.\n\n"
-                "If it is relevant later, sample is here:\n"
+                "If it is relevant later, the paid test is here:\n"
+                "{packet_checkout_url}\n\n"
+                "Sample:\n"
                 "{sample_url}\n\n"
                 "- Alan"
             ),
@@ -435,7 +440,8 @@ def _now_utc() -> datetime:
 
 
 def _today_start() -> datetime:
-    return _now_utc().replace(hour=0, minute=0, second=0, microsecond=0)
+    local_start = datetime.now(_send_tz()).replace(hour=0, minute=0, second=0, microsecond=0)
+    return local_start.astimezone(timezone.utc)
 
 
 def _send_tz() -> ZoneInfo:
