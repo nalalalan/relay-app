@@ -162,12 +162,15 @@
     (function () {
       var config = window.AO_CONFIG || {};
       var apiBase = (config.API_BASE || "https://alan-operator-backend-production.up.railway.app").replace(/\/$/, "");
-      var checkoutUrl = config.PACKET_CHECKOUT_URL || config.STRIPE_URL || "https://buy.stripe.com/bJeaEZb4mf6de64dSi2Nq02";
+      var firstMoneyUrl = (config.FIRST_MONEY_CHECKOUT_URL || "").trim();
+      var checkoutUrl = firstMoneyUrl || config.PACKET_CHECKOUT_URL || config.STRIPE_URL || "https://buy.stripe.com/bJeaEZb4mf6de64dSi2Nq02";
+      var priceLabel = firstMoneyUrl ? (config.FIRST_MONEY_PRICE_LABEL || "$10") : (config.PACKET_PRICE_LABEL || "$40");
       var buttonEl = document.getElementById("redeemBtn");
       var inputEl = document.getElementById("accessCode");
       var statusEl = document.getElementById("status");
       var buyLinkEl = document.getElementById("buyLink");
       buyLinkEl.href = checkoutUrl;
+      buyLinkEl.textContent = firstMoneyUrl ? ("Buy " + priceLabel + " test") : ("Start the " + priceLabel + " relay");
 
       function setStatus(message, kind) {
         statusEl.textContent = message || "";
