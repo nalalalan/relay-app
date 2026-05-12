@@ -4,7 +4,7 @@ window.AO_CONFIG = {
   RELAY_INTENT_EVENT_URL: "https://alan-operator-backend-production.up.railway.app/api/relay/event",
   RELAY_INTENT_LEAD_URL: "https://alan-operator-backend-production.up.railway.app/api/relay/lead",
   RELAY_INTENT_SUMMARY_URL: "https://alan-operator-backend-production.up.railway.app/api/relay/intent-summary",
-  FIRST_MONEY_CHECKOUT_URL: "",
+  FIRST_MONEY_CHECKOUT_URL: "https://buy.stripe.com/bJedRb5K20bje648xY2Nq07",
   FIRST_MONEY_PRICE_LABEL: "$10",
   PACKET_CHECKOUT_URL: "https://buy.stripe.com/bJeaEZb4mf6de64dSi2Nq02",
   PACKET_PRICE_LABEL: "$40",
