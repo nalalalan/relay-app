@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
+from app.core.config import entry_checkout_url, settings
 from app.db.base import SessionLocal
 from app.integrations.resend_client import ResendClient
 from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect
@@ -2586,7 +2586,7 @@ def _ao_digest_launch_readiness(
     loop_status = str(money_loop.get("status") or "").strip()
     if loop_status in {"disabled", "error", "stuck", "late"}:
         blockers.append(f"money loop is {loop_status}")
-    if not str(settings.packet_checkout_url or "").strip():
+    if not str(entry_checkout_url() or "").strip():
         blockers.append("entry checkout link is not configured")
     if active_target <= 0:
         blockers.append("active experiment sample target is missing")
@@ -2883,7 +2883,7 @@ def _daily_update_html(
         {_ao_digest_metric_html("Emails sent", str(total_sent), f"today {outreach_digest.get('sent_today', 0)} / cap {outreach_digest.get('daily_send_cap', 0)}")}
         {_ao_digest_metric_html("Replies received", str(total_replies), f"today {outreach_digest.get('replies_today', 0)}")}
         {_ao_digest_metric_html("Direct leads due", str(outreach_digest.get("direct_due_count", outreach_digest.get("due_now_count", 0))), f"{outreach_digest.get('generic_paused_count', 0)} generic paused")}
-        {_ao_digest_metric_html("Weekly target", _ao_digest_money(target.get("weekly_target_usd", 100)), f"{target.get('paid_tests_needed_weekly', 3)} paid tests needed")}
+        {_ao_digest_metric_html("First money target", _ao_digest_money(target.get("weekly_target_usd", 10)), f"{target.get('paid_tests_needed_weekly', 1)} paid test needed")}
       </div>
       <div style="border:1px solid #d8dee8;border-radius:12px;padding:12px 14px;margin-top:12px;background:#f8fafc;">
         <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;font-weight:800;">Next money move</div>
@@ -2962,7 +2962,7 @@ def _daily_update_text(
         _ascii_safe(f"- emails sent: {total_sent} total | {outreach_digest.get('sent_today', 0)} today / cap {outreach_digest.get('daily_send_cap', 0)}"),
         _ascii_safe(f"- replies received: {total_replies} total | {outreach_digest.get('replies_today', 0)} today"),
         _ascii_safe(f"- direct leads due: {outreach_digest.get('direct_due_count', outreach_digest.get('due_now_count', 0))} | generic paused: {outreach_digest.get('generic_paused_count', 0)}"),
-        _ascii_safe(f"- weekly target: {_ao_digest_money(target.get('weekly_target_usd', 100))} | paid tests needed: {target.get('paid_tests_needed_weekly', 3)}"),
+        _ascii_safe(f"- first money target: {_ao_digest_money(target.get('weekly_target_usd', 10))} | paid tests needed: {target.get('paid_tests_needed_weekly', 1)}"),
         _ascii_safe(f"- next money move: {_ao_digest_relay_move(summary, outreach_digest)}"),
         "",
         f"Relay Admin: {_ao_digest_relay_live_url()}",

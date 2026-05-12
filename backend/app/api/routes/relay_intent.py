@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 
-from app.core.config import settings
+from app.core.config import entry_checkout_url, entry_price_label, entry_price_usd, settings
 from app.db.base import SessionLocal
 from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect
 from app.models.production_wiring import (
@@ -114,7 +114,7 @@ def _configured_offer_url(env_name: str, setting_name: str) -> str:
 
 
 def _revenue_ladder_status() -> dict[str, Any]:
-    entry_url = str(settings.packet_checkout_url or "").strip()
+    entry_url = str(entry_checkout_url() or "").strip()
     offers = [
         ("entry_packet", "one live packet", bool(entry_url)),
         ("five_pack", "5-call sprint", bool(_configured_offer_url("PACKET_5_PACK_URL", "packet_5_pack_url"))),
@@ -144,11 +144,21 @@ def _revenue_ladder_status() -> dict[str, Any]:
 def _money_objective_status(*, money: dict[str, Any], outreach: dict[str, Any], payments: int) -> dict[str, Any]:
     target = outreach.get("money_target") if isinstance(outreach.get("money_target"), dict) else {}
     weekly_target_usd = _safe_float(
-        target.get("weekly_target_usd") or os.getenv("RELAY_WEEKLY_TARGET_USD", "100"),
-        100.0,
+        os.getenv("RELAY_MINIMUM_WEEKLY_TARGET_USD", "").strip()
+        or target.get("minimum_viable_weekly_usd")
+        or getattr(settings, "minimum_weekly_target_usd", 10.0)
+        or 10,
+        10.0,
     )
     test_price_usd = max(
-        _safe_float(target.get("test_price_usd") or os.getenv("RELAY_PACKET_PRICE_USD", "40"), 40.0),
+        _safe_float(
+            os.getenv("RELAY_FIRST_MONEY_PRICE_USD", "").strip()
+            or os.getenv("FIRST_MONEY_PRICE_USD", "").strip()
+            or entry_price_usd()
+            or target.get("test_price_usd")
+            or os.getenv("RELAY_PACKET_PRICE_USD", "40"),
+            40.0,
+        ),
         1.0,
     )
     paid_tests_needed = max(
@@ -165,9 +175,23 @@ def _money_objective_status(*, money: dict[str, Any], outreach: dict[str, Any], 
     )
     business_week_send_capacity = _safe_int(target.get("business_week_send_capacity"), daily_cap * 5)
 
+    if revenue_gap_usd <= 0:
+        state = "minimum_money_proof_met"
+        success_condition = "minimum money proof met"
+    elif payments <= 0:
+        state = "needs_first_paid_test"
+        success_condition = (
+            f"collect the first paid ${test_price_usd:.0f} packet; "
+            f"one sale clears the ${weekly_target_usd:.0f}/week minimum"
+        )
+    else:
+        state = "needs_paid_tests"
+        success_condition = f"collect {paid_tests_remaining} more paid tests or ${revenue_gap_usd:.2f} this week"
+
     return {
-        "state": "weekly_target_met" if revenue_gap_usd <= 0 else "needs_paid_tests",
+        "state": state,
         "weekly_target_usd": weekly_target_usd,
+        "minimum_viable_weekly_usd": weekly_target_usd,
         "entry_test_price_usd": test_price_usd,
         "current_week_gross_usd": current_gross_usd,
         "revenue_gap_usd": revenue_gap_usd,
@@ -176,11 +200,7 @@ def _money_objective_status(*, money: dict[str, Any], outreach: dict[str, Any], 
         "current_week_payments": payments,
         "current_daily_send_cap": daily_cap,
         "business_week_send_capacity": business_week_send_capacity,
-        "success_condition": (
-            "weekly revenue target met"
-            if revenue_gap_usd <= 0
-            else f"collect {paid_tests_remaining} more paid tests or ${revenue_gap_usd:.2f} this week"
-        ),
+        "success_condition": success_condition,
         "operating_mode": target.get("operating_mode") or "direct decision-maker inboxes first",
     }
 
@@ -380,7 +400,7 @@ def _success_governor_contract(
         state = "interrupt_required"
         next_step = reply_autonomy.get("next_action") or money_decision.get("next_action") or operator_mode.get("reason") or "handle buyer signal"
         human_policy = "interrupt Alan now"
-    elif revenue_state == "weekly_target_met":
+    elif revenue_state in {"weekly_target_met", "minimum_money_proof_met"}:
         state = "target_met_stabilize"
         next_step = "keep the current winning lane stable and fulfill paid buyers"
         human_policy = "stay out unless fulfillment or system health needs attention"
@@ -535,7 +555,7 @@ def _autonomous_money_mandate(
     active_remaining = _safe_int(launch_readiness.get("active_experiment_sends_remaining"))
     expected_next_sends = _safe_int(launch_readiness.get("expected_next_window_sends"))
 
-    if revenue_state == "weekly_target_met":
+    if revenue_state in {"weekly_target_met", "minimum_money_proof_met"}:
         state = "protect_winning_lane"
         primary_action = success_governor.get("next_step") or "fulfill paid buyers and keep the current lane stable"
     elif governor_state in {"interrupt_required", "fix_execution", "remove_blocker"}:
@@ -1023,7 +1043,8 @@ def _is_internal_email(email: str | None) -> bool:
 def _sample_email_html(to_email: str) -> str:
     sample_url = _sample_packet_url()
     relay_url = _relay_url()
-    checkout_url = settings.packet_checkout_url or "#"
+    checkout_url = entry_checkout_url() or "#"
+    price_label = entry_price_label()
     safe_email = escape(to_email)
     return f"""
     <div style="font-family:Arial,sans-serif;line-height:1.55;color:#221b17;max-width:620px">
@@ -1035,7 +1056,7 @@ def _sample_email_html(to_email: str) -> str:
       </p>
       <p>
         If you want the live one-call test, start here:
-        <a href="{checkout_url}" style="color:#a05f2f;font-weight:700">Start the $40 relay</a>
+        <a href="{checkout_url}" style="color:#a05f2f;font-weight:700">Start the {price_label} relay</a>
       </p>
       <p style="font-size:13px;color:#756961">
         Sent to {safe_email} from <a href="{relay_url}" style="color:#756961">relaybrief.com</a>.
@@ -1116,7 +1137,8 @@ def _send_messy_notes_email(payload: RelayIntentLeadIn, email: str, score: int) 
 def _messy_notes_customer_email_html(to_email: str) -> str:
     sample_url = _sample_packet_url()
     notes_url = _relay_url("/#send-notes")
-    checkout_url = settings.packet_checkout_url or "#"
+    checkout_url = entry_checkout_url() or "#"
+    price_label = entry_price_label()
     safe_email = escape(to_email)
     return f"""
     <div style="font-family:Arial,sans-serif;line-height:1.55;color:#221b17;max-width:620px">
@@ -1126,7 +1148,7 @@ def _messy_notes_customer_email_html(to_email: str) -> str:
         into the recap, next steps, follow-up draft, open questions, and CRM-ready update.
       </p>
       <p>
-        <a href="{checkout_url}" style="color:#a05f2f;font-weight:700">Start the $40 packet</a>
+        <a href="{checkout_url}" style="color:#a05f2f;font-weight:700">Start the {price_label} packet</a>
       </p>
       <p>
         Sample:

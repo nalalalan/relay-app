@@ -10,7 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy import func, select
 
 from app.api.admin_auth import require_relay_admin
-from app.core.config import settings
+from app.core.config import entry_checkout_url, entry_price_label, entry_price_usd, settings
 from app.db.base import SessionLocal
 from app.integrations.apollo import ApolloClient
 from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect
@@ -287,11 +287,11 @@ def _render_body(template: StepTemplate, prospect: AcquisitionProspect) -> str:
         company_name=prospect.company_name or "there",
         contact_name=prospect.contact_name or "",
         packet_offer_name=settings.packet_offer_name,
-        packet_checkout_url=settings.packet_checkout_url,
+        packet_checkout_url=entry_checkout_url(),
         landing_page_url=_landing_page_url(),
         sample_url=_sample_url(),
     )
-    return body.strip()
+    return body.replace("$40", entry_price_label()).strip()
 
 
 def _active_experiment_context(outreach) -> dict[str, Any]:
@@ -372,11 +372,20 @@ def _total_send_count(session) -> int:
 
 def _money_target_snapshot(status: dict[str, Any]) -> dict[str, Any]:
     try:
-        target_weekly_usd = int(os.getenv("RELAY_WEEKLY_TARGET_USD", "100") or 100)
+        target_weekly_usd = int(
+            os.getenv("RELAY_MINIMUM_WEEKLY_TARGET_USD", "").strip()
+            or getattr(settings, "minimum_weekly_target_usd", 10.0)
+            or 10
+        )
     except ValueError:
-        target_weekly_usd = 100
+        target_weekly_usd = 10
     try:
-        test_price_usd = float(os.getenv("RELAY_PACKET_PRICE_USD", "40") or 40)
+        test_price_usd = float(
+            os.getenv("RELAY_FIRST_MONEY_PRICE_USD", "").strip()
+            or os.getenv("FIRST_MONEY_PRICE_USD", "").strip()
+            or entry_price_usd()
+            or 40
+        )
     except ValueError:
         test_price_usd = 40.0
 
@@ -385,7 +394,9 @@ def _money_target_snapshot(status: dict[str, Any]) -> dict[str, Any]:
     weekly_send_capacity = daily_cap * 5
     return {
         "weekly_target_usd": target_weekly_usd,
+        "minimum_viable_weekly_usd": target_weekly_usd,
         "test_price_usd": test_price_usd,
+        "entry_checkout_url_configured": bool(entry_checkout_url()),
         "paid_tests_needed_weekly": paid_tests_needed,
         "current_daily_send_cap": daily_cap,
         "business_week_send_capacity": weekly_send_capacity,

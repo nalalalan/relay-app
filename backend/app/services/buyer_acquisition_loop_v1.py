@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
+from app.core.config import entry_checkout_url, settings
 from app.db.base import SessionLocal
 from app.models.buyer_acquisition_v1 import BuyerAcquisitionMessage, BuyerAcquisitionProspect
 
@@ -473,7 +473,7 @@ def _build_positive_reply_body(prospect: BuyerAcquisitionProspect) -> str:
     intake_url = getattr(settings, "client_intake_url", "") or settings.client_intake_destination
     return (
         f"Great.\n\n"
-        f"Fastest path is one real call. Pay here: {settings.packet_checkout_url}\n\n"
+        f"Fastest path is one real call. Pay here: {entry_checkout_url()}\n\n"
         f"Then drop the rough notes here: {intake_url}\n\n"
         "You’ll get back the packet by email with the recap, next steps, open questions, CRM-ready update text, and proposal-starting direction.\n\n"
         "- Alan"

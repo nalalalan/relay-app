@@ -9,7 +9,7 @@ from typing import Any, Callable
 
 from sqlalchemy import func, select
 
-from app.core.config import settings
+from app.core.config import entry_checkout_url, entry_offer_name, entry_price_label, settings
 from app.db.base import SessionLocal
 from app.integrations.apollo import ApolloClient
 from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect
@@ -742,16 +742,19 @@ def _active_variant_sample_send_count(session, active_variant: str, experiment: 
 
 
 def _render_body(template: StepTemplate, prospect: AcquisitionProspect) -> str:
+    price_label = entry_price_label()
     body = template.body.format(
         company_name=prospect.company_name or "there",
         contact_name=prospect.contact_name or "",
-        packet_offer_name=settings.packet_offer_name,
-        packet_checkout_url=settings.packet_checkout_url,
+        entry_price_label=price_label,
+        entry_offer_name=entry_offer_name(),
+        packet_offer_name=entry_offer_name(),
+        packet_checkout_url=entry_checkout_url(),
         landing_page_url=_landing_page_url(),
         sample_url=_sample_url(),
         notes_url=_notes_url(),
     )
-    return body.strip()
+    return body.replace("$40", price_label).strip()
 
 
 def _quality_snapshot(session) -> dict[str, Any]:
@@ -1034,7 +1037,7 @@ def optimized_outreach_status() -> dict[str, Any]:
         "poll replies, and close through the notes-first test path"
     )
     status["notes_intake_url"] = _notes_url()
-    status["paid_packet_url_configured"] = bool(settings.packet_checkout_url)
+    status["paid_packet_url_configured"] = bool(entry_checkout_url())
     status["next_money_move"] = _next_money_move(status)
     return status
 
@@ -1353,13 +1356,14 @@ def optimized_run_custom_outreach_cycle() -> dict[str, Any]:
 
 
 def _zero_touch_close_reply() -> str:
+    price_label = entry_price_label()
     return (
         "Yes - here is the sample packet:\n"
         f"{_sample_url()}\n\n"
         "The easiest next step is to send one messy call note here:\n"
         f"{_notes_url()}\n\n"
-        "If you want the paid priority test now, the one-call packet is $40:\n"
-        f"{settings.packet_checkout_url}\n\n"
+        f"If you want the paid priority test now, the one-call packet is {price_label}:\n"
+        f"{entry_checkout_url()}\n\n"
         "I will turn it into the recap, follow-up draft, open questions, and CRM-ready update.\n\n"
         "- Alan"
     )

@@ -4,7 +4,7 @@ import os
 from dataclasses import dataclass
 from typing import Literal
 
-from app.core.config import settings
+from app.core.config import entry_checkout_url, entry_price_label, settings
 
 
 Intent = Literal[
@@ -32,8 +32,8 @@ class HotReplyDecision:
 
 
 def _ladder_block() -> str:
-    packet = settings.packet_checkout_url
-    offers = [("one live packet ($40)", packet)]
+    packet = entry_checkout_url()
+    offers = [(f"one live packet ({entry_price_label()})", packet)]
     seen = {packet}
     candidates = [
         (
@@ -124,7 +124,7 @@ def build_hot_reply_decision(text: str) -> HotReplyDecision:
             should_stop_sequence=True,
             reply_text=(
                 f"totally fair\n\nsite + sample:\n{settings.landing_page_url}\n\n"
-                f"lowest-risk test:\n{settings.packet_checkout_url}\n\n"
+                f"lowest-risk test:\n{entry_checkout_url()}\n\n"
                 "if you already know the workflow is useful, the sprint/week options are the better fit"
             ),
             summary="trust / scope objection",
@@ -139,7 +139,7 @@ def build_hot_reply_decision(text: str) -> HotReplyDecision:
             should_stop_sequence=True,
             reply_text=(
                 "makes sense\n\n"
-                f"lowest-friction option is one real call:\n{settings.packet_checkout_url}\n\n"
+                f"lowest-friction option is one real call:\n{entry_checkout_url()}\n\n"
                 "if you want this off your plate for the week instead, the week option is probably the better fit"
             ),
             summary="timing objection",

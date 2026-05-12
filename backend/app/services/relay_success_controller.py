@@ -9,7 +9,7 @@ import httpx
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
+from app.core.config import entry_checkout_url, entry_price_label, settings
 from app.db.base import SessionLocal
 from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect
 from app.models.relay_intent import RelayIntentEvent, RelayIntentLead
@@ -442,7 +442,7 @@ def _env_snapshot() -> dict[str, bool]:
         "RESEND_API_KEY": bool(settings.resend_api_key),
         "STRIPE_WEBHOOK_SECRET": bool(settings.stripe_webhook_secret),
         "TALLY_WEBHOOK_SECRET": bool(settings.tally_webhook_secret),
-        "PACKET_CHECKOUT_URL": bool(settings.packet_checkout_url),
+        "PACKET_CHECKOUT_URL": bool(entry_checkout_url()),
         "PACKET_5_PACK_URL": bool(
             os.getenv("PACKET_5_PACK_URL", "").strip() or getattr(settings, "packet_5_pack_url", "")
         ),
@@ -809,7 +809,7 @@ def _outbound_smoke_urls(outreach_service: Any) -> dict[str, str]:
         or getattr(settings, "landing_page_url", "").strip()
         or "https://relay.aolabs.io"
     )
-    packet_checkout_url = str(settings.packet_checkout_url or "").strip()
+    packet_checkout_url = str(entry_checkout_url() or "").strip()
     return {
         "packet_checkout_url": packet_checkout_url,
         "packet_5_pack_url": (
@@ -853,37 +853,40 @@ def _active_outbound_preflight() -> dict[str, Any]:
         variant = str(experiment.get("experiment_variant") or DEFAULT_EXPERIMENT_VARIANT).strip()
         templates_by_variant = getattr(outreach_service, "STEP_TEMPLATE_VARIANTS", {}) or {}
         templates = templates_by_variant.get(variant) or []
+        urls = _outbound_smoke_urls(outreach_service)
         detail.update(
             {
                 "active_variant": variant,
                 "active_label": str(experiment.get("experiment_label") or ""),
                 "template_count": len(templates),
                 "known_variants": sorted(str(key) for key in templates_by_variant.keys()),
-                "checkout_configured": bool(settings.packet_checkout_url),
+                "checkout_configured": bool(urls["packet_checkout_url"]),
+                "entry_price_label": entry_price_label(),
             }
         )
         if not templates:
             missing.append("ACTIVE_OUTBOUND_TEMPLATE")
-        if not settings.packet_checkout_url:
+        if not urls["packet_checkout_url"]:
             missing.append("PACKET_CHECKOUT_URL")
         if templates:
             first = templates[0]
-            urls = _outbound_smoke_urls(outreach_service)
             body = first.body.format(
                 company_name="Example Agency",
                 contact_name="Example Buyer",
+                entry_price_label=entry_price_label(),
+                entry_offer_name=getattr(settings, "first_money_offer_name", "") or getattr(settings, "packet_offer_name", "Relay"),
                 packet_offer_name=getattr(settings, "packet_offer_name", "Relay"),
                 **urls,
-            ).strip()
+            ).replace("$40", entry_price_label()).strip()
             detail.update(
                 {
                     "subject": str(first.subject or ""),
                     "body_preview": body[:500],
                     "body_length": len(body),
                     "contains_checkout_url": bool(
-                        settings.packet_checkout_url and settings.packet_checkout_url in body
+                        urls["packet_checkout_url"] and urls["packet_checkout_url"] in body
                     ),
-                    "contains_price": "$40" in body,
+                    "contains_price": entry_price_label() in body,
                     "contains_sample_url": urls["sample_url"] in body,
                     "contains_notes_url": urls["notes_url"] in body,
                 }
@@ -973,7 +976,7 @@ def _public_offer_preflight() -> dict[str, Any]:
                 "contains_lead_api": "/api/relay/lead" in combined_text,
                 "contains_checkout_action": "checkout_click" in page_text or "js-checkout" in page_text,
                 "contains_checkout_url": bool(checkout_url and checkout_url in combined_text),
-                "contains_price": "$40" in page_text,
+                "contains_price": entry_price_label() in combined_text,
                 "looks_blocked": "web page blocked" in page_lower or "access to the web page you were trying to visit has been blocked" in page_lower,
             }
         )
@@ -1107,7 +1110,7 @@ def _reply_autoclose_preflight() -> dict[str, Any]:
         reply_to = os.getenv("COLD_SMTP_REPLY_TO", settings.reply_to_email or "").strip()
         intent, reply_text = optimized_auto_reply_text("yes, interested - how much does it cost?")
         reply_text = reply_text or ""
-        checkout_url = str(settings.packet_checkout_url or "").strip()
+        checkout_url = str(entry_checkout_url() or "").strip()
         notes_url = ""
         try:
             notes_url = str(getattr(outreach_service, "_notes_url", lambda: "")() or "")
@@ -1131,7 +1134,7 @@ def _reply_autoclose_preflight() -> dict[str, Any]:
                 "sample_intent": intent,
                 "reply_preview": reply_text[:500],
                 "reply_contains_checkout_url": bool(checkout_url and checkout_url in reply_text),
-                "reply_contains_price": "$40" in reply_text,
+                "reply_contains_price": entry_price_label() in reply_text,
                 "reply_contains_notes_url": bool(notes_url and notes_url in reply_text),
             }
         )
@@ -1266,7 +1269,7 @@ def _payment_webhook_preflight() -> dict[str, Any]:
                 "sample_currency": currency,
                 "sample_email_present": bool(email),
                 "webhook_secret_configured": bool(settings.stripe_webhook_secret),
-                "checkout_configured": bool(settings.packet_checkout_url),
+                "checkout_configured": bool(entry_checkout_url()),
                 "resend_configured": bool(env.get("RESEND_API_KEY")),
                 "from_email_configured": bool(env.get("FROM_EMAIL_FULFILLMENT")),
                 "reply_to_configured": bool(settings.reply_to_email),
@@ -1300,7 +1303,7 @@ def _payment_webhook_preflight() -> dict[str, Any]:
             missing.append("STRIPE_AMOUNT_TOTAL")
         if currency != "usd":
             missing.append("STRIPE_CURRENCY")
-        if not settings.packet_checkout_url:
+        if not entry_checkout_url():
             missing.append("PACKET_CHECKOUT_URL")
         if not env.get("RESEND_API_KEY"):
             missing.append("RESEND_API_KEY")
@@ -2084,7 +2087,12 @@ def _money_proof_mandate(snapshot: dict[str, Any], bottleneck: str) -> dict[str,
     active_reply_observation_deadline = str(active_reply_observation.get("observe_until") or "").strip()
     gross_usd = round(_safe_float(money.get("gross_usd")), 2)
     payments = int(money.get("payments") or 0)
-    weekly_target_usd = _safe_float(os.getenv("RELAY_WEEKLY_TARGET_USD", "100"), 100.0)
+    weekly_target_usd = _safe_float(
+        os.getenv("RELAY_MINIMUM_WEEKLY_TARGET_USD", "").strip()
+        or getattr(settings, "minimum_weekly_target_usd", 10.0)
+        or 10,
+        10.0,
+    )
     active_sends = int(outreach.get("active_experiment_sample_sends") or outreach.get("active_experiment_sends") or 0)
     active_target = int(outreach.get("active_experiment_sample_target") or _experiment_failure_sample())
     active_remaining = max(active_target - active_sends, 0) if active_target else 0
@@ -2199,9 +2207,9 @@ def _money_proof_mandate(snapshot: dict[str, Any], bottleneck: str) -> dict[str,
             else window_contract.get("audit_at") or outreach.get("next_window_audit_at") or ""
         ),
         "success_condition": (
-            "weekly revenue target met"
+            "minimum money proof met"
             if gross_usd >= weekly_target_usd
-            else f"collect paid tests until ${weekly_target_usd:.2f}/week is reached"
+            else f"collect the first paid {entry_price_label()} packet; minimum target ${weekly_target_usd:.2f}/week"
         ),
         "allowed_autonomous_action": primary_action,
         "forbidden_until_proof": [

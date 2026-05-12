@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 
-from app.core.config import settings
+from app.core.config import entry_checkout_url, settings
 from typing import Any, Dict, List, Literal
 import re
 
@@ -88,7 +88,7 @@ def _first_name(name: str) -> str:
 def _payment_link_for(payload: CloseOpportunity) -> str:
     if payload.payment_link:
         return payload.payment_link
-    return settings.packet_checkout_url
+    return entry_checkout_url()
 
 
 def _proposal_email(payload: CloseOpportunity, payment_link: str) -> tuple[str, str]:

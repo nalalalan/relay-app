@@ -4,7 +4,7 @@ from copy import deepcopy
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 
-from app.core.config import settings
+from app.core.config import entry_checkout_url, settings
 from pathlib import Path
 import json
 from typing import Any, Dict, List, Literal
@@ -155,7 +155,7 @@ def _build_opportunity_from_lead(lead_record: Dict[str, Any], reply_state: str, 
 
 
 def _payment_link_for_offer(offer_name: str) -> str:
-    return settings.packet_checkout_url
+    return entry_checkout_url()
 
 
 def process_event(store: Dict[str, Any], event: Dict[str, Any]) -> RevenueEventResult:

@@ -80,13 +80,13 @@ EXPERIMENTS: dict[str, dict[str, Any]] = {
     },
     "paid_test_explicit": {
         "label": "Explicit paid test",
-        "hypothesis": "Being clear about the $40 test filters for buyers and reduces vague curiosity.",
+        "hypothesis": "Being clear about the entry paid test filters for buyers and reduces vague curiosity.",
         "query_rotation": [
             "growth marketing agency founder",
             "ppc agency owner",
             "b2b lead generation agency owner",
         ],
-        "change": "Mention the $40 test earlier after enough reply signal exists.",
+        "change": "Mention the entry paid test earlier after enough reply signal exists.",
     },
     "hard_paid_test_direct": {
         "label": "Hard paid test",
@@ -97,7 +97,7 @@ EXPERIMENTS: dict[str, dict[str, Any]] = {
             "b2b agency operations founder",
             "sales operations agency owner",
         ],
-        "change": "Lead with the concrete $40 paid test and the after-call follow-up outcome instead of a free sample ask.",
+        "change": "Lead with the concrete entry paid test and the after-call follow-up outcome instead of a free sample ask.",
     },
     "stalled_opportunity_direct": {
         "label": "Stalled opportunity",
@@ -108,7 +108,7 @@ EXPERIMENTS: dict[str, dict[str, Any]] = {
             "marketing agency sales operations founder",
             "b2b agency founder client follow up",
         ],
-        "change": "Frame the $40 test as finishing one stalled sales follow-up.",
+        "change": "Frame the entry paid test as finishing one stalled sales follow-up.",
     },
     "revenue_leak_direct": {
         "label": "Revenue leak angle",
@@ -119,7 +119,7 @@ EXPERIMENTS: dict[str, dict[str, Any]] = {
             "marketing agency client success operations",
             "b2b agency account director",
         ],
-        "change": "Frame the $40 test around preventing delayed client follow-up from leaking revenue.",
+        "change": "Frame the entry paid test around preventing delayed client follow-up from leaking revenue.",
     },
 }
 

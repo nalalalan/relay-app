@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, List, Literal
 
 from sqlalchemy import select
 
-from app.core.config import settings
+from app.core.config import entry_checkout_url, settings
 from sqlalchemy.orm import Session
 
 from app.db.base import SessionLocal
@@ -204,7 +204,7 @@ def _build_outreach_candidate_from_lead_found(decision: Dict[str, Any], payload:
 
 
 def _payment_link_for_offer(offer_name: str) -> str:
-    return settings.packet_checkout_url
+    return entry_checkout_url()
 
 
 def _build_opportunity_payload_from_lead(lead: ProductionLead, reply_state: str, reply_text: str) -> Dict[str, Any]:

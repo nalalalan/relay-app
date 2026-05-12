@@ -10,7 +10,7 @@ from typing import Any, Dict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
+from app.core.config import entry_checkout_url, entry_price_label, settings
 from app.db.base import SessionLocal
 from app.integrations.resend_client import ResendClient
 from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect
@@ -45,8 +45,16 @@ def _notes_url() -> str:
 def _pack_url() -> str:
     return (
         os.getenv("PACKET_5_PACK_URL", "").strip()
-        or settings.packet_checkout_url
+        or entry_checkout_url()
     )
+
+
+def _entry_packet_link() -> str:
+    return entry_checkout_url()
+
+
+def _entry_packet_label() -> str:
+    return f"Start the {entry_price_label()} packet"
 
 
 def _monthly_url() -> str:
@@ -565,7 +573,7 @@ def run_messy_notes_checkout_followup_sweep(hours: int = 2) -> dict[str, Any]:
                 _p(
                     "If you want me to turn that into the actual packet, the paid one-call test is the next step."
                 ),
-                _a("Start the $40 packet", settings.packet_checkout_url),
+                _a(_entry_packet_label(), _entry_packet_link()),
                 _p("I will turn it into the recap, next steps, follow-up draft, open questions, and CRM-ready update."),
                 _p("- Alan"),
             ]
@@ -646,8 +654,8 @@ def run_messy_notes_second_followup_sweep(hours: int = 24) -> dict[str, Any]:
             external_id = f"relay-lead:{lead.id}"
             blocks = [
                 _p("Closing the loop on your Relay notes."),
-                _p("If you still want me to turn that rough call into the actual handoff packet, the $40 one-call test is the clean next step."),
-                _a("Start the $40 packet", settings.packet_checkout_url),
+                _p(f"If you still want me to turn that rough call into the actual handoff packet, the {entry_price_label()} one-call test is the clean next step."),
+                _a(_entry_packet_label(), _entry_packet_link()),
                 _p("If you want to add or replace the rough notes first, send them here."),
                 _a("Send messy notes", _notes_url()),
                 _p("- Alan"),
@@ -722,8 +730,8 @@ def run_sample_request_notes_followup_sweep(hours: int = 24) -> dict[str, Any]:
                 _p("You asked for the Relay sample."),
                 _p("The easiest real test is one messy call note. Send rough bullets, a transcript, or an ugly notes dump."),
                 _a("Send messy notes", _notes_url()),
-                _p("If you already know you want the paid packet, the one-call test is $40."),
-                _a("Start the $40 packet", settings.packet_checkout_url),
+                _p(f"If you already know you want the paid packet, the one-call test is {entry_price_label()}."),
+                _a(_entry_packet_label(), _entry_packet_link()),
                 _p("- Alan"),
             ]
             _send_conversion_email(
@@ -815,8 +823,8 @@ def run_sample_request_second_followup_sweep(hours: int = 72) -> dict[str, Any]:
                 _p("Checking once more after the Relay sample."),
                 _p("The fastest useful test is still one rough call note. Send the messy version and Relay will keep the next step simple."),
                 _a("Send messy notes", _notes_url()),
-                _p("If you already know you want the paid packet, the one-call test is $40."),
-                _a("Start the $40 packet", settings.packet_checkout_url),
+                _p(f"If you already know you want the paid packet, the one-call test is {entry_price_label()}."),
+                _a(_entry_packet_label(), _entry_packet_link()),
                 _p("- Alan"),
             ]
             _send_conversion_email(
@@ -919,8 +927,8 @@ def run_checkout_intent_followup_sweep(hours: int = 1) -> dict[str, Any]:
             external_id = f"relay-session:{session_id}"
             blocks = [
                 _p("You opened the paid Relay packet path."),
-                _p("If you still want one messy call turned into a finished recap, follow-up draft, CRM-ready update, and next-step checklist, the $40 packet is here."),
-                _a("Start the $40 packet", settings.packet_checkout_url),
+                _p(f"If you still want one messy call turned into a finished recap, follow-up draft, CRM-ready update, and next-step checklist, the {entry_price_label()} packet is here."),
+                _a(_entry_packet_label(), _entry_packet_link()),
                 _p("If you want to add or resend rough notes first, use the notes form."),
                 _a("Send messy notes", _notes_url()),
                 _p("- Alan"),
@@ -1004,8 +1012,8 @@ def run_checkout_intent_second_followup_sweep(hours: int = 24) -> dict[str, Any]
             external_id = f"relay-session:{session_id}"
             blocks = [
                 _p("Closing the loop on the Relay packet."),
-                _p("If you still want the one-call handoff, the $40 path is still the fastest way to get the recap, follow-up draft, CRM-ready update, and next-step checklist finished."),
-                _a("Start the $40 packet", settings.packet_checkout_url),
+                _p(f"If you still want the one-call handoff, the {entry_price_label()} path is still the fastest way to get the recap, follow-up draft, CRM-ready update, and next-step checklist finished."),
+                _a(_entry_packet_label(), _entry_packet_link()),
                 _p("If the call notes are not ready yet, send the rough version first and Relay will keep the next step simple."),
                 _a("Send messy notes", _notes_url()),
                 _p("- Alan"),

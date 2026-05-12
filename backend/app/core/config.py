@@ -1,4 +1,6 @@
 
+import os
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -57,6 +59,10 @@ class Settings(BaseSettings):
 
     packet_offer_name: str = "One live packet - $40"
     packet_checkout_url: str = "https://buy.stripe.com/bJeaEZb4mf6de64dSi2Nq02"
+    first_money_offer_name: str = "First paid Relay test"
+    first_money_checkout_url: str = ""
+    first_money_price_usd: float = 10.0
+    minimum_weekly_target_usd: float = 10.0
     packet_5_pack_url: str = ""
     weekly_sprint_url: str = ""
     monthly_autopilot_url: str = ""
@@ -65,3 +71,55 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def first_money_url_configured() -> bool:
+    return bool(
+        os.getenv("RELAY_FIRST_MONEY_CHECKOUT_URL", "").strip()
+        or os.getenv("FIRST_MONEY_CHECKOUT_URL", "").strip()
+        or str(settings.first_money_checkout_url or "").strip()
+    )
+
+
+def entry_checkout_url() -> str:
+    return (
+        os.getenv("RELAY_FIRST_MONEY_CHECKOUT_URL", "").strip()
+        or os.getenv("FIRST_MONEY_CHECKOUT_URL", "").strip()
+        or str(settings.first_money_checkout_url or "").strip()
+        or str(settings.packet_checkout_url or "").strip()
+    )
+
+
+def entry_price_label() -> str:
+    price = entry_price_usd()
+    if price > 0:
+        return f"${price:.0f}" if price.is_integer() else f"${price:.2f}"
+    return "paid"
+
+
+def entry_price_usd() -> float:
+    if first_money_url_configured():
+        raw_price = (
+            os.getenv("RELAY_FIRST_MONEY_PRICE_USD", "").strip()
+            or os.getenv("FIRST_MONEY_PRICE_USD", "").strip()
+            or str(settings.first_money_price_usd or "").strip()
+        )
+        try:
+            return float(raw_price)
+        except Exception:
+            return 0.0
+    try:
+        return float(os.getenv("RELAY_PACKET_PRICE_USD", "").strip() or 40)
+    except Exception:
+        return 40.0
+
+
+def entry_offer_name() -> str:
+    if first_money_url_configured():
+        return (
+            os.getenv("RELAY_FIRST_MONEY_OFFER_NAME", "").strip()
+            or os.getenv("FIRST_MONEY_OFFER_NAME", "").strip()
+            or str(settings.first_money_offer_name or "").strip()
+            or "First paid Relay test"
+        )
+    return str(settings.packet_offer_name or "One live packet - $40")

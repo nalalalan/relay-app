@@ -18,7 +18,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
+from app.core.config import entry_checkout_url, entry_offer_name, entry_price_label, settings
 from app.db.base import SessionLocal
 from app.integrations.resend_client import ResendClient
 from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect
@@ -543,7 +543,7 @@ def _packet_5_pack_url() -> str:
     return (
         os.getenv("PACKET_5_PACK_URL", "").strip()
         or getattr(settings, "packet_5_pack_url", "")
-        or settings.packet_checkout_url
+        or entry_checkout_url()
     )
 
 
@@ -559,7 +559,7 @@ def _monthly_autopilot_url() -> str:
     return (
         os.getenv("MONTHLY_AUTOPILOT_URL", "").strip()
         or getattr(settings, "monthly_autopilot_url", "")
-        or settings.packet_checkout_url
+        or entry_checkout_url()
     )
 
 
@@ -630,10 +630,13 @@ def _is_generic_inbox(email_address: str) -> bool:
 
 def _render_body(template: StepTemplate, prospect: AcquisitionProspect, experiment_variant: str) -> str:
     company_name = (prospect.company_name or "your agency").strip()
+    price_label = entry_price_label()
     return template.body.format(
         company_name=company_name,
+        entry_price_label=price_label,
+        entry_offer_name=entry_offer_name(),
         packet_checkout_url=_tracked_url(
-            settings.packet_checkout_url,
+            entry_checkout_url(),
             prospect=prospect,
             step=template,
             experiment_variant=experiment_variant,
@@ -681,7 +684,7 @@ def _render_body(template: StepTemplate, prospect: AcquisitionProspect, experime
             experiment_variant=experiment_variant,
             destination="notes",
         ),
-    )
+    ).replace("$40", price_label)
 
 
 def _log_event(

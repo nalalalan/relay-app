@@ -13,7 +13,7 @@ from apify_client import ApifyClient
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
+from app.core.config import entry_checkout_url, entry_price_label, settings
 from app.db.base import SessionLocal
 from app.integrations.apollo import ApolloClient
 from app.integrations.smartlead import SmartleadClient
@@ -625,7 +625,7 @@ def _build_smartlead_payload(prospect: AcquisitionProspect) -> Dict[str, Any]:
             "fit_score": str(prospect.fit_score),
             "segment": prospect.segment,
             "packet_offer_name": settings.packet_offer_name,
-            "packet_checkout_url": settings.packet_checkout_url,
+            "packet_checkout_url": entry_checkout_url(),
             "landing_page_url": settings.landing_page_url,
         },
     }
@@ -762,7 +762,7 @@ def _stripe_paid_event_for_session(session: Session, session_id: str) -> Acquisi
 
 def _reply_checkout_url() -> str:
     return (
-        getattr(settings, "packet_checkout_url", "")
+        entry_checkout_url()
         or getattr(settings, "stripe_payment_link", "")
         or ""
     )
@@ -784,8 +784,9 @@ def _clean_reply_text(s: str) -> str:
 
 
 def _zero_touch_reply() -> str:
-    offers = [("one live packet ($40)", settings.packet_checkout_url)]
-    seen = {settings.packet_checkout_url}
+    checkout_url = entry_checkout_url()
+    offers = [(f"one live packet ({entry_price_label()})", checkout_url)]
+    seen = {checkout_url}
     for label, url in [
         ("5-call sprint ($750)", getattr(settings, "packet_5_pack_url", "")),
         ("done-for-you week ($3000)", getattr(settings, "weekly_sprint_url", "")),
