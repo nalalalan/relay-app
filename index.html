@@ -1008,10 +1008,10 @@
 
     @media (max-width: 580px) {
       .wrap {
-        width: auto;
-        max-width: none;
-        margin-left: 14px;
-        margin-right: 14px;
+        width: calc(100% - 44px);
+        max-width: 348px;
+        margin-left: auto;
+        margin-right: auto;
       }
 
       .topbar {
@@ -1144,6 +1144,14 @@
 
       .section-head {
         align-items: start;
+      }
+
+      .section-head > * {
+        min-width: 0;
+      }
+
+      .section-head .small {
+        max-width: 50%;
       }
 
       .tab {
