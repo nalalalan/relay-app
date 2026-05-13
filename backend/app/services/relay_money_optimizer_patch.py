@@ -682,8 +682,9 @@ def _direct_fill_candidates_after_active_first(
     active_sample_ids: set[str],
     active_variant: str,
     fill_slots: int,
+    active_sample_can_complete_now: bool,
 ) -> list[tuple[AcquisitionProspect, Any, str, bool]]:
-    if fill_slots <= 0:
+    if fill_slots <= 0 or not active_sample_can_complete_now:
         return []
     return [
         candidate
@@ -1232,6 +1233,7 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
                     active_sample_ids=active_sample_ids,
                     active_variant=active_variant,
                     fill_slots=fill_slots_after_active,
+                    active_sample_can_complete_now=active_sample_can_complete_now,
                 )
                 if fill_remaining_after_active_sample
                 else []
