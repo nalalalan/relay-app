@@ -37,7 +37,7 @@ https://nalalalan.github.io/alan-operator-site/client-intake.html?code=northline
 RECOMMENDED ZERO-TOUCH BUYER REPLY
 totally - easiest way to try it is on one real call
 
-buy here: https://buy.stripe.com/bJeaEZb4mf6de64dSi2Nq02
+buy here: https://buy.stripe.com/bJe28t7Sa7DLgec29A2Nq08
 
 after checkout you'll get the intake link automatically
 

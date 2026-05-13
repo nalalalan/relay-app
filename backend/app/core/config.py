@@ -60,8 +60,8 @@ class Settings(BaseSettings):
     packet_offer_name: str = "One live packet - $40"
     packet_checkout_url: str = "https://buy.stripe.com/bJeaEZb4mf6de64dSi2Nq02"
     first_money_offer_name: str = "First paid Relay test"
-    first_money_checkout_url: str = "https://buy.stripe.com/bJedRb5K20bje648xY2Nq07"
-    first_money_price_usd: float = 10.0
+    first_money_checkout_url: str = "https://buy.stripe.com/bJe28t7Sa7DLgec29A2Nq08"
+    first_money_price_usd: float = 1.0
     minimum_weekly_target_usd: float = 1.0
     packet_5_pack_url: str = ""
     weekly_sprint_url: str = ""
