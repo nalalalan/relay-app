@@ -676,6 +676,22 @@ def _effective_daily_cap(experiment: dict[str, Any] | None = None) -> int:
     return max(min(experiment_cap, configured_cap), 1)
 
 
+def _direct_fill_candidates_after_active_first(
+    direct_due: list[tuple[AcquisitionProspect, Any, str, bool]],
+    *,
+    active_sample_ids: set[str],
+    active_variant: str,
+    fill_slots: int,
+) -> list[tuple[AcquisitionProspect, Any, str, bool]]:
+    if fill_slots <= 0:
+        return []
+    return [
+        candidate
+        for candidate in direct_due
+        if candidate[0].external_id not in active_sample_ids and candidate[2] != active_variant
+    ][:fill_slots]
+
+
 def _send_window_wait_text(status: dict[str, Any]) -> str:
     next_open = str(status.get("send_window_next_open_local") or "").strip()
     if not next_open:
@@ -1209,18 +1225,20 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
             active_sample_candidates = (active_direct_first_touch + generic_active_sample_fallback)[:active_sample_needed]
             active_sample_ids = {candidate[0].external_id for candidate in active_sample_candidates}
             active_sample_can_complete_now = len(active_sample_candidates) >= active_sample_needed
+            fill_slots_after_active = max(limit - len(active_sample_candidates), 0)
             money_fill_candidates = (
-                [
-                    candidate
-                    for candidate in direct_due
-                    if candidate[0].external_id not in active_sample_ids and candidate[2] != active_variant
-                ]
-                if fill_remaining_after_active_sample and active_sample_can_complete_now
+                _direct_fill_candidates_after_active_first(
+                    direct_due,
+                    active_sample_ids=active_sample_ids,
+                    active_variant=active_variant,
+                    fill_slots=fill_slots_after_active,
+                )
+                if fill_remaining_after_active_sample
                 else []
             )
             money_fill_after_active_sample_count = len(money_fill_candidates)
             candidates = active_sample_candidates + money_fill_candidates
-            active_sample_reserved_only = True
+            active_sample_reserved_only = not bool(money_fill_candidates)
         else:
             active_sample_can_complete_now = False
             active_sample_reserved_only = False
