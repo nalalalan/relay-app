@@ -1897,6 +1897,11 @@
         var activeVariant = outreach.active_experiment_variant || latestData.active_experiment_variant || "";
         var progress = activeProgressLabel(success, moneySystem, latestData);
         var parts = progressParts(progress);
+        var targetUsd = Number(
+          objective.weekly_target_usd ||
+          objective.minimum_viable_weekly_usd ||
+          1
+        );
         var price = Number(
           objective.entry_test_price_usd ||
           objective.entry_price_usd ||
@@ -1925,15 +1930,17 @@
 
         return {
           meta: latest ? localTime(latest.created_at) : "live ops",
-          changed: money(price),
-          changedNote: "entry checkout",
+          target: money(targetUsd) + "/wk",
+          offer: money(price),
+          changed: money(targetUsd) + "/wk",
+          changedNote: "money proof target; offer " + money(price),
           running: lane,
           runningNote: progress + " sample",
           waiting: fmt(replies) + " replies / " + money(gross),
           waitingNote: fmt(payments) + " paid tests",
           next: next,
           reason: reason,
-          summary: money(price) + " checkout live. " + lane + " " + progress + ". Next: " + next + "."
+          summary: money(targetUsd) + "/wk target. " + money(price) + " checkout live. " + lane + " " + progress + "."
         };
       }
 
@@ -2391,7 +2398,7 @@
         $("clicksValue").textContent = fmt(clicksToday);
         $("clicksHint").textContent = fmt(sampleToday) + " sample clicks in 24h.";
         $("moneyValue").textContent = money(relayMoney.gross_usd || 0);
-        $("moneyHint").textContent = fmt(relayMoney.payments || 0) + " paid tests.";
+        $("moneyHint").textContent = fmt(relayMoney.payments || 0) + " paid tests / target " + test.target + ".";
         $("nextMoveValue").textContent = move.value;
         $("nextMoveHint").textContent = move.hint;
         $("summaryLine").textContent = Number(relayMoney.payments || 0) > 0 || Number(relayMoney.gross_usd || 0) > 0

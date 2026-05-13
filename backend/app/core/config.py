@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     first_money_offer_name: str = "First paid Relay test"
     first_money_checkout_url: str = "https://buy.stripe.com/bJedRb5K20bje648xY2Nq07"
     first_money_price_usd: float = 10.0
-    minimum_weekly_target_usd: float = 10.0
+    minimum_weekly_target_usd: float = 1.0
     packet_5_pack_url: str = ""
     weekly_sprint_url: str = ""
     monthly_autopilot_url: str = ""
