@@ -1008,8 +1008,10 @@
 
     @media (max-width: 580px) {
       .wrap {
-        width: calc(100% - 44px);
-        max-width: 348px;
+        width: auto;
+        max-width: none;
+        margin-left: 14px;
+        margin-right: 14px;
       }
 
       .topbar {
@@ -1940,7 +1942,7 @@
           waitingNote: fmt(payments) + " paid tests",
           next: next,
           reason: reason,
-          summary: money(targetUsd) + "/wk target. " + money(price) + " checkout live. " + lane + " " + progress + "."
+          summary: money(targetUsd) + "/wk target. " + money(price) + " checkout. " + progress + " sample."
         };
       }
 
