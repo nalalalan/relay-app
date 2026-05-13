@@ -346,6 +346,64 @@
       overflow-wrap: anywhere;
     }
 
+    .test-strip {
+      margin-top: 18px;
+      padding: 16px 0;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .test-line {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .test-cell {
+      min-width: 0;
+      padding: 13px 14px;
+      border-right: 1px solid var(--line);
+    }
+
+    .test-cell:last-child {
+      border-right: 0;
+    }
+
+    .test-cell span,
+    .test-cell b,
+    .test-cell em {
+      display: block;
+      overflow-wrap: anywhere;
+    }
+
+    .test-cell span {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .test-cell b {
+      margin-top: 7px;
+      color: var(--ink);
+      font-size: clamp(16px, 1.35vw, 20px);
+      font-weight: 910;
+      line-height: 1.1;
+    }
+
+    .test-cell em {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 11px;
+      font-style: normal;
+      font-weight: 760;
+      line-height: 1.2;
+    }
+
     .main-grid {
       grid-template-columns: minmax(0, 1.25fr) minmax(310px, .75fr);
       margin-top: 12px;
@@ -930,6 +988,19 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
+      .test-line {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .test-cell:nth-child(2) {
+        border-right: 0;
+      }
+
+      .test-cell:nth-child(1),
+      .test-cell:nth-child(2) {
+        border-bottom: 1px solid var(--line);
+      }
+
       .tabs {
         width: 100%;
       }
@@ -947,6 +1018,24 @@
 
       .answer-grid {
         grid-template-columns: minmax(0, 1fr);
+      }
+
+      .test-line {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .test-cell {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .test-cell:nth-child(1),
+      .test-cell:nth-child(2) {
+        border-bottom: 1px solid var(--line);
+      }
+
+      .test-cell:last-child {
+        border-bottom: 0;
       }
 
       .launch-summary {
@@ -1068,6 +1157,35 @@
         <button class="tab" data-days="7" type="button">Week</button>
         <button class="tab" data-days="30" type="button">Month</button>
         <button class="tab" data-days="90" type="button">90 days</button>
+      </div>
+    </section>
+
+    <section class="test-strip" aria-label="Current Relay test">
+      <div class="section-head">
+        <h2>Current test</h2>
+        <span id="testMeta" class="small">live ops</span>
+      </div>
+      <div class="test-line">
+        <div class="test-cell">
+          <span>changed</span>
+          <b id="testPrice">-</b>
+          <em id="testPriceNote">-</em>
+        </div>
+        <div class="test-cell">
+          <span>running</span>
+          <b id="testState">-</b>
+          <em id="testStateNote">-</em>
+        </div>
+        <div class="test-cell">
+          <span>waiting on</span>
+          <b id="testWaiting">-</b>
+          <em id="testWaitingNote">-</em>
+        </div>
+        <div class="test-cell">
+          <span>next change</span>
+          <b id="testNext">-</b>
+          <em id="testReason">-</em>
+        </div>
       </div>
     </section>
 
@@ -1679,7 +1797,7 @@
           };
         }
         if (bottleneck === "offer_market_rebuild_required" || health.state === "offer_rebuild_required" || mandate.state === "rebuild_offer_or_market_proof") {
-          return { value: "Rebuild", hint: sentence(next, "Rotate offer or market proof before another sample.") };
+          return { value: "Change angle", hint: sentence(next, "Change one controlled variable before another sample.") };
         }
         var progress =
           latestData.active_progress ||
@@ -1687,7 +1805,12 @@
           success.active_experiment_progress ||
           "";
         if (progress) {
-          return { value: progress, hint: sentence(next, "Keep the current sample moving.") };
+          var activeVariant = outreach.active_experiment_variant || latestData.active_experiment_variant || "";
+          var parts = progressParts(progress);
+          if (parts && parts.target && parts.current < parts.target) {
+            return { value: "Finish sample", hint: humanLane(activeVariant) + " " + progress + "; no change before " + fmt(parts.target) + "/" + fmt(parts.target) + "." };
+          }
+          return { value: "Review sample", hint: sentence(next, "Read the completed sample before changing one variable.") };
         }
         return { value: "Run", hint: sentence(next, "Keep the loop moving.") };
       }
@@ -1707,6 +1830,80 @@
           ((moneySystem || {}).active_experiment_progress) ||
           "0/10"
         );
+      }
+
+      function progressParts(progress) {
+        var match = String(progress || "").match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
+        if (!match) return null;
+        return {
+          current: Number(match[1]),
+          target: Number(match[2])
+        };
+      }
+
+      function activeTestState(ops, ledger) {
+        var success = ((ops || {}).relay_success || {});
+        var moneySystem = ((ops || {}).money_system || {});
+        var latest = latestLedger(ledger);
+        var latestData = ledgerData(latest);
+        var outreach = success.outreach || {};
+        var moneyObj = success.money || {};
+        var objective = moneySystem.revenue_objective || success.revenue_objective || {};
+        var activeVariant = outreach.active_experiment_variant || latestData.active_experiment_variant || "";
+        var progress = activeProgressLabel(success, moneySystem, latestData);
+        var parts = progressParts(progress);
+        var price = Number(
+          objective.entry_test_price_usd ||
+          objective.entry_price_usd ||
+          moneyObj.entry_test_price_usd ||
+          moneyObj.entry_price_usd ||
+          10
+        );
+        var replies = Number((((success.outreach || {}).replies) || latestData.replies || 0));
+        var payments = Number(moneyObj.payments || latestData.payments || 0);
+        var gross = Number(moneyObj.gross_usd || latestData.gross_usd || 0);
+        var complete = parts && parts.target && parts.current >= parts.target;
+        var lane = humanLane(activeVariant);
+        var next = "finish sample";
+        var reason = parts && parts.target ? "no change before " + fmt(parts.target) + "/" + fmt(parts.target) : "sample gate";
+
+        if (payments > 0 || gross > 0) {
+          next = "hold paid lane";
+          reason = "money signal exists";
+        } else if (replies > 0) {
+          next = "close buyer signal";
+          reason = "reply first";
+        } else if (complete) {
+          next = "stalled-opportunity angle";
+          reason = "same price, different angle";
+        }
+
+        return {
+          meta: latest ? localTime(latest.created_at) : "live ops",
+          changed: money(price),
+          changedNote: "entry checkout",
+          running: lane,
+          runningNote: progress + " sample",
+          waiting: fmt(replies) + " replies / " + money(gross),
+          waitingNote: fmt(payments) + " paid tests",
+          next: next,
+          reason: reason,
+          summary: money(price) + " checkout live. " + lane + " " + progress + ". Next: " + next + "."
+        };
+      }
+
+      function renderCurrentTest(ops, ledger) {
+        var test = activeTestState(ops, ledger);
+        $("testMeta").textContent = test.meta;
+        $("testPrice").textContent = test.changed;
+        $("testPriceNote").textContent = test.changedNote;
+        $("testState").textContent = test.running;
+        $("testStateNote").textContent = test.runningNote;
+        $("testWaiting").textContent = test.waiting;
+        $("testWaitingNote").textContent = test.waitingNote;
+        $("testNext").textContent = test.next;
+        $("testReason").textContent = test.reason;
+        return test;
       }
 
       function rowHtml(label, value) {
@@ -1879,10 +2076,20 @@
       function humanLane(value) {
         var raw = String(value || "").trim();
         var lower = raw.toLowerCase();
+        var key = lower.replace(/[\s-]+/g, "_");
+        var labels = {
+          hard_paid_test_direct: "hard-paid direct",
+          stalled_opportunity_direct: "stalled-opportunity",
+          paid_test_explicit: "paid test",
+          revenue_leak_direct: "revenue leak",
+          sample_first_plain: "sample first",
+          pain_owner_direct: "pain owner"
+        };
         if (!raw) return "active sample";
+        if (labels[key]) return labels[key];
         if (lower.indexOf("revenue") >= 0 || lower.indexOf("paid") >= 0) return "paid-test outreach";
         if (lower.indexOf("reply") >= 0) return "reply follow-up";
-        return sentence(raw, "active sample");
+        return sentence(raw.replace(/_/g, " "), "active sample");
       }
 
       function signalHtml(name, meta) {
@@ -2117,6 +2324,7 @@
         var relayMoney = (((ops || {}).relay_success || {}).money || {});
         var success = ((ops || {}).relay_success || {});
         var move = currentMove(ops, ledger);
+        var test = renderCurrentTest(ops, ledger);
         var viewsToday = rolling(evidence, "page_view", 1);
         var viewsBaseline = 0;
         var viewSignal = (positive.signals || []).find(function (signal) {
@@ -2143,11 +2351,7 @@
         $("nextMoveHint").textContent = move.hint;
         $("summaryLine").textContent = Number(relayMoney.payments || 0) > 0 || Number(relayMoney.gross_usd || 0) > 0
           ? "Money signal exists."
-          : "n=" + fmt(launchTotals.page_view || 0) + " views; " +
-            fmt((launchTotals.sample_click || 0) + (launchTotals.showcase_sample_click || 0)) +
-            " sample opens; " + fmt(launchTotals.lead_capture || 0) + " leads. System: " +
-            fmt(launchSystem.relay_experiment_plan || 0) + " experiments, " +
-            fmt(launchSystem.relay_performance_weekly_review || 0) + " reviews. Replies/payments=0.";
+          : test.summary;
         $("updatedAt").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
         $("rangeLabel").textContent = rangeName();
         $("trendRange").textContent = days === 1 ? "24h / local hours" : rangeName() + " / local dates";
