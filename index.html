@@ -941,6 +941,123 @@
       overflow-wrap: anywhere;
     }
 
+    .first-money-section {
+      margin-top: 24px;
+      padding: 22px 0 24px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .first-money {
+      display: grid;
+      grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+      gap: 34px;
+      align-items: start;
+    }
+
+    .first-money-meter {
+      min-width: 0;
+    }
+
+    .first-money-meter strong {
+      display: block;
+      margin-top: 8px;
+      color: var(--ink);
+      font-size: clamp(42px, 5vw, 68px);
+      font-weight: 930;
+      line-height: .9;
+      letter-spacing: 0;
+    }
+
+    .first-money-meter em {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-style: normal;
+      font-weight: 820;
+      line-height: 1.2;
+    }
+
+    .first-money-bar {
+      position: relative;
+      height: 10px;
+      margin-top: 18px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e8e2d8;
+    }
+
+    .first-money-bar i {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--good), var(--blue));
+    }
+
+    .first-money-columns {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 24px;
+      min-width: 0;
+    }
+
+    .first-money-col {
+      min-width: 0;
+    }
+
+    .first-money-col h3 {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .first-money-col ul {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .first-money-col li {
+      display: grid;
+      grid-template-columns: 13px minmax(0, 1fr);
+      gap: 8px;
+      align-items: baseline;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 820;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .first-money-col li::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      margin-top: 5px;
+      border: 1.5px solid var(--muted);
+      border-radius: 999px;
+      background: transparent;
+    }
+
+    .first-money-col li.done::before {
+      border-color: var(--good);
+      background: var(--good);
+    }
+
+    .first-money-col li.wait::before {
+      border-color: var(--warn);
+    }
+
+    .first-money-col li.missing::before {
+      border-color: var(--ink);
+    }
+
     .links {
       display: flex;
       flex-wrap: wrap;
@@ -999,6 +1116,11 @@
       .test-cell:nth-child(1),
       .test-cell:nth-child(2) {
         border-bottom: 1px solid var(--line);
+      }
+
+      .first-money {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 22px;
       }
 
       .tabs {
@@ -1114,6 +1236,15 @@
 
       .history-svg {
         height: 72px;
+      }
+
+      .first-money-columns {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 18px;
+      }
+
+      .first-money-meter strong {
+        font-size: 40px;
       }
 
       .funnel-path {
@@ -1358,6 +1489,14 @@
         </div>
         <pre id="rawJson" class="raw-json">Loading.</pre>
       </article>
+    </section>
+
+    <section class="first-money-section" aria-label="First money requirements">
+      <div class="section-head">
+        <h2>First money</h2>
+        <span id="firstMoneyTime" class="small">live ops</span>
+      </div>
+      <div id="firstMoneyPlan" class="first-money">Loading.</div>
     </section>
 
     <div class="links" aria-label="Relay links">
@@ -2126,6 +2265,115 @@
         );
       }
 
+      function firstMoneyItem(text, state) {
+        return '<li class="' + escapeHtml(state || "") + '">' + escapeHtml(text) + '</li>';
+      }
+
+      function firstMoneyList(items) {
+        return items.map(function (item) {
+          return firstMoneyItem(item.text, item.state);
+        }).join("");
+      }
+
+      function firstMoneyPlanHtml(evidence, ops, ledger) {
+        var success = ((ops || {}).relay_success || {});
+        var moneySystem = ((ops || {}).money_system || {});
+        var objective = moneySystem.revenue_objective || success.revenue_objective || {};
+        var ladder = moneySystem.revenue_ladder || {};
+        var closePath = moneySystem.close_path || {};
+        var moneyObj = success.money || {};
+        var health = success.money_proof_health || moneySystem.money_proof_health || {};
+        var observation = success.active_reply_observation || {};
+        var totals = ((evidence || {}).totals || {}).intent_event_counts || {};
+        var acquisition = ((evidence || {}).totals || {}).acquisition_event_counts || {};
+        var progress = activeProgressLabel(success, moneySystem, ledgerData(latestLedger(ledger)));
+        var parts = progressParts(progress);
+        var views = Number(totals.page_view || 0);
+        var sampleOpens = Number(totals.sample_click || 0) + Number(totals.showcase_sample_click || 0);
+        var systemEvents = Object.keys(acquisition).reduce(function (sum, key) {
+          return sum + Number(acquisition[key] || 0);
+        }, 0);
+        var entryPrice = Number(
+          objective.entry_test_price_usd ||
+          objective.entry_price_usd ||
+          moneyObj.entry_test_price_usd ||
+          moneyObj.entry_price_usd ||
+          0
+        );
+        var payments = Number(moneyObj.payments || 0);
+        var gross = Number(moneyObj.gross_usd || 0);
+        var replies = Number(((success.outreach || {}).replies) || 0);
+        var currentCheckout = Number(closePath.checkout_clicks || 0);
+        var paid = payments > 0 || gross > 0;
+        var checkoutReady = Boolean(ladder.entry_offer_ready || entryPrice > 0);
+        var productLive = checkoutReady && Number(acquisition.relay_public_offer_smoke_test || 0) > 0;
+        var telemetryLive = views > 0 && systemEvents > 0;
+        var sampleDone = parts && parts.target && parts.current >= parts.target;
+        var inspectionDone = sampleOpens > 0 || actionTotal(evidence, 365) > 0;
+        var buyerSignal = replies > 0 || currentCheckout > 0;
+
+        var gates = [
+          { label: money(entryPrice || 1) + " checkout live", done: checkoutReady },
+          { label: "product route checked", done: productLive },
+          { label: "telemetry recording", done: telemetryLive },
+          { label: progress + " sample sent", done: Boolean(sampleDone) },
+          { label: fmt(sampleOpens) + " sample opens", done: inspectionDone },
+          { label: "buyer reply or checkout", done: buyerSignal },
+          { label: "real paid buyer", done: paid }
+        ];
+        var doneCount = gates.filter(function (gate) { return gate.done; }).length;
+        var percent = paid ? 100 : Math.round((doneCount / gates.length) * 100);
+        var observeUntil = health.proof_deadline || observation.observe_until || "";
+        var checkTime = observeUntil ? localTime(observeUntil) : "next logged check";
+        var missing = gates.filter(function (gate) { return !gate.done; });
+        var leftText = missing.length
+          ? missing.map(function (gate) { return gate.label; }).slice(0, 3).join(" / ")
+          : "none";
+        var doneItems = gates.filter(function (gate) { return gate.done; }).slice(0, 5).map(function (gate) {
+          return { text: gate.label, state: "done" };
+        });
+        if (!doneItems.length) doneItems.push({ text: "no gates complete", state: "wait" });
+
+        var requiredItems = [
+          { text: "one non-owner " + money(Math.max(entryPrice || 1, 1)) + "+ Stripe payment", state: paid ? "done" : "missing" },
+          { text: "backend records real revenue", state: paid ? "done" : "missing" },
+          { text: "dashboard shows >" + money(0), state: paid ? "done" : "missing" }
+        ];
+
+        var nextItems = paid
+          ? [
+              { text: "fulfill paid packet", state: "done" },
+              { text: "keep the paid lane stable", state: "done" }
+            ]
+          : [
+              { text: fmt(currentCheckout) + " current checkout clicks / " + fmt(replies) + " replies", state: buyerSignal ? "done" : "missing" },
+              { text: "observe until " + checkTime, state: "wait" },
+              { text: "rotate one copy or targeting variable", state: "missing" },
+              { text: "keep " + money(entryPrice || 1) + " checkout until first sale", state: "wait" }
+            ];
+
+        return (
+          '<div class="first-money-meter">' +
+            '<span class="launch-label">readiness to first paid signal</span>' +
+            '<strong>' + escapeHtml(fmt(percent)) + '%</strong>' +
+            '<em>' + escapeHtml(doneCount + "/" + gates.length + " gates. Money " + fmt(payments) + "/1 payments.") + '</em>' +
+            '<div class="first-money-bar" aria-label="' + escapeHtml(fmt(percent) + " percent complete") + '"><i style="width:' + escapeHtml(String(Math.max(0, Math.min(100, percent)))) + '%"></i></div>' +
+            '<p class="caption">' + escapeHtml("Left: " + leftText + ".") + '</p>' +
+          '</div>' +
+          '<div class="first-money-columns">' +
+            '<div class="first-money-col"><h3>Required</h3><ul>' + firstMoneyList(requiredItems) + '</ul></div>' +
+            '<div class="first-money-col"><h3>Done</h3><ul>' + firstMoneyList(doneItems) + '</ul></div>' +
+            '<div class="first-money-col"><h3>Work left</h3><ul>' + firstMoneyList(nextItems) + '</ul></div>' +
+          '</div>'
+        );
+      }
+
+      function renderFirstMoney(evidence, ops, ledger) {
+        var latest = latestLedger(ledger);
+        $("firstMoneyTime").textContent = latest ? localTime(latest.created_at) : "live ops";
+        $("firstMoneyPlan").innerHTML = firstMoneyPlanHtml(evidence, ops, ledger);
+      }
+
       function humanDecision(text) {
         var value = sentence(text, "");
         var waitMatch = value.match(/^wait until ([0-9T:.\-+Z]+) before changing copy or targeting\.?$/i);
@@ -2425,6 +2673,7 @@
         renderTiming(evidence);
         renderDataTrace(evidence, ops, ledger);
         renderRaw(evidence, ops, ledger);
+        renderFirstMoney(evidence, ops, ledger);
 
         $("trendCaption").textContent = trendRows.length
           ? (days === 1
