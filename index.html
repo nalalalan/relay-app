@@ -946,6 +946,7 @@
       padding: 22px 0 24px;
       border-top: 1px solid var(--line);
       border-bottom: 1px solid var(--line);
+      scroll-margin-top: 96px;
     }
 
     .first-money {
@@ -1346,7 +1347,7 @@
       }
 
       .money-flow {
-        grid-template-columns: minmax(0, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .money-step {
@@ -1354,8 +1355,21 @@
         border-right: 0 !important;
       }
 
+      .money-step:nth-child(odd) {
+        padding-right: 12px;
+        border-right: 1px solid var(--line) !important;
+      }
+
+      .money-step:nth-child(even) {
+        padding-left: 12px;
+      }
+
       .money-step:not(:last-child) {
         border-bottom: 1px solid var(--line);
+      }
+
+      .money-step:nth-last-child(-n+2) {
+        border-bottom: 0;
       }
 
       .first-money-meter strong {
