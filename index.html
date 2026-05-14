@@ -2284,6 +2284,8 @@
         var moneyObj = success.money || {};
         var health = success.money_proof_health || moneySystem.money_proof_health || {};
         var observation = success.active_reply_observation || {};
+        var publicOffer = success.public_offer_preflight || {};
+        var deliveryDetail = (((ops || {}).recent || {}).last_delivery_smoke_detail || {});
         var totals = ((evidence || {}).totals || {}).intent_event_counts || {};
         var acquisition = ((evidence || {}).totals || {}).acquisition_event_counts || {};
         var progress = activeProgressLabel(success, moneySystem, ledgerData(latestLedger(ledger)));
@@ -2307,17 +2309,23 @@
         var paid = payments > 0 || gross > 0;
         var checkoutReady = Boolean(ladder.entry_offer_ready || entryPrice > 0);
         var productLive = checkoutReady && Number(acquisition.relay_public_offer_smoke_test || 0) > 0;
+        var payFirstLive = productLive && publicOffer.contains_checkout_action && publicOffer.contains_checkout_url && publicOffer.contains_price && (publicOffer.contains_pay_first_copy !== false);
+        var notesFallbackLive = Boolean((publicOffer.contains_send_notes_anchor !== false) && publicOffer.contains_notes_form && publicOffer.contains_lead_api);
         var telemetryLive = views > 0 && systemEvents > 0;
         var sampleDone = parts && parts.target && parts.current >= parts.target;
         var inspectionDone = sampleOpens > 0 || actionTotal(evidence, 365) > 0;
+        var fulfillmentReady = String(deliveryDetail.status || "").toLowerCase() === "ok" || String((success.payment_webhook_preflight || {}).status || "").toLowerCase() === "ok";
         var buyerSignal = replies > 0 || currentCheckout > 0;
 
         var gates = [
-          { label: money(entryPrice || 1) + " checkout live", done: checkoutReady },
+          { label: money(entryPrice || 1) + " checkout configured", done: checkoutReady },
           { label: "product route checked", done: productLive },
+          { label: "pay-first page live", done: payFirstLive },
+          { label: "notes fallback live", done: notesFallbackLive },
           { label: "telemetry recording", done: telemetryLive },
           { label: progress + " sample sent", done: Boolean(sampleDone) },
           { label: fmt(sampleOpens) + " sample opens", done: inspectionDone },
+          { label: "paid fulfillment checked", done: fulfillmentReady },
           { label: "buyer reply or checkout", done: buyerSignal },
           { label: "real paid buyer", done: paid }
         ];
@@ -2329,7 +2337,7 @@
         var leftText = missing.length
           ? missing.map(function (gate) { return gate.label; }).slice(0, 3).join(" / ")
           : "none";
-        var doneItems = gates.filter(function (gate) { return gate.done; }).slice(0, 5).map(function (gate) {
+        var doneItems = gates.filter(function (gate) { return gate.done; }).slice(0, 8).map(function (gate) {
           return { text: gate.label, state: "done" };
         });
         if (!doneItems.length) doneItems.push({ text: "no gates complete", state: "wait" });
@@ -2347,9 +2355,9 @@
             ]
           : [
               { text: fmt(currentCheckout) + " current checkout clicks / " + fmt(replies) + " replies", state: buyerSignal ? "done" : "missing" },
+              { text: "first non-owner payment", state: "missing" },
               { text: "observe until " + checkTime, state: "wait" },
-              { text: "rotate one copy or targeting variable", state: "missing" },
-              { text: "keep " + money(entryPrice || 1) + " checkout until first sale", state: "wait" }
+              { text: "then rotate one variable if still zero", state: "missing" }
             ];
 
         return (

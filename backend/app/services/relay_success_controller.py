@@ -973,9 +973,11 @@ def _public_offer_preflight() -> dict[str, Any]:
                 "body_length": len(page_text),
                 "sample_status_code": sample_status,
                 "contains_notes_form": "notesForm" in page_text or 'id="notes"' in page_text,
+                "contains_send_notes_anchor": 'id="send-notes"' in page_text or "#send-notes" in page_text,
                 "contains_lead_api": "/api/relay/lead" in combined_text,
                 "contains_checkout_action": "checkout_click" in page_text or "js-checkout" in page_text,
                 "contains_checkout_url": bool(checkout_url and checkout_url in combined_text),
+                "contains_pay_first_copy": "pay first" in page_lower,
                 "contains_price": entry_price_label() in combined_text,
                 "looks_blocked": "web page blocked" in page_lower or "access to the web page you were trying to visit has been blocked" in page_lower,
             }
@@ -988,10 +990,14 @@ def _public_offer_preflight() -> dict[str, Any]:
             missing.append("PUBLIC_OFFER_NOTES_FORM")
         if not detail["contains_lead_api"]:
             missing.append("PUBLIC_OFFER_LEAD_API")
+        if not detail["contains_send_notes_anchor"]:
+            missing.append("PUBLIC_OFFER_SEND_NOTES_ANCHOR")
         if not detail["contains_checkout_action"]:
             missing.append("PUBLIC_OFFER_CHECKOUT_ACTION")
         if checkout_url and not detail["contains_checkout_url"]:
             missing.append("PUBLIC_OFFER_CHECKOUT_URL")
+        if not detail["contains_pay_first_copy"]:
+            missing.append("PUBLIC_OFFER_PAY_FIRST_COPY")
         if not detail["contains_price"]:
             missing.append("PUBLIC_OFFER_PRICE_COPY")
         if sample_status is not None and sample_status >= 400:
