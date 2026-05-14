@@ -966,6 +966,8 @@ def _public_offer_preflight() -> dict[str, Any]:
 
         combined_text = page_text + "\n" + config_text
         page_lower = page_text.lower()
+        primary_money_path = 'data-primary-money-path="checkout-first"' in page_text
+        checkout_first_copy = "checkout first" in page_lower and "pay $1" in page_lower
         detail.update(
             {
                 "status_code": page_response.status_code,
@@ -978,6 +980,11 @@ def _public_offer_preflight() -> dict[str, Any]:
                 "contains_checkout_action": "checkout_click" in page_text or "js-checkout" in page_text,
                 "contains_checkout_url": bool(checkout_url and checkout_url in combined_text),
                 "contains_pay_first_copy": "pay first" in page_lower,
+                "contains_primary_money_path": primary_money_path,
+                "contains_checkout_first_copy": checkout_first_copy,
+                "checkout_action_count": page_text.count("js-checkout"),
+                "pay_one_dollar_count": page_text.lower().count("pay $1"),
+                "send_notes_first_count": page_text.lower().count("send notes first"),
                 "contains_price": entry_price_label() in combined_text,
                 "looks_blocked": "web page blocked" in page_lower or "access to the web page you were trying to visit has been blocked" in page_lower,
             }
@@ -998,6 +1005,8 @@ def _public_offer_preflight() -> dict[str, Any]:
             missing.append("PUBLIC_OFFER_CHECKOUT_URL")
         if not detail["contains_pay_first_copy"]:
             missing.append("PUBLIC_OFFER_PAY_FIRST_COPY")
+        if not detail["contains_primary_money_path"]:
+            missing.append("PUBLIC_OFFER_PRIMARY_MONEY_PATH")
         if not detail["contains_price"]:
             missing.append("PUBLIC_OFFER_PRICE_COPY")
         if sample_status is not None and sample_status >= 400:

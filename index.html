@@ -2449,6 +2449,7 @@
         var checkoutReady = Boolean(ladder.entry_offer_ready || entryPrice > 0);
         var productLive = checkoutReady && Number(acquisition.relay_public_offer_smoke_test || 0) > 0;
         var payFirstLive = productLive && publicOffer.contains_checkout_action && publicOffer.contains_checkout_url && publicOffer.contains_price && (publicOffer.contains_pay_first_copy !== false);
+        var primaryMoneyPathLive = payFirstLive && publicOffer.contains_primary_money_path === true;
         var notesFallbackLive = Boolean((publicOffer.contains_send_notes_anchor !== false) && publicOffer.contains_notes_form && publicOffer.contains_lead_api);
         var telemetryLive = views > 0 && systemEvents > 0;
         var sampleDone = parts && parts.target && parts.current >= parts.target;
@@ -2468,7 +2469,8 @@
         var gates = [
           { label: money(entryPrice || 1) + " checkout configured", done: checkoutReady },
           { label: "product route checked", done: productLive },
-          { label: "pay-first page live", done: payFirstLive },
+          { label: "checkout-first page live", done: payFirstLive },
+          { label: "single checkout path", done: primaryMoneyPathLive },
           { label: "notes fallback live", done: notesFallbackLive },
           { label: "telemetry recording", done: telemetryLive },
           { label: progress + " sample sent", done: Boolean(sampleDone) },
@@ -2491,7 +2493,7 @@
           : (pendingObservation ? "wait until " + checkTime : "rotate " + activeLane + " -> " + nextLane);
         var buyerStatus = fmt(currentCheckout) + " checkout clicks / " + fmt(replies) + " replies / " + money(gross);
         var flow = [
-          moneyStepHtml("$1 pay path", payFirstLive ? "live" : "not live", payFirstLive ? "done" : "missing"),
+          moneyStepHtml("$1 pay path", primaryMoneyPathLive ? "checkout first" : (payFirstLive ? "live" : "not live"), primaryMoneyPathLive ? "done" : "missing"),
           moneyStepHtml("traffic", fmt(views) + " views", views > 0 ? "done" : "missing"),
           moneyStepHtml("inspection", fmt(sampleOpens) + " sample opens", inspectionDone ? "done" : "missing"),
           moneyStepHtml("sample", progress, sampleDone ? "done" : "wait"),
