@@ -217,6 +217,8 @@ def _money_decision_contract(
     checkout_clicks: int,
     payments: int,
     experiment_decision_next: str,
+    active_reply_observation_pending: bool = False,
+    active_reply_observation_deadline: str = "",
 ) -> dict[str, Any]:
     if active_signal_payments > 0:
         state = "paid_signal_keep_stable"
@@ -230,6 +232,14 @@ def _money_decision_contract(
     elif active_remaining > 0:
         state = "collect_sample"
         next_action = experiment_decision_next
+    elif active_reply_observation_pending:
+        state = "observe_reply_window"
+        deadline = str(active_reply_observation_deadline or "").strip()
+        next_action = (
+            f"Wait until {deadline} before changing copy or targeting."
+            if deadline
+            else "Wait for the active sample reply window before changing copy or targeting."
+        )
     else:
         state = "rotate_one_variable"
         next_action = "Rotate one controlled targeting or copy variable before sending the next sample."
@@ -240,7 +250,8 @@ def _money_decision_contract(
         "sample_progress": f"{active_sends}/{active_target}" if active_target else "",
         "keep_condition": "payment from the active lane",
         "close_condition": "unhandled reply or checkout intent before payment",
-        "rotate_condition": "completed active sample with zero real replies and zero payments",
+        "observe_condition": "completed active sample still inside its reply-observation window",
+        "rotate_condition": "completed active sample with zero real replies and zero payments after the reply-observation window",
         "do_not_scale_condition": "do not increase volume until the active sample has buyer signal or a completed review",
     }
 
@@ -421,6 +432,10 @@ def _success_governor_contract(
         state = "close_buyer_signal"
         next_step = money_decision.get("next_action") or "close buyer signal through the paid test"
         human_policy = "stay out unless buyer signal cannot be handled automatically"
+    elif money_state == "observe_reply_window":
+        state = "observe_reply_window"
+        next_step = money_decision.get("next_action") or "wait for the active sample reply window"
+        human_policy = "stay out until the reply window ends unless buyer signal, payment, or health changes"
     elif money_state == "rotate_one_variable":
         state = "rotate_experiment"
         next_step = money_decision.get("next_action") or "rotate one controlled variable"
@@ -482,6 +497,11 @@ def _owner_absence_contract(
         reason = "reply was handled and Relay is waiting for checkout or payment"
         autonomous_until = "checkout, payment, unhandled reply, or reply-system health failure"
         next_owner_interrupt = "interrupt only if a human reply cannot be auto-closed or payment needs fulfillment"
+    elif governor_state == "observe_reply_window":
+        state = "owner_out_of_loop"
+        reason = "active sample is complete; reply window is still open"
+        autonomous_until = audit_at
+        next_owner_interrupt = "interrupt only for buyer signal, payment, health failure, or the observation deadline"
     elif governor_state == "rotate_experiment":
         state = "owner_out_of_loop"
         reason = "completed sample needs one controlled autonomous rotation"
@@ -506,6 +526,8 @@ def _owner_absence_contract(
         permitted_action = "follow up checkout intent until payment or no-signal timeout"
     elif ladder_stage == "payment":
         permitted_action = "fulfill paid buyer and keep the winning lane stable"
+    elif governor_state == "observe_reply_window":
+        permitted_action = "observe the active sample until the deadline before rotating one variable"
     else:
         permitted_action = "review evidence and rotate one controlled variable only when the sample is complete"
 
@@ -527,7 +549,7 @@ def _owner_absence_contract(
             "payment": "fulfill the buyer and keep the lane stable",
             "send_window_success": "continue collecting the active sample without changing variables",
             "send_window_failure": "fix execution before judging demand",
-            "sample_complete_no_signal": "rotate exactly one controlled copy or targeting variable",
+            "sample_complete_no_signal": "after the reply window ends, rotate exactly one controlled copy or targeting variable",
         },
         "weekly_success_condition": revenue_objective.get("success_condition") or "collect paid tests",
     }
@@ -564,6 +586,9 @@ def _autonomous_money_mandate(
     elif reply_state == "attention_required" or ladder_stage in {"reply", "checkout"}:
         state = "close_buyer_signal"
         primary_action = reply_autonomy.get("next_action") or money_decision.get("next_action") or "turn buyer signal into the paid test"
+    elif money_state == "observe_reply_window":
+        state = "observe_reply_window"
+        primary_action = money_decision.get("next_action") or "wait for the active sample reply window before rotating"
     elif money_state == "rotate_one_variable" or ladder_stage == "review":
         state = "rotate_after_no_signal"
         primary_action = money_decision.get("next_action") or "rotate one controlled variable after the completed no-signal sample"
@@ -3006,6 +3031,8 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
                 checkout_clicks=checkout_clicks,
                 payments=payments,
                 experiment_decision_next=experiment_decision_next,
+                active_reply_observation_pending=bool(active_reply_observation.get("pending")),
+                active_reply_observation_deadline=str(active_reply_observation.get("observe_until") or ""),
             )
             money_state = str(success.get("bottleneck") or "unknown")
             loop_status = str(checks.get("money_loop_runtime", {}).get("status") or "unknown")

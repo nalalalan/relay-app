@@ -950,13 +950,15 @@
 
     .first-money {
       display: grid;
-      grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
-      gap: 34px;
-      align-items: start;
+      gap: 24px;
+      min-width: 0;
     }
 
-    .first-money-meter {
-      min-width: 0;
+    .first-money-top {
+      display: grid;
+      grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+      gap: 34px;
+      align-items: end;
     }
 
     .first-money-meter strong {
@@ -993,6 +995,90 @@
       height: 100%;
       border-radius: inherit;
       background: linear-gradient(90deg, var(--good), var(--blue));
+    }
+
+    .money-flow {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 0;
+      min-width: 0;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .money-step {
+      position: relative;
+      min-width: 0;
+      padding: 18px 14px 16px;
+    }
+
+    .money-step:not(:last-child) {
+      border-right: 1px solid var(--line);
+    }
+
+    .money-step::before {
+      content: "";
+      display: block;
+      width: 9px;
+      height: 9px;
+      margin-bottom: 12px;
+      border: 2px solid var(--muted);
+      border-radius: 999px;
+      background: var(--paper);
+    }
+
+    .money-step.done::before {
+      border-color: var(--good);
+      background: var(--good);
+    }
+
+    .money-step.wait::before {
+      border-color: var(--warn);
+    }
+
+    .money-step.missing::before {
+      border-color: var(--ink);
+    }
+
+    .money-step b,
+    .first-money-read b {
+      display: block;
+      color: var(--ink);
+      font-size: 17px;
+      font-weight: 920;
+      line-height: 1.05;
+    }
+
+    .money-step em,
+    .first-money-read em {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-style: normal;
+      font-weight: 820;
+      line-height: 1.25;
+    }
+
+    .first-money-read {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 22px;
+      min-width: 0;
+    }
+
+    .first-money-read div {
+      min-width: 0;
+    }
+
+    .first-money-read span {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .06em;
+      text-transform: uppercase;
     }
 
     .first-money-columns {
@@ -1119,8 +1205,24 @@
       }
 
       .first-money {
-        grid-template-columns: minmax(0, 1fr);
         gap: 22px;
+      }
+
+      .first-money-top,
+      .first-money-read {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .money-flow {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .money-step:nth-child(3) {
+        border-right: 0;
+      }
+
+      .money-step:nth-child(-n+3) {
+        border-bottom: 1px solid var(--line);
       }
 
       .tabs {
@@ -1241,6 +1343,19 @@
       .first-money-columns {
         grid-template-columns: minmax(0, 1fr);
         gap: 18px;
+      }
+
+      .money-flow {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .money-step {
+        padding: 14px 0;
+        border-right: 0 !important;
+      }
+
+      .money-step:not(:last-child) {
+        border-bottom: 1px solid var(--line);
       }
 
       .first-money-meter strong {
@@ -2275,6 +2390,15 @@
         }).join("");
       }
 
+      function moneyStepHtml(label, note, state) {
+        return (
+          '<div class="money-step ' + escapeHtml(state || "") + '">' +
+            '<b>' + escapeHtml(label) + '</b>' +
+            '<em>' + escapeHtml(note) + '</em>' +
+          '</div>'
+        );
+      }
+
       function firstMoneyPlanHtml(evidence, ops, ledger) {
         var success = ((ops || {}).relay_success || {});
         var moneySystem = ((ops || {}).money_system || {});
@@ -2288,6 +2412,7 @@
         var deliveryDetail = (((ops || {}).recent || {}).last_delivery_smoke_detail || {});
         var totals = ((evidence || {}).totals || {}).intent_event_counts || {};
         var acquisition = ((evidence || {}).totals || {}).acquisition_event_counts || {};
+        var outreach = success.outreach || {};
         var progress = activeProgressLabel(success, moneySystem, ledgerData(latestLedger(ledger)));
         var parts = progressParts(progress);
         var views = Number(totals.page_view || 0);
@@ -2316,6 +2441,15 @@
         var inspectionDone = sampleOpens > 0 || actionTotal(evidence, 365) > 0;
         var fulfillmentReady = String(deliveryDetail.status || "").toLowerCase() === "ok" || String((success.payment_webhook_preflight || {}).status || "").toLowerCase() === "ok";
         var buyerSignal = replies > 0 || currentCheckout > 0;
+        var pendingObservation = Boolean(
+          observation.pending ||
+          observation.seconds_until_observe_until > 0 ||
+          health.state === "waiting_for_reply_observation" ||
+          ((moneySystem.money_decision_contract || {}).state === "observe_reply_window")
+        );
+        var activeVariant = outreach.active_experiment_variant || moneySystem.active_experiment_variant || "";
+        var activeLane = humanLane(activeVariant);
+        var nextLane = nextLaneAfter(activeVariant);
 
         var gates = [
           { label: money(entryPrice || 1) + " checkout configured", done: checkoutReady },
@@ -2326,7 +2460,8 @@
           { label: progress + " sample sent", done: Boolean(sampleDone) },
           { label: fmt(sampleOpens) + " sample opens", done: inspectionDone },
           { label: "paid fulfillment checked", done: fulfillmentReady },
-          { label: "buyer reply or checkout", done: buyerSignal },
+          { label: "reply window protected", done: Boolean(sampleDone && (pendingObservation || buyerSignal || paid)) },
+          { label: activeLane + " -> " + nextLane + " selected", done: Boolean(sampleDone && !paid) },
           { label: "real paid buyer", done: paid }
         ];
         var doneCount = gates.filter(function (gate) { return gate.done; }).length;
@@ -2335,44 +2470,36 @@
         var checkTime = observeUntil ? localTime(observeUntil) : "next logged check";
         var missing = gates.filter(function (gate) { return !gate.done; });
         var leftText = missing.length
-          ? missing.map(function (gate) { return gate.label; }).slice(0, 3).join(" / ")
+          ? missing.map(function (gate) { return gate.label; }).slice(0, 2).join(" / ")
           : "none";
-        var doneItems = gates.filter(function (gate) { return gate.done; }).slice(0, 8).map(function (gate) {
-          return { text: gate.label, state: "done" };
-        });
-        if (!doneItems.length) doneItems.push({ text: "no gates complete", state: "wait" });
-
-        var requiredItems = [
-          { text: "one non-owner " + money(Math.max(entryPrice || 1, 1)) + "+ Stripe payment", state: paid ? "done" : "missing" },
-          { text: "backend records real revenue", state: paid ? "done" : "missing" },
-          { text: "dashboard shows >" + money(0), state: paid ? "done" : "missing" }
-        ];
-
-        var nextItems = paid
-          ? [
-              { text: "fulfill paid packet", state: "done" },
-              { text: "keep the paid lane stable", state: "done" }
-            ]
-          : [
-              { text: fmt(currentCheckout) + " current checkout clicks / " + fmt(replies) + " replies", state: buyerSignal ? "done" : "missing" },
-              { text: "first non-owner payment", state: "missing" },
-              { text: "observe until " + checkTime, state: "wait" },
-              { text: "then rotate one variable if still zero", state: "missing" }
-            ];
+        var nextMove = paid
+          ? "hold paid lane"
+          : (pendingObservation ? "wait until " + checkTime : "rotate " + activeLane + " -> " + nextLane);
+        var buyerStatus = fmt(currentCheckout) + " checkout clicks / " + fmt(replies) + " replies / " + money(gross);
+        var flow = [
+          moneyStepHtml("$1 pay path", payFirstLive ? "live" : "not live", payFirstLive ? "done" : "missing"),
+          moneyStepHtml("traffic", fmt(views) + " views", views > 0 ? "done" : "missing"),
+          moneyStepHtml("inspection", fmt(sampleOpens) + " sample opens", inspectionDone ? "done" : "missing"),
+          moneyStepHtml("sample", progress, sampleDone ? "done" : "wait"),
+          moneyStepHtml("next angle", nextLane, paid ? "done" : (pendingObservation ? "wait" : "done")),
+          moneyStepHtml("first payment", money(gross), paid ? "done" : "missing")
+        ].join("");
 
         return (
-          '<div class="first-money-meter">' +
-            '<span class="launch-label">readiness to first paid signal</span>' +
-            '<strong>' + escapeHtml(fmt(percent)) + '%</strong>' +
-            '<em>' + escapeHtml(doneCount + "/" + gates.length + " gates. Money " + fmt(payments) + "/1 payments.") + '</em>' +
-            '<div class="first-money-bar" aria-label="' + escapeHtml(fmt(percent) + " percent complete") + '"><i style="width:' + escapeHtml(String(Math.max(0, Math.min(100, percent)))) + '%"></i></div>' +
-            '<p class="caption">' + escapeHtml("Left: " + leftText + ".") + '</p>' +
+          '<div class="first-money-top">' +
+            '<div class="first-money-meter">' +
+              '<span class="launch-label">implementation readiness</span>' +
+              '<strong>' + escapeHtml(fmt(percent)) + '%</strong>' +
+              '<em>' + escapeHtml(doneCount + "/" + gates.length + " gates. Buyer payment " + fmt(payments) + "/1.") + '</em>' +
+              '<div class="first-money-bar" aria-label="' + escapeHtml(fmt(percent) + " percent complete") + '"><i style="width:' + escapeHtml(String(Math.max(0, Math.min(100, percent)))) + '%"></i></div>' +
+            '</div>' +
+            '<div class="first-money-read">' +
+              '<div><span>open</span><b>' + escapeHtml(money(entryPrice || 1) + " paid test") + '</b><em>' + escapeHtml(payFirstLive ? "checkout is first-screen and live" : "checkout path needs repair") + '</em></div>' +
+              '<div><span>now</span><b>' + escapeHtml(nextMove) + '</b><em>' + escapeHtml(buyerStatus) + '</em></div>' +
+              '<div><span>left</span><b>' + escapeHtml(leftText) + '</b><em>' + escapeHtml("no money counted until Stripe records a non-owner payment") + '</em></div>' +
+            '</div>' +
           '</div>' +
-          '<div class="first-money-columns">' +
-            '<div class="first-money-col"><h3>Required</h3><ul>' + firstMoneyList(requiredItems) + '</ul></div>' +
-            '<div class="first-money-col"><h3>Done</h3><ul>' + firstMoneyList(doneItems) + '</ul></div>' +
-            '<div class="first-money-col"><h3>Work left</h3><ul>' + firstMoneyList(nextItems) + '</ul></div>' +
-          '</div>'
+          '<div class="money-flow">' + flow + '</div>'
         );
       }
 
@@ -2408,6 +2535,18 @@
         if (lower.indexOf("revenue") >= 0 || lower.indexOf("paid") >= 0) return "paid-test outreach";
         if (lower.indexOf("reply") >= 0) return "reply follow-up";
         return sentence(raw.replace(/_/g, " "), "active sample");
+      }
+
+      function nextLaneAfter(value) {
+        var key = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+        var next = {
+          hard_paid_test_direct: "stalled-opportunity",
+          stalled_opportunity_direct: "revenue leak",
+          revenue_leak_direct: "paid test",
+          paid_test_explicit: "sample-first",
+          sample_first_plain: "pain-owner"
+        };
+        return next[key] || "one-variable rotation";
       }
 
       function signalHtml(name, meta) {
