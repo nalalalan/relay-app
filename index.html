@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Relay | Live data</title>
+  <title>relay</title>
   <meta name="description" content="Messy sales-call notes become clean follow-up, CRM-ready summaries, and a live view of what is converting.">
   <link rel="canonical" href="https://relay.aolabs.io/">
-  <link rel="icon" href="https://aolabs.io/favicon.svg?v=20260515-ao-monogram-centered" type="image/svg+xml">
+  <link rel="icon" href="https://aolabs.io/favicon.svg?v=20260515-ao-disc-a" type="image/svg+xml">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=20260508-icon-pass2">
-  <link rel="apple-touch-icon" href="https://aolabs.io/marks/ao-ink.svg?v=20260515-ao-monogram-centered">
+  <link rel="apple-touch-icon" href="https://aolabs.io/marks/ao-ink.svg?v=20260515-ao-disc-a">
   <meta name="twitter:image:alt" content="Relay by AO Labs preview card.">
   <meta name="twitter:image" content="https://relay.aolabs.io/og-image-20260506-meaning.png">
   <meta name="twitter:description" content="Messy sales-call notes become clean follow-up, CRM-ready summaries, and a live view of what is converting.">
-  <meta name="twitter:title" content="Relay">
+  <meta name="twitter:title" content="relay">
   <meta name="twitter:card" content="summary_large_image">
   <meta property="og:image:alt" content="Relay by AO Labs preview card.">
   <meta property="og:image:height" content="630">
@@ -22,7 +22,7 @@
   <meta property="og:image" content="https://relay.aolabs.io/og-image-20260506-meaning.png">
   <meta property="og:url" content="https://relay.aolabs.io/">
   <meta property="og:description" content="Messy sales-call notes become clean follow-up, CRM-ready summaries, and a live view of what is converting.">
-  <meta property="og:title" content="Relay">
+  <meta property="og:title" content="relay">
   <meta property="og:site_name" content="AO Labs">
   <meta property="og:type" content="website">
   <meta name="theme-color" content="#f7f5f0">
@@ -1543,33 +1543,29 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="https://aolabs.io/suite-header.css?v=20260515-ao-disc-a">
 </head>
 <body>
-  <header>
-    <div class="wrap topbar">
-      <a class="nav-link ao-home" href="https://aolabs.io/" aria-label="AO Labs">
-        <img src="https://aolabs.io/marks/ao-ink.svg?v=20260515-ao-monogram-centered" alt="">
+  <header class="suite-topbar" aria-label="relay navigation">
+    <div class="suite-brand-cluster">
+      <a class="suite-ao-home" href="https://aolabs.io/" aria-label="aolabs.io">
+        <img src="https://aolabs.io/marks/ao-ink.svg?v=20260515-ao-disc-a" alt="">
       </a>
-      <a class="brand" href="/">
-        <span>Relay</span>
+      <a class="suite-app-brand" href="/" aria-label="relay home">
+        <img class="suite-app-mark" src="https://aolabs.io/icons/relay.svg?v=20260508-icon-pass2" alt="">
+        <span class="suite-app-name">relay</span>
       </a>
-      <div class="top-right">
-        <nav class="nav-links" aria-label="Relay links">
-          <a class="nav-link" href="https://relaybrief.com/" data-event="relay_live_product_click">Product</a>
-          <a class="nav-link" href="/paper.pdf" download data-event="relay_live_paper_click">Paper</a>
-        </nav>
-        <div class="status">
-          <span id="liveDot" class="dot"></span>
-          <span id="statusText">loading</span>
-        </div>
-      </div>
+    </div>
+    <div class="suite-topbar-actions" aria-label="relay actions">
+      <a href="/paper.pdf" download data-event="relay_live_paper_click">paper</a>
+      <span class="status"><span id="liveDot" class="dot"></span><span id="statusText">loading</span></span>
     </div>
   </header>
 
   <main class="wrap">
     <section class="hero" aria-label="Relay live status">
       <div>
-        <h1>relay.aolabs.io</h1>
+        <h1>relay</h1>
         <p class="sub" id="summaryLine">Loading the live trend.</p>
       </div>
       <div class="tabs" role="tablist" aria-label="Time range">
