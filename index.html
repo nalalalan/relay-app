@@ -6,9 +6,9 @@
   <title>Relay | Live data</title>
   <meta name="description" content="Messy sales-call notes become clean follow-up, CRM-ready summaries, and a live view of what is converting.">
   <link rel="canonical" href="https://relay.aolabs.io/">
-  <link rel="icon" href="https://aolabs.io/favicon.svg?v=20260513-favicon-contrast" type="image/svg+xml">
+  <link rel="icon" href="https://aolabs.io/favicon.svg?v=20260515-ao-monogram" type="image/svg+xml">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=20260508-icon-pass2">
-  <link rel="apple-touch-icon" href="https://aolabs.io/marks/ao-ink.svg?v=20260513-favicon-contrast">
+  <link rel="apple-touch-icon" href="https://aolabs.io/marks/ao-ink.svg?v=20260515-ao-monogram">
   <meta name="twitter:image:alt" content="Relay by AO Labs preview card.">
   <meta name="twitter:image" content="https://relay.aolabs.io/og-image-20260506-meaning.png">
   <meta name="twitter:description" content="Messy sales-call notes become clean follow-up, CRM-ready summaries, and a live view of what is converting.">
@@ -1145,6 +1145,93 @@
       border-color: var(--ink);
     }
 
+    .legacy-hidden,
+    .tabs {
+      display: none !important;
+    }
+
+    .boring-section {
+      margin-top: 8px;
+      padding: 16px 0 18px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      scroll-margin-top: 82px;
+    }
+
+    .boring-section .section-head {
+      margin-bottom: 10px;
+    }
+
+    .boring-section h2 {
+      font-size: 19px;
+      line-height: 1.15;
+    }
+
+    .boring-section .first-money {
+      display: block;
+    }
+
+    .essential-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      background: transparent;
+    }
+
+    .essential-table th,
+    .essential-table td {
+      padding: 11px 0;
+      border-top: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .essential-table tr:first-child th,
+    .essential-table tr:first-child td {
+      border-top: 0;
+    }
+
+    .essential-table th {
+      width: 170px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+      text-transform: none;
+    }
+
+    .essential-table td {
+      color: var(--ink);
+      font-size: 15px;
+      font-weight: 820;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .essential-table .note {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .raw-details {
+      margin-top: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .raw-details summary {
+      cursor: pointer;
+      padding: 13px 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 820;
+    }
+
+    .raw-panel {
+      padding-bottom: 16px;
+    }
+
     .links {
       display: flex;
       flex-wrap: wrap;
@@ -1414,6 +1501,24 @@
         max-width: 50%;
       }
 
+      .essential-table,
+      .essential-table tbody,
+      .essential-table tr,
+      .essential-table th,
+      .essential-table td {
+        display: block;
+        width: 100%;
+      }
+
+      .essential-table th {
+        padding-bottom: 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .essential-table td {
+        padding-top: 4px;
+      }
+
       .tab {
         min-width: 0;
         padding: 0 7px;
@@ -1443,7 +1548,7 @@
   <header>
     <div class="wrap topbar">
       <a class="nav-link ao-home" href="https://aolabs.io/" aria-label="AO Labs">
-        <img src="https://aolabs.io/marks/ao-ink.svg?v=20260513-favicon-contrast" alt="">
+        <img src="https://aolabs.io/marks/ao-ink.svg?v=20260515-ao-monogram" alt="">
       </a>
       <a class="brand" href="/">
         <span>Relay</span>
@@ -1475,7 +1580,15 @@
       </div>
     </section>
 
-    <section class="test-strip" aria-label="Current Relay test">
+    <section class="first-money-section boring-section" aria-label="Essential Relay state">
+      <div class="section-head">
+        <h2>Essential state</h2>
+        <span id="firstMoneyTime" class="small">live ops</span>
+      </div>
+      <div id="firstMoneyPlan" class="first-money">Loading.</div>
+    </section>
+
+    <section class="test-strip legacy-hidden" aria-label="Current Relay test">
       <div class="section-head">
         <h2>Current test</h2>
         <span id="testMeta" class="small">live ops</span>
@@ -1504,7 +1617,7 @@
       </div>
     </section>
 
-    <section class="launch-section" aria-label="Relay since launch">
+    <section class="launch-section legacy-hidden" aria-label="Relay since launch">
       <div class="section-head">
         <h2>Since launch</h2>
         <span id="decisionTime" class="small">latest log</span>
@@ -1512,7 +1625,7 @@
       <div id="moneyPath" class="launch-readout"></div>
     </section>
 
-    <section class="grid answer-grid" aria-label="Current answers">
+    <section class="grid answer-grid legacy-hidden" aria-label="Current answers">
       <article class="card">
         <div>
           <div class="label">Views / 24h</div>
@@ -1543,7 +1656,7 @@
       </article>
     </section>
 
-    <section class="grid main-grid" aria-label="Live trend charts">
+    <section class="grid main-grid legacy-hidden" aria-label="Live trend charts">
       <article class="panel tall">
         <div class="panel-head">
           <h2>Views and offer activity over time</h2>
@@ -1566,7 +1679,7 @@
       </article>
     </section>
 
-    <section class="grid main-grid" aria-label="Offer path and timing">
+    <section class="grid main-grid legacy-hidden" aria-label="Offer path and timing">
       <article class="panel">
         <div class="panel-head">
           <h2>Offer path</h2>
@@ -1586,7 +1699,7 @@
       </article>
     </section>
 
-    <section class="grid data-grid" aria-label="Relay data layer">
+    <section class="grid data-grid legacy-hidden" aria-label="Relay data layer">
       <article class="panel">
         <div class="panel-head">
           <h2>Seen by system</h2>
@@ -1604,8 +1717,9 @@
       </article>
     </section>
 
-    <section class="grid single-grid" aria-label="Raw Relay data">
-      <article class="panel">
+    <details class="raw-details" aria-label="Raw Relay data">
+      <summary>Raw data</summary>
+      <div class="raw-panel">
         <div class="panel-head">
           <h2>Raw data</h2>
           <span id="rawSize" class="small">live payload</span>
@@ -1617,16 +1731,8 @@
           <button class="raw-tab" data-raw="ledger" type="button">Ledger</button>
         </div>
         <pre id="rawJson" class="raw-json">Loading.</pre>
-      </article>
-    </section>
-
-    <section class="first-money-section" aria-label="First money requirements">
-      <div class="section-head">
-        <h2>First money</h2>
-        <span id="firstMoneyTime" class="small">live ops</span>
       </div>
-      <div id="firstMoneyPlan" class="first-money">Loading.</div>
-    </section>
+    </details>
 
     <div class="links" aria-label="Relay links">
       <a class="link" href="https://alan-operator-backend-production.up.railway.app/api/relay/evidence-export?days=30&limit=100">Raw export</a>
@@ -2490,32 +2596,27 @@
           : "none";
         var nextMove = paid
           ? "hold paid lane"
-          : (pendingObservation ? "wait until " + checkTime : "rotate " + activeLane + " -> " + nextLane);
+          : (buyerSignal
+              ? "close buyer signal"
+              : (!sampleDone
+                  ? "finish sample"
+                  : (pendingObservation ? "wait until " + checkTime : "rotate " + activeLane + " -> " + nextLane)));
         var buyerStatus = fmt(currentCheckout) + " checkout clicks / " + fmt(replies) + " replies / " + money(gross);
-        var flow = [
-          moneyStepHtml("$1 pay path", primaryMoneyPathLive ? "checkout first" : (payFirstLive ? "live" : "not live"), primaryMoneyPathLive ? "done" : "missing"),
-          moneyStepHtml("traffic", fmt(views) + " views", views > 0 ? "done" : "missing"),
-          moneyStepHtml("inspection", fmt(sampleOpens) + " sample opens", inspectionDone ? "done" : "missing"),
-          moneyStepHtml("sample", progress, sampleDone ? "done" : "wait"),
-          moneyStepHtml("next angle", nextLane, paid ? "done" : (pendingObservation ? "wait" : "done")),
-          moneyStepHtml("first payment", money(gross), paid ? "done" : "missing")
-        ].join("");
-
+        var rows = [
+          ["money", money(gross), fmt(payments) + " payments"],
+          ["readiness", fmt(percent) + "%", doneCount + "/" + gates.length + " gates; missing " + leftText],
+          ["product", money(entryPrice || 1) + " checkout", primaryMoneyPathLive ? "checkout first live" : (payFirstLive ? "checkout live" : "checkout needs repair")],
+          ["active test", activeLane, progress + " sample"],
+          ["buyer signal", buyerStatus, paid ? "paid buyer exists" : "none yet"],
+          ["traffic", fmt(views) + " views", fmt(sampleOpens) + " sample opens"],
+          ["next", nextMove, paid ? "hold paid lane" : (!sampleDone ? progress + " sample" : (pendingObservation ? "reply window" : "one variable"))]
+        ];
         return (
-          '<div class="first-money-top">' +
-            '<div class="first-money-meter">' +
-              '<span class="launch-label">implementation readiness</span>' +
-              '<strong>' + escapeHtml(fmt(percent)) + '%</strong>' +
-              '<em>' + escapeHtml(doneCount + "/" + gates.length + " gates. Buyer payment " + fmt(payments) + "/1.") + '</em>' +
-              '<div class="first-money-bar" aria-label="' + escapeHtml(fmt(percent) + " percent complete") + '"><i style="width:' + escapeHtml(String(Math.max(0, Math.min(100, percent)))) + '%"></i></div>' +
-            '</div>' +
-            '<div class="first-money-read">' +
-              '<div><span>open</span><b>' + escapeHtml(money(entryPrice || 1) + " paid test") + '</b><em>' + escapeHtml(payFirstLive ? "checkout is first-screen and live" : "checkout path needs repair") + '</em></div>' +
-              '<div><span>now</span><b>' + escapeHtml(nextMove) + '</b><em>' + escapeHtml(buyerStatus) + '</em></div>' +
-              '<div><span>left</span><b>' + escapeHtml(leftText) + '</b><em>' + escapeHtml("no money counted until Stripe records a non-owner payment") + '</em></div>' +
-            '</div>' +
-          '</div>' +
-          '<div class="money-flow">' + flow + '</div>'
+          '<table class="essential-table"><tbody>' +
+            rows.map(function (row) {
+              return '<tr><th scope="row">' + escapeHtml(row[0]) + '</th><td>' + escapeHtml(row[1]) + '<span class="note">' + escapeHtml(row[2]) + '</span></td></tr>';
+            }).join("") +
+          '</tbody></table>'
         );
       }
 
@@ -2824,7 +2925,7 @@
         $("nextMoveHint").textContent = move.hint;
         $("summaryLine").textContent = Number(relayMoney.payments || 0) > 0 || Number(relayMoney.gross_usd || 0) > 0
           ? "Money signal exists."
-          : test.summary;
+          : "No money yet.";
         $("updatedAt").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
         $("rangeLabel").textContent = rangeName();
         $("trendRange").textContent = days === 1 ? "24h / local hours" : rangeName() + " / local dates";
