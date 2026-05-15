@@ -53,6 +53,22 @@ def test_direct_fill_candidates_do_not_starve_incomplete_active_sample():
     assert fill == []
 
 
+def test_direct_fill_candidates_use_remaining_cap_after_missing_active_slot_reserved():
+    direct_followup = _candidate("direct-followup-1", "paid_test_explicit")
+    same_variant_non_sample = _candidate("same-active-variant", "hard_paid_test_direct")
+
+    fill = _direct_fill_candidates_after_active_first(
+        [direct_followup, same_variant_non_sample],
+        active_sample_ids=set(),
+        active_variant="hard_paid_test_direct",
+        fill_slots=1,
+        active_sample_can_complete_now=False,
+        reserved_missing_active_first_touch_slots=1,
+    )
+
+    assert fill == [direct_followup]
+
+
 def test_reserve_cap_when_active_sample_has_no_first_touch_candidates():
     assert _should_reserve_cap_for_missing_active_first_touch(1, 0, 0) is True
     assert _should_reserve_cap_for_missing_active_first_touch(1, 1, 0) is False

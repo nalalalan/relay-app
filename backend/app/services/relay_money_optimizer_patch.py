@@ -683,8 +683,11 @@ def _direct_fill_candidates_after_active_first(
     active_variant: str,
     fill_slots: int,
     active_sample_can_complete_now: bool,
+    reserved_missing_active_first_touch_slots: int = 0,
 ) -> list[tuple[AcquisitionProspect, Any, str, bool]]:
-    if fill_slots <= 0 or not active_sample_can_complete_now:
+    if fill_slots <= 0:
+        return []
+    if not active_sample_can_complete_now and reserved_missing_active_first_touch_slots <= 0:
         return []
     return [
         candidate
@@ -1230,6 +1233,7 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
         generic_sample_cap = _active_generic_sample_cap()
         generic_active_sample_fallback_count = 0
         money_fill_after_active_sample_count = 0
+        reserved_missing_active_first_touch_slots = 0
         fill_remaining_after_active_sample = _fill_remaining_cap_after_active_sample()
         reserve_cap_for_missing_active_first_touch = _should_reserve_cap_for_missing_active_first_touch(
             active_sample_needed,
@@ -1237,9 +1241,24 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
             len(active_generic_first_touch),
         )
         if reserve_cap_for_missing_active_first_touch:
-            candidates = []
+            reserved_missing_active_first_touch_slots = min(active_sample_needed, limit)
+            fill_slots_after_active = max(limit - reserved_missing_active_first_touch_slots, 0)
+            money_fill_candidates = (
+                _direct_fill_candidates_after_active_first(
+                    direct_due,
+                    active_sample_ids=set(),
+                    active_variant=active_variant,
+                    fill_slots=fill_slots_after_active,
+                    active_sample_can_complete_now=False,
+                    reserved_missing_active_first_touch_slots=reserved_missing_active_first_touch_slots,
+                )
+                if fill_remaining_after_active_sample
+                else []
+            )
+            money_fill_after_active_sample_count = len(money_fill_candidates)
+            candidates = money_fill_candidates
             active_sample_can_complete_now = False
-            active_sample_reserved_only = True
+            active_sample_reserved_only = not bool(money_fill_candidates)
         elif active_sample_needed > 0 and (active_direct_first_touch or active_generic_first_touch):
             generic_slots = max(min(active_sample_needed - len(active_direct_first_touch), generic_sample_cap), 0)
             generic_active_sample_fallback = active_generic_first_touch[:generic_slots]
@@ -1247,7 +1266,14 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
             active_sample_candidates = (active_direct_first_touch + generic_active_sample_fallback)[:active_sample_needed]
             active_sample_ids = {candidate[0].external_id for candidate in active_sample_candidates}
             active_sample_can_complete_now = len(active_sample_candidates) >= active_sample_needed
-            fill_slots_after_active = max(limit - len(active_sample_candidates), 0)
+            reserved_missing_active_first_touch_slots = min(
+                max(active_sample_needed - len(active_sample_candidates), 0),
+                max(limit - len(active_sample_candidates), 0),
+            )
+            fill_slots_after_active = max(
+                limit - len(active_sample_candidates) - reserved_missing_active_first_touch_slots,
+                0,
+            )
             money_fill_candidates = (
                 _direct_fill_candidates_after_active_first(
                     direct_due,
@@ -1255,6 +1281,7 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
                     active_variant=active_variant,
                     fill_slots=fill_slots_after_active,
                     active_sample_can_complete_now=active_sample_can_complete_now,
+                    reserved_missing_active_first_touch_slots=reserved_missing_active_first_touch_slots,
                 )
                 if fill_remaining_after_active_sample
                 else []
@@ -1364,6 +1391,7 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
             if active_sample_complete
             else 0,
             "active_variant_paused_after_sample_complete": active_variant_paused_after_sample_complete,
+            "reserved_missing_active_first_touch_slots": reserved_missing_active_first_touch_slots,
             "active_sample_reserved_only": active_sample_reserved_only,
             "active_sample_can_complete_now": active_sample_can_complete_now,
             "fill_remaining_cap_after_active_sample": fill_remaining_after_active_sample,
