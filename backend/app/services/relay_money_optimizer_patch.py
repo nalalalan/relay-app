@@ -693,6 +693,18 @@ def _direct_fill_candidates_after_active_first(
     ][:fill_slots]
 
 
+def _should_reserve_cap_for_missing_active_first_touch(
+    active_sample_needed: int,
+    active_direct_first_touch_count: int,
+    active_generic_first_touch_count: int,
+) -> bool:
+    return (
+        active_sample_needed > 0
+        and active_direct_first_touch_count <= 0
+        and active_generic_first_touch_count <= 0
+    )
+
+
 def _send_window_wait_text(status: dict[str, Any]) -> str:
     next_open = str(status.get("send_window_next_open_local") or "").strip()
     if not next_open:
@@ -1219,7 +1231,16 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
         generic_active_sample_fallback_count = 0
         money_fill_after_active_sample_count = 0
         fill_remaining_after_active_sample = _fill_remaining_cap_after_active_sample()
-        if active_sample_needed > 0 and (active_direct_first_touch or active_generic_first_touch):
+        reserve_cap_for_missing_active_first_touch = _should_reserve_cap_for_missing_active_first_touch(
+            active_sample_needed,
+            len(active_direct_first_touch),
+            len(active_generic_first_touch),
+        )
+        if reserve_cap_for_missing_active_first_touch:
+            candidates = []
+            active_sample_can_complete_now = False
+            active_sample_reserved_only = True
+        elif active_sample_needed > 0 and (active_direct_first_touch or active_generic_first_touch):
             generic_slots = max(min(active_sample_needed - len(active_direct_first_touch), generic_sample_cap), 0)
             generic_active_sample_fallback = active_generic_first_touch[:generic_slots]
             generic_active_sample_fallback_count = len(generic_active_sample_fallback)

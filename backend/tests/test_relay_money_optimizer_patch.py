@@ -4,6 +4,7 @@ from types import SimpleNamespace
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
 from app.services.relay_money_optimizer_patch import _direct_fill_candidates_after_active_first
+from app.services.relay_money_optimizer_patch import _should_reserve_cap_for_missing_active_first_touch
 
 
 def _candidate(external_id: str, variant: str):
@@ -50,3 +51,9 @@ def test_direct_fill_candidates_do_not_starve_incomplete_active_sample():
     )
 
     assert fill == []
+
+
+def test_reserve_cap_when_active_sample_has_no_first_touch_candidates():
+    assert _should_reserve_cap_for_missing_active_first_touch(1, 0, 0) is True
+    assert _should_reserve_cap_for_missing_active_first_touch(1, 1, 0) is False
+    assert _should_reserve_cap_for_missing_active_first_touch(0, 0, 0) is False
