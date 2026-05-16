@@ -955,6 +955,52 @@
       min-width: 0;
     }
 
+    .money-board {
+      display: grid;
+      grid-template-columns: minmax(180px, 0.7fr) repeat(2, minmax(0, 1fr));
+      gap: 22px;
+      margin: 2px 0 18px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .money-board div {
+      min-width: 0;
+    }
+
+    .money-board span {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .money-board strong {
+      display: block;
+      color: var(--ink);
+      font-size: clamp(25px, 3vw, 42px);
+      line-height: 1;
+      font-weight: 950;
+      letter-spacing: 0;
+    }
+
+    .money-board .money-main strong {
+      font-size: clamp(44px, 5vw, 76px);
+    }
+
+    .money-board em {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-style: normal;
+      font-weight: 760;
+      line-height: 1.25;
+    }
+
     .first-money-top {
       display: grid;
       grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
@@ -1297,7 +1343,8 @@
       }
 
       .first-money-top,
-      .first-money-read {
+      .first-money-read,
+      .money-board {
         grid-template-columns: minmax(0, 1fr);
       }
 
@@ -1576,9 +1623,9 @@
       </div>
     </section>
 
-    <section class="first-money-section boring-section" aria-label="Main Relay bottleneck">
+    <section class="first-money-section boring-section" aria-label="Relay money state">
       <div class="section-head">
-        <h2>Main bottleneck</h2>
+        <h2>Money</h2>
         <span id="firstMoneyTime" class="small">live ops</span>
       </div>
       <div id="firstMoneyPlan" class="first-money">Loading.</div>
@@ -2629,27 +2676,38 @@
           : (readinessReason || (paid ? "paid buyer exists" : "waiting for reply, checkout, or payment"));
         var systemNote = lastTick === "-" ? "tick time unavailable" : "last tick " + lastTick;
         if (activeRefill) systemNote += "; trying lead refill";
-        var bottleneckValue = paid ? "paid buyer" : (activeRefill ? "lead refill" : blockerValue);
-        var bottleneckNote = paid
-          ? "money signal exists"
-          : (activeRefill ? progress + " sent; " + fmt(activeDue) + " active queued; " + fmt(expectedNext) + " expected next sends" : blockerNote);
-        var meaningValue = paid ? "revenue signal" : (activeRefill ? "execution bottleneck" : "buyer signal");
-        var meaningNote = paid
-          ? "hold paid lane"
-          : (activeRefill ? "cannot judge $1 demand until the sample can finish" : "waiting for reply, checkout, or payment");
+        var remaining = Math.max(0, (parts && parts.target ? parts.target - parts.current : 0));
+        var nearestSignal = totalCheckout > 0
+          ? fmt(totalCheckout) + " checkout clicks"
+          : (totalLeads > 0
+              ? fmt(totalLeads) + " people left info"
+              : (sampleOpens > 0 ? fmt(sampleOpens) + " sample opens" : fmt(views) + " views"));
+        var nearestSignalNote = totalCheckout > 0
+          ? fmt(totalLeads) + " people left info; no paid buyer yet"
+          : (totalLeads > 0 ? "no checkout click yet" : "not close to money yet");
+        var nextDollar = paid
+          ? "paid buyer exists"
+          : (activeRefill
+              ? "find " + fmt(Math.max(1, remaining || 1)) + " fresh buyer"
+              : (buyerSignal ? "close current buyer" : (!sampleDone ? "finish current test" : "change one thing")));
+        var nextDollarNote = paid
+          ? "keep the paid path"
+          : (activeRefill
+              ? "then finish the 10/10 buyer test"
+              : (buyerSignal ? "reply, checkout, or payment" : (!sampleDone ? progress + " sent" : "same offer, one controlled change")));
         var rows = [
-          ["bottleneck", bottleneckValue, bottleneckNote],
-          ["meaning", meaningValue, meaningNote],
-          ["next", activeRefill ? "recover fresh active leads" : nextMove, activeRefill ? "then finish 10/10 active sample" : (paid ? "hold paid lane" : (!sampleDone ? progress + " sample" : (pendingObservation ? "reply window" : "one variable")))],
-          ["money", money(gross), fmt(payments) + " payments"],
-          ["product", money(entryPrice || 1) + " checkout", (primaryMoneyPathLive ? "checkout first live" : (payFirstLive ? "checkout live" : "checkout needs repair")) + (fulfillmentReady ? "; fulfillment checked" : "")],
-          ["active test", activeLane, progress + " sent; " + fmt(Math.max(0, (parts && parts.target ? parts.target - parts.current : 0))) + " remaining"],
-          ["outreach", fmt(sendsToday) + " sent today", fmt(weekSends) + " sent in 7d / " + fmt(sendFailures) + " failures"],
-          ["buyer signal", buyerStatus, fmt(totalCheckout) + " total checkout clicks; " + fmt(totalLeads) + " leads"],
-          ["traffic", fmt(views) + " views", fmt(sampleOpens) + " sample opens"],
-          ["system", sentence(loopStatus, "unknown"), systemNote]
+          ["offer", money(entryPrice || 1) + " checkout", (primaryMoneyPathLive ? "live" : (payFirstLive ? "checkout live" : "checkout needs repair")) + (fulfillmentReady ? "; fulfillment checked" : "")],
+          ["current test", progress + " sent", remaining > 0 ? fmt(remaining) + " buyer short" : "sample complete"],
+          ["price read", paid ? "paid" : "not enough to judge", activeRefill ? "do not blame price yet" : (buyerSignal ? buyerStatus : "waiting for buyer signal")],
+          ["attention", fmt(views) + " views", fmt(sampleOpens) + " sample opens"],
+          ["status", sentence(loopStatus, "unknown"), activeRefill ? "finding the next buyer" : systemNote]
         ];
         return (
+          '<div class="money-board">' +
+            '<div class="money-main"><span>cash</span><strong>' + escapeHtml(money(gross)) + '</strong><em>' + escapeHtml(fmt(payments) + " payments") + '</em></div>' +
+            '<div><span>closest signal</span><strong>' + escapeHtml(nearestSignal) + '</strong><em>' + escapeHtml(nearestSignalNote) + '</em></div>' +
+            '<div><span>next dollar</span><strong>' + escapeHtml(nextDollar) + '</strong><em>' + escapeHtml(nextDollarNote) + '</em></div>' +
+          '</div>' +
           '<table class="essential-table"><tbody>' +
             rows.map(function (row) {
               return '<tr><th scope="row">' + escapeHtml(row[0]) + '</th><td>' + escapeHtml(row[1]) + '<span class="note">' + escapeHtml(row[2]) + '</span></td></tr>';
@@ -2969,7 +3027,7 @@
         $("summaryLine").textContent = Number(relayMoney.payments || 0) > 0 || Number(relayMoney.gross_usd || 0) > 0
           ? "Money signal exists."
           : (summaryState === "active_experiment_refill"
-              ? "Bottleneck: lead refill. " + summaryProgress + " sent; " + fmt(summaryExpectedNext) + " expected next sends."
+              ? "Money: $0. $1 checkout live. Need one fresh buyer to finish the test."
               : "No money yet. " + summaryProgress + "; " + move.value.toLowerCase() + ".");
         $("updatedAt").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
         $("rangeLabel").textContent = rangeName();
