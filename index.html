@@ -505,6 +505,14 @@
       stroke-linejoin: round;
     }
 
+    .series-sample {
+      fill: none;
+      stroke: var(--blue);
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
     .dot-point {
       stroke: var(--panel);
       stroke-width: 2;
@@ -1227,6 +1235,11 @@
       line-height: 1.35;
     }
 
+    .sample-clicks-chart {
+      height: 190px;
+      margin-top: 4px;
+    }
+
     .essential-table {
       width: 100%;
       border-collapse: collapse;
@@ -1649,6 +1662,15 @@
         <span id="firstMoneyTime" class="small">live ops</span>
       </div>
       <div id="firstMoneyPlan" class="first-money">Loading.</div>
+    </section>
+
+    <section class="sample-clicks-section boring-section" aria-label="Sample clicks over time">
+      <div class="section-head">
+        <h2>Sample clicks</h2>
+        <span id="sampleClicksTotal" class="small">-</span>
+      </div>
+      <svg id="sampleClicksChart" class="chart sample-clicks-chart" role="img" aria-label="Cumulative sample clicks over time"></svg>
+      <p id="sampleClicksCaption" class="caption">Loading.</p>
     </section>
 
     <section class="test-strip legacy-hidden" aria-label="Current Relay test">
@@ -2155,6 +2177,130 @@
         });
         addText(svg, "count", pad.left, 10, "axis-label", "start");
         addText(svg, mode === "hour" ? "hour" : "date", width / 2, height - 2, "axis-label", "middle");
+      }
+
+      function allIntentDates(evidence) {
+        var rows = ((((evidence || {}).daily || {}).intent_event_counts) || []);
+        var seen = {};
+        rows.forEach(function (row) {
+          if (row.date) seen[row.date] = true;
+        });
+        var keys = Object.keys(seen).sort();
+        if (keys.length) return keys;
+        hourlyRows(evidence).forEach(function (row) {
+          seen[dateKey(row.date)] = true;
+        });
+        return Object.keys(seen).sort();
+      }
+
+      function nextDateKey(key) {
+        var date = new Date(key + "T12:00:00");
+        date.setDate(date.getDate() + 1);
+        return dateKey(date);
+      }
+
+      function cumulativeSampleSeries(evidence) {
+        var rows = ((((evidence || {}).daily || {}).intent_event_counts) || []);
+        var byDate = {};
+        rows.forEach(function (row) {
+          if (!row.date) return;
+          if (row.event_type === "sample_click" || row.event_type === "showcase_sample_click") {
+            byDate[row.date] = Number(byDate[row.date] || 0) + Number(row.count || 0);
+          }
+        });
+
+        if (!Object.keys(byDate).length) {
+          hourlyRows(evidence).forEach(function (row) {
+            var key = dateKey(row.date);
+            byDate[key] = Number(byDate[key] || 0) +
+              Number((row.events || {}).sample_click || 0) +
+              Number((row.events || {}).showcase_sample_click || 0);
+          });
+        }
+
+        var dates = allIntentDates(evidence);
+        if (!dates.length) return [];
+        var start = dates[0];
+        var end = dates[dates.length - 1];
+        var output = [];
+        var total = 0;
+        var key = start;
+        var guard = 0;
+        while (key <= end && guard < 400) {
+          var daily = Number(byDate[key] || 0);
+          total += daily;
+          output.push({ label: key, total: total, daily: daily });
+          key = nextDateKey(key);
+          guard += 1;
+        }
+        return output;
+      }
+
+      function drawSampleClicksChart(id, rows) {
+        var svg = $(id);
+        svg.innerHTML = "";
+        var width = 760;
+        var height = 190;
+        var pad = { left: 48, right: 16, top: 18, bottom: 38 };
+        svg.setAttribute("viewBox", "0 0 " + width + " " + height);
+
+        if (!rows.length) {
+          addText(svg, "No sample clicks yet", width / 2, height / 2, "axis-label", "middle");
+          return;
+        }
+
+        var max = Math.max.apply(null, rows.map(function (row) { return Number(row.total || 0); }).concat([1]));
+        var xRange = Math.max(rows.length - 1, 1);
+        var plotW = width - pad.left - pad.right;
+        var plotH = height - pad.top - pad.bottom;
+        var yMax = Math.max(1, Math.ceil(max));
+
+        function x(i) {
+          return pad.left + (i / xRange) * plotW;
+        }
+
+        function y(value) {
+          return pad.top + plotH - (Number(value || 0) / yMax) * plotH;
+        }
+
+        [0, .5, 1].forEach(function (p) {
+          var yy = pad.top + plotH - p * plotH;
+          svg.appendChild(svgEl("line", { x1: pad.left, y1: yy, x2: width - pad.right, y2: yy, class: "grid-line" }));
+          addText(svg, fmt(yMax * p), pad.left - 10, yy + 4, "tick-label", "end");
+        });
+
+        svg.appendChild(svgEl("line", { x1: pad.left, y1: pad.top, x2: pad.left, y2: pad.top + plotH, class: "axis" }));
+        svg.appendChild(svgEl("line", { x1: pad.left, y1: pad.top + plotH, x2: width - pad.right, y2: pad.top + plotH, class: "axis" }));
+
+        var d = rows.map(function (row, i) {
+          return (i === 0 ? "M" : "L") + x(i).toFixed(1) + " " + y(row.total).toFixed(1);
+        }).join(" ");
+        svg.appendChild(svgEl("path", { d: d, class: "series-sample" }));
+
+        rows.forEach(function (row, i) {
+          svg.appendChild(svgEl("circle", { cx: x(i), cy: y(row.total), r: row.daily ? 4 : 2.5, fill: row.daily ? "var(--blue)" : "var(--panel)", class: "dot-point" }));
+        });
+
+        var tickIndexes = rows.length <= 5
+          ? rows.map(function (_, i) { return i; })
+          : [0, Math.floor((rows.length - 1) / 2), rows.length - 1];
+        tickIndexes.forEach(function (i) {
+          if (!rows[i]) return;
+          addText(svg, shortDate(rows[i].label), x(i), height - 16, "tick-label", "middle");
+        });
+        addText(svg, "total", pad.left, 10, "axis-label", "start");
+        addText(svg, "date", width / 2, height - 2, "axis-label", "middle");
+      }
+
+      function renderSampleClicks(evidence) {
+        var rows = cumulativeSampleSeries(evidence);
+        var total = rows.length ? rows[rows.length - 1].total : 0;
+        var lastIncrease = rows.slice().reverse().find(function (row) { return Number(row.daily || 0) > 0; });
+        $("sampleClicksTotal").textContent = fmt(total) + " total";
+        drawSampleClicksChart("sampleClicksChart", rows);
+        $("sampleClicksCaption").textContent = total && lastIncrease
+          ? fmt(total) + " total sample clicks. Latest increase " + shortDate(lastIncrease.label) + "."
+          : "No sample clicks logged yet.";
       }
 
       function renderFunnel(evidence) {
@@ -3058,6 +3204,7 @@
         renderDataTrace(evidence, ops, ledger);
         renderRaw(evidence, ops, ledger);
         renderFirstMoney(evidence, ops, ledger);
+        renderSampleClicks(evidence);
 
         $("trendCaption").textContent = trendRows.length
           ? (days === 1
