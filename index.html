@@ -172,7 +172,7 @@
       grid-template-columns: minmax(0, 1fr) auto;
       gap: 18px;
       align-items: center;
-      padding: 2px 0 14px;
+      padding: 0 0 12px;
     }
 
     h1,
@@ -183,9 +183,9 @@
     }
 
     h1 {
-      font-size: clamp(24px, 3vw, 34px);
+      font-size: clamp(20px, 2vw, 24px);
       line-height: 1.05;
-      font-weight: 900;
+      font-weight: 880;
     }
 
     .sub {
@@ -955,65 +955,6 @@
       min-width: 0;
     }
 
-    .money-board {
-      display: grid;
-      grid-template-columns: minmax(180px, 0.7fr) repeat(3, minmax(0, 1fr));
-      gap: 18px;
-      margin: 2px 0 18px;
-      padding-bottom: 18px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .money-board div {
-      min-width: 0;
-    }
-
-    .money-board span {
-      display: block;
-      margin-bottom: 8px;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 900;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-
-    .money-board strong {
-      display: block;
-      color: var(--ink);
-      font-size: clamp(25px, 3vw, 42px);
-      line-height: 1;
-      font-weight: 950;
-      letter-spacing: 0;
-    }
-
-    .money-board .money-main strong {
-      font-size: clamp(44px, 5vw, 76px);
-    }
-
-    .money-board em {
-      display: block;
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 13px;
-      font-style: normal;
-      font-weight: 760;
-      line-height: 1.25;
-    }
-
-    .money-line {
-      margin: 0;
-      color: var(--muted);
-      font-size: 16px;
-      font-weight: 820;
-      line-height: 1.35;
-    }
-
-    .money-line b {
-      color: var(--ink);
-      font-weight: 950;
-    }
-
     .first-money-top {
       display: grid;
       grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
@@ -1230,6 +1171,62 @@
       display: block;
     }
 
+    .money-ledger {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      background: transparent;
+    }
+
+    .money-ledger th,
+    .money-ledger td {
+      padding: 11px 0;
+      border-top: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .money-ledger tr:first-child th,
+    .money-ledger tr:first-child td {
+      border-top: 0;
+    }
+
+    .money-ledger th {
+      width: 190px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 820;
+    }
+
+    .money-ledger td {
+      color: var(--ink);
+      font-size: 15px;
+      font-weight: 820;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .money-ledger .amount {
+      width: 220px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .money-ledger .note {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .money-line {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 680;
+      line-height: 1.35;
+    }
+
     .essential-table {
       width: 100%;
       border-collapse: collapse;
@@ -1356,9 +1353,18 @@
       }
 
       .first-money-top,
-      .first-money-read,
-      .money-board {
+      .first-money-read {
         grid-template-columns: minmax(0, 1fr);
+      }
+
+      .money-ledger th,
+      .money-ledger td {
+        display: block;
+        width: auto;
+      }
+
+      .money-ledger td {
+        padding-top: 3px;
       }
 
       .money-flow {
@@ -1626,7 +1632,7 @@
   <main class="wrap">
     <section class="hero" aria-label="Relay live status">
       <div>
-        <h1>money</h1>
+        <h1>Revenue</h1>
         <p class="sub" id="summaryLine">Loading the live trend.</p>
       </div>
       <div class="tabs" role="tablist" aria-label="Time range">
@@ -1639,7 +1645,7 @@
 
     <section class="first-money-section boring-section" aria-label="Relay money state">
       <div class="section-head">
-        <h2>Money</h2>
+        <h2>Current</h2>
         <span id="firstMoneyTime" class="small">live ops</span>
       </div>
       <div id="firstMoneyPlan" class="first-money">Loading.</div>
@@ -2570,6 +2576,10 @@
         }).join("");
       }
 
+      function moneyLedgerRow(label, value, note) {
+        return '<tr><th scope="row">' + escapeHtml(label) + '</th><td class="amount">' + escapeHtml(value) + '</td><td class="note">' + escapeHtml(note || "") + '</td></tr>';
+      }
+
       function moneyStepHtml(label, note, state) {
         return (
           '<div class="money-step ' + escapeHtml(state || "") + '">' +
@@ -2693,24 +2703,25 @@
           ? "0 paid yet"
           : (totalLeads > 0 ? "0 paid yet" : "0 paid yet");
         var nextDollar = paid
-          ? "money happened"
-          : "1 paid checkout";
+          ? "done"
+          : "1 payment";
         var nextDollarNote = paid
           ? fmt(payments) + " payment"
-          : "first dollar is the goal";
+          : "required for first revenue";
         var offerState = primaryMoneyPathLive ? "live" : (payFirstLive ? "live" : "needs repair");
         var moneyLine = paid
-          ? "Money happened. Keep the paid path."
+          ? "Paid checkout exists. Keep the paid path."
           : (offerState === "needs repair"
-              ? "No one has paid yet. Checkout needs repair before the next dollar."
-              : "No one has paid yet. The offer is live. The next win is one paid checkout.");
+              ? "No revenue yet. Checkout needs repair before money is possible."
+              : "No revenue yet. Payment path is live. First money requires one buyer to pay.");
         return (
-          '<div class="money-board">' +
-            '<div class="money-main"><span>made</span><strong>' + escapeHtml(money(gross)) + '</strong><em>' + escapeHtml(fmt(payments) + " payments") + '</em></div>' +
-            '<div><span>offer</span><strong>' + escapeHtml(money(entryPrice || 1)) + '</strong><em>' + escapeHtml("checkout " + offerState) + '</em></div>' +
-            '<div><span>closest signal</span><strong>' + escapeHtml(nearestSignal) + '</strong><em>' + escapeHtml(nearestSignalNote) + '</em></div>' +
-            '<div><span>next dollar</span><strong>' + escapeHtml(nextDollar) + '</strong><em>' + escapeHtml(nextDollarNote) + '</em></div>' +
-          '</div>' +
+          '<table class="money-ledger"><tbody>' +
+            moneyLedgerRow("revenue", money(gross), "real payments only") +
+            moneyLedgerRow("payments", fmt(payments), "Stripe payments") +
+            moneyLedgerRow("checkout", money(entryPrice || 1), offerState) +
+            moneyLedgerRow("checkout clicks", fmt(totalCheckout), paid ? fmt(payments) + " paid" : "0 paid") +
+            moneyLedgerRow("required", nextDollar, nextDollarNote) +
+          '</tbody></table>' +
           '<p class="money-line">' + escapeHtml(moneyLine) + '</p>'
         );
       }
@@ -3031,9 +3042,9 @@
         $("nextMoveValue").textContent = move.value;
         $("nextMoveHint").textContent = move.hint;
         $("summaryLine").textContent = Number(relayMoney.payments || 0) > 0 || Number(relayMoney.gross_usd || 0) > 0
-          ? "Money signal exists."
+          ? "Payment recorded."
           : (summaryState === "active_experiment_refill"
-              ? "Made $0. " + money(summaryEntryPrice) + " checkout " + (summaryFirstMoneyPathLive ? "live" : "needs repair") + ". " + fmt(summaryCheckout) + " checkout clicks. 0 paid."
+              ? "Revenue $0. Payments 0. Checkout " + (summaryFirstMoneyPathLive ? "live" : "needs repair") + ". " + fmt(summaryCheckout) + " checkout clicks."
               : "No money yet. " + summaryProgress + "; " + move.value.toLowerCase() + ".");
         $("updatedAt").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
         $("rangeLabel").textContent = rangeName();
