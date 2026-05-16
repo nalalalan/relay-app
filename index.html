@@ -64,12 +64,10 @@
     }
 
     header {
-      position: sticky;
-      top: 0;
+      position: relative;
       z-index: 5;
       border-bottom: 1px solid var(--line);
       background: rgba(247, 245, 240, .92);
-      backdrop-filter: blur(14px);
     }
 
     .topbar {
@@ -201,14 +199,11 @@
     .paper-strip {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 16px;
+      gap: 22px;
       align-items: center;
-      margin-bottom: 16px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--panel);
-      padding: 16px;
-      box-shadow: var(--shadow);
+      border-bottom: 1px solid var(--line);
+      background: #fffaf4;
+      padding: 14px clamp(16px, 3vw, 34px);
     }
 
     .paper-strip span {
@@ -223,9 +218,9 @@
     .paper-strip strong {
       display: block;
       margin-top: 5px;
-      font-size: clamp(22px, 2.3vw, 32px);
+      font-size: 28px;
       line-height: 1.05;
-      overflow-wrap: anywhere;
+      overflow-wrap: break-word;
     }
 
     .paper-actions {
@@ -1450,6 +1445,10 @@
         font-size: 24px;
       }
 
+      .paper-strip strong {
+        font-size: 22px;
+      }
+
       .sub {
         font-size: 13px;
       }
@@ -1636,11 +1635,20 @@
       </a>
     </div>
     <div class="suite-topbar-actions" aria-label="relay actions">
-      <a href="https://relaybrief.com/" data-event="relay_live_product_click">product</a>
-      <a href="/paper.pdf" download data-event="relay_live_paper_click">paper</a>
       <span class="status"><span id="liveDot" class="dot"></span><span id="statusText">loading</span></span>
     </div>
   </header>
+
+  <section class="paper-strip" aria-label="Relay paper">
+    <div>
+      <span>Paper</span>
+      <strong>Proof-governed autonomy for live revenue experiments</strong>
+      <p class="sub">Relay research record, compiled from the current manuscript source.</p>
+    </div>
+    <div class="paper-actions">
+      <a class="paper-button primary" href="/paper.pdf" download data-event="relay_live_paper_click">Open PDF</a>
+    </div>
+  </section>
 
   <main class="wrap">
     <section class="hero" aria-label="Relay live status">
