@@ -3,7 +3,7 @@
 
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
-\usepackage[british]{babel}
+\usepackage[american]{babel}
 \usepackage{csquotes}
 
 \usepackage[
@@ -11,7 +11,7 @@
     backend=biber,
     sorting=none,
     articletitle=true,
-    url=true,
+    url=false,
     doi=false,
     eprint=false,
     isbn=false
@@ -28,6 +28,7 @@
 \usepackage[font=small,labelfont=bf,labelsep=period]{caption}
 \usepackage{subcaption}
 \usepackage{float}
+\usepackage{afterpage}
 \usepackage{array}
 \usepackage{tabularx}
 \usepackage{multirow}
@@ -60,8 +61,8 @@
 \setlength{\intextsep}{7pt plus 1pt minus 1pt}
 \setlength{\abovecaptionskip}{5pt}
 \setlength{\belowcaptionskip}{2pt}
-\setlength{\tabcolsep}{8pt}
-\renewcommand{\arraystretch}{1.16}
+\setlength{\tabcolsep}{9pt}
+\renewcommand{\arraystretch}{1.14}
 \captionsetup{justification=raggedright,singlelinecheck=false}
 \setlist[itemize]{leftmargin=1.3em,itemsep=0.18em,topsep=0.25em}
 \setcounter{topnumber}{3}
@@ -138,7 +139,7 @@
 \end{center}
 
 \vspace{0.35em}
-\noindent\textbf{Autonomous agents are increasingly able to use tools, write messages, and execute workflows, but deployed claims of autonomy are difficult to evaluate when actions, constraints, market signals, and commercial outcomes are scattered across product analytics and human memory. We report Relay, a continuously updated deployment record for a notes-first revenue agent governed by an explicit proof contract. The system converts a broad commercial goal into a state machine with recorded bottlenecks, permitted actions, forbidden actions, proof deadlines, buyer-intent signals, payment outcomes, and compact research-journal entries. At the initial evidence lock, Relay exposed nine production routes, had all eleven checked environment requirements present, retained 30-day telemetry including 56 page views, 8 link clicks, 3 checkout clicks, and 3 lead-capture events, and recorded four compact research-journal entries. In the latest live check, read from production at approximately 2026-05-15T21:18Z, the seven-day public-intent window contained 50 page views and 6 sample clicks, while the active outbound proof remained in \texttt{stalled\_opportunity\_direct} with 9/10 active-sample sends, 0 replies, 0 payments, and USD~0.00 gross revenue. The current result is therefore an execution finding, not a demand finding: the remaining sample slot is blocked by active-experiment refill rather than buyer rejection. The dashboard now exposes only the essential operational state while the real paid-buyer gate remains missing. The current source resolves the latest execution-accounting fault by reserving only the missing active-sample slots and allowing remaining cap to keep direct-buyer follow-ups moving while refill recovers. The contribution is therefore not a claim that the system already makes money. It is a falsifiable protocol for making autonomous commercial experimentation auditable enough that future success, failure, and execution regressions can be interpreted.}
+\noindent\textbf{Autonomous agents can write, route, and execute workflows, but commercial autonomy is hard to evaluate when constraints, buyer signals, and outcomes live in scattered logs. We report Relay, a continuously updated deployment record for a notes-first revenue agent governed by an explicit proof contract. The system converts a broad commercial goal into a state machine with permitted actions, forbidden actions, bottlenecks, proof windows, buyer-intent signals, payment outcomes, and compact research-journal entries. At the latest production read, the seven-day public-intent window contained 50 page views and 6 sample clicks, while the outbound proof remained in \texttt{stalled\_opportunity\_direct} with 9/10 active-sample sends, 0 replies, 0 payments, and USD~0.00 gross revenue. The result is therefore an execution finding, not a demand finding. The contribution is not a claim that Relay makes money. It is a falsifiable protocol for making autonomous revenue experimentation auditable enough that future success, failure, and regressions can be interpreted.}
 
 \newpage
 \pagestyle{fancy}
