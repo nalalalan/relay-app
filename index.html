@@ -1576,9 +1576,9 @@
       </div>
     </section>
 
-    <section class="first-money-section boring-section" aria-label="Essential Relay state">
+    <section class="first-money-section boring-section" aria-label="Main Relay bottleneck">
       <div class="section-head">
-        <h2>Essential state</h2>
+        <h2>Main bottleneck</h2>
         <span id="firstMoneyTime" class="small">live ops</span>
       </div>
       <div id="firstMoneyPlan" class="first-money">Loading.</div>
@@ -2307,7 +2307,7 @@
           next = "close buyer signal";
           reason = "reply first";
         } else if (complete) {
-          next = "stalled-opportunity angle";
+          next = "new buyer angle";
           reason = "same price, different angle";
         }
 
@@ -2629,16 +2629,25 @@
           : (readinessReason || (paid ? "paid buyer exists" : "waiting for reply, checkout, or payment"));
         var systemNote = lastTick === "-" ? "tick time unavailable" : "last tick " + lastTick;
         if (activeRefill) systemNote += "; trying lead refill";
+        var bottleneckValue = paid ? "paid buyer" : (activeRefill ? "lead refill" : blockerValue);
+        var bottleneckNote = paid
+          ? "money signal exists"
+          : (activeRefill ? progress + " sent; " + fmt(activeDue) + " active queued; " + fmt(expectedNext) + " expected next sends" : blockerNote);
+        var meaningValue = paid ? "revenue signal" : (activeRefill ? "execution bottleneck" : "buyer signal");
+        var meaningNote = paid
+          ? "hold paid lane"
+          : (activeRefill ? "cannot judge $1 demand until the sample can finish" : "waiting for reply, checkout, or payment");
         var rows = [
+          ["bottleneck", bottleneckValue, bottleneckNote],
+          ["meaning", meaningValue, meaningNote],
+          ["next", activeRefill ? "recover fresh active leads" : nextMove, activeRefill ? "then finish 10/10 active sample" : (paid ? "hold paid lane" : (!sampleDone ? progress + " sample" : (pendingObservation ? "reply window" : "one variable")))],
           ["money", money(gross), fmt(payments) + " payments"],
           ["product", money(entryPrice || 1) + " checkout", (primaryMoneyPathLive ? "checkout first live" : (payFirstLive ? "checkout live" : "checkout needs repair")) + (fulfillmentReady ? "; fulfillment checked" : "")],
           ["active test", activeLane, progress + " sent; " + fmt(Math.max(0, (parts && parts.target ? parts.target - parts.current : 0))) + " remaining"],
           ["outreach", fmt(sendsToday) + " sent today", fmt(weekSends) + " sent in 7d / " + fmt(sendFailures) + " failures"],
-          ["system", sentence(loopStatus, "unknown"), systemNote],
-          ["blocker", blockerValue, blockerNote],
           ["buyer signal", buyerStatus, fmt(totalCheckout) + " total checkout clicks; " + fmt(totalLeads) + " leads"],
           ["traffic", fmt(views) + " views", fmt(sampleOpens) + " sample opens"],
-          ["next", nextMove, activeRefill ? "then finish " + progress + " sample" : (paid ? "hold paid lane" : (!sampleDone ? progress + " sample" : (pendingObservation ? "reply window" : "one variable")))]
+          ["system", sentence(loopStatus, "unknown"), systemNote]
         ];
         return (
           '<table class="essential-table"><tbody>' +
@@ -2669,10 +2678,10 @@
         var lower = raw.toLowerCase();
         var key = lower.replace(/[\s-]+/g, "_");
         var labels = {
-          hard_paid_test_direct: "hard-paid direct",
-          stalled_opportunity_direct: "stalled-opportunity",
+          hard_paid_test_direct: "direct paid offer",
+          stalled_opportunity_direct: "paid outreach",
           paid_test_explicit: "paid test",
-          revenue_leak_direct: "revenue leak",
+          revenue_leak_direct: "buyer-path check",
           sample_first_plain: "sample first",
           pain_owner_direct: "pain owner"
         };
@@ -2686,8 +2695,8 @@
       function nextLaneAfter(value) {
         var key = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
         var next = {
-          hard_paid_test_direct: "stalled-opportunity",
-          stalled_opportunity_direct: "revenue leak",
+          hard_paid_test_direct: "paid outreach",
+          stalled_opportunity_direct: "buyer-path check",
           revenue_leak_direct: "paid test",
           paid_test_explicit: "sample-first",
           sample_first_plain: "pain-owner"
@@ -2930,6 +2939,9 @@
         var move = currentMove(ops, ledger);
         var test = renderCurrentTest(ops, ledger);
         var summaryProgress = activeProgressLabel(success, moneySystem, ledgerData(latestLedger(ledger)));
+        var summaryLaunch = moneySystem.launch_readiness || {};
+        var summaryExpectedNext = Number(summaryLaunch.expected_next_window_sends || moneySystem.expected_next_window_sends || 0);
+        var summaryState = String(moneySystem.state || "");
         var viewsToday = rolling(evidence, "page_view", 1);
         var viewsBaseline = 0;
         var viewSignal = (positive.signals || []).find(function (signal) {
@@ -2956,7 +2968,9 @@
         $("nextMoveHint").textContent = move.hint;
         $("summaryLine").textContent = Number(relayMoney.payments || 0) > 0 || Number(relayMoney.gross_usd || 0) > 0
           ? "Money signal exists."
-          : "No money yet. " + summaryProgress + "; " + move.value.toLowerCase() + ".";
+          : (summaryState === "active_experiment_refill"
+              ? "Bottleneck: lead refill. " + summaryProgress + " sent; " + fmt(summaryExpectedNext) + " expected next sends."
+              : "No money yet. " + summaryProgress + "; " + move.value.toLowerCase() + ".");
         $("updatedAt").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
         $("rangeLabel").textContent = rangeName();
         $("trendRange").textContent = days === 1 ? "24h / local hours" : rangeName() + " / local dates";
