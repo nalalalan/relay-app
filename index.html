@@ -957,8 +957,8 @@
 
     .money-board {
       display: grid;
-      grid-template-columns: minmax(180px, 0.7fr) repeat(2, minmax(0, 1fr));
-      gap: 22px;
+      grid-template-columns: minmax(180px, 0.7fr) repeat(3, minmax(0, 1fr));
+      gap: 18px;
       margin: 2px 0 18px;
       padding-bottom: 18px;
       border-bottom: 1px solid var(--line);
@@ -999,6 +999,19 @@
       font-style: normal;
       font-weight: 760;
       line-height: 1.25;
+    }
+
+    .money-line {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+      font-weight: 820;
+      line-height: 1.35;
+    }
+
+    .money-line b {
+      color: var(--ink);
+      font-weight: 950;
     }
 
     .first-money-top {
@@ -1604,6 +1617,7 @@
       </a>
     </div>
     <div class="suite-topbar-actions" aria-label="relay actions">
+      <a href="https://relaybrief.com/" data-event="relay_live_product_click">product</a>
       <a href="/paper.pdf" download data-event="relay_live_paper_click">paper</a>
       <span class="status"><span id="liveDot" class="dot"></span><span id="statusText">loading</span></span>
     </div>
@@ -1612,7 +1626,7 @@
   <main class="wrap">
     <section class="hero" aria-label="Relay live status">
       <div>
-        <h1>relay</h1>
+        <h1>money</h1>
         <p class="sub" id="summaryLine">Loading the live trend.</p>
       </div>
       <div class="tabs" role="tablist" aria-label="Time range">
@@ -2669,13 +2683,6 @@
                   : (!sampleDone
                   ? "finish sample"
                   : (pendingObservation ? "wait until " + checkTime : "rotate " + activeLane + " -> " + nextLane))));
-        var buyerStatus = fmt(currentCheckout) + " current checkout / " + fmt(replies) + " replies / " + money(gross);
-        var blockerValue = activeRefill ? "fresh active leads" : (paid ? "none" : (readinessReason ? "readiness" : "buyer signal"));
-        var blockerNote = activeRefill
-          ? fmt(activeDue) + " active queued / " + fmt(expectedNext) + " expected next sends" + (refillLabel ? "; lead refill " + refillLabel : "")
-          : (readinessReason || (paid ? "paid buyer exists" : "waiting for reply, checkout, or payment"));
-        var systemNote = lastTick === "-" ? "tick time unavailable" : "last tick " + lastTick;
-        if (activeRefill) systemNote += "; trying lead refill";
         var remaining = Math.max(0, (parts && parts.target ? parts.target - parts.current : 0));
         var nearestSignal = totalCheckout > 0
           ? fmt(totalCheckout) + " checkout clicks"
@@ -2683,36 +2690,28 @@
               ? fmt(totalLeads) + " people left info"
               : (sampleOpens > 0 ? fmt(sampleOpens) + " sample opens" : fmt(views) + " views"));
         var nearestSignalNote = totalCheckout > 0
-          ? fmt(totalLeads) + " people left info; no paid buyer yet"
-          : (totalLeads > 0 ? "no checkout click yet" : "not close to money yet");
+          ? "0 paid yet"
+          : (totalLeads > 0 ? "0 paid yet" : "0 paid yet");
         var nextDollar = paid
-          ? "paid buyer exists"
-          : (activeRefill
-              ? "find " + fmt(Math.max(1, remaining || 1)) + " fresh buyer"
-              : (buyerSignal ? "close current buyer" : (!sampleDone ? "finish current test" : "change one thing")));
+          ? "money happened"
+          : "1 paid checkout";
         var nextDollarNote = paid
-          ? "keep the paid path"
-          : (activeRefill
-              ? "then finish the 10/10 buyer test"
-              : (buyerSignal ? "reply, checkout, or payment" : (!sampleDone ? progress + " sent" : "same offer, one controlled change")));
-        var rows = [
-          ["offer", money(entryPrice || 1) + " checkout", (primaryMoneyPathLive ? "live" : (payFirstLive ? "checkout live" : "checkout needs repair")) + (fulfillmentReady ? "; fulfillment checked" : "")],
-          ["current test", progress + " sent", remaining > 0 ? fmt(remaining) + " buyer short" : "sample complete"],
-          ["price read", paid ? "paid" : "not enough to judge", activeRefill ? "do not blame price yet" : (buyerSignal ? buyerStatus : "waiting for buyer signal")],
-          ["attention", fmt(views) + " views", fmt(sampleOpens) + " sample opens"],
-          ["status", sentence(loopStatus, "unknown"), activeRefill ? "finding the next buyer" : systemNote]
-        ];
+          ? fmt(payments) + " payment"
+          : "first dollar is the goal";
+        var offerState = primaryMoneyPathLive ? "live" : (payFirstLive ? "live" : "needs repair");
+        var moneyLine = paid
+          ? "Money happened. Keep the paid path."
+          : (offerState === "needs repair"
+              ? "No one has paid yet. Checkout needs repair before the next dollar."
+              : "No one has paid yet. The offer is live. The next win is one paid checkout.");
         return (
           '<div class="money-board">' +
-            '<div class="money-main"><span>cash</span><strong>' + escapeHtml(money(gross)) + '</strong><em>' + escapeHtml(fmt(payments) + " payments") + '</em></div>' +
+            '<div class="money-main"><span>made</span><strong>' + escapeHtml(money(gross)) + '</strong><em>' + escapeHtml(fmt(payments) + " payments") + '</em></div>' +
+            '<div><span>offer</span><strong>' + escapeHtml(money(entryPrice || 1)) + '</strong><em>' + escapeHtml("checkout " + offerState) + '</em></div>' +
             '<div><span>closest signal</span><strong>' + escapeHtml(nearestSignal) + '</strong><em>' + escapeHtml(nearestSignalNote) + '</em></div>' +
             '<div><span>next dollar</span><strong>' + escapeHtml(nextDollar) + '</strong><em>' + escapeHtml(nextDollarNote) + '</em></div>' +
           '</div>' +
-          '<table class="essential-table"><tbody>' +
-            rows.map(function (row) {
-              return '<tr><th scope="row">' + escapeHtml(row[0]) + '</th><td>' + escapeHtml(row[1]) + '<span class="note">' + escapeHtml(row[2]) + '</span></td></tr>';
-            }).join("") +
-          '</tbody></table>'
+          '<p class="money-line">' + escapeHtml(moneyLine) + '</p>'
         );
       }
 
@@ -3000,6 +2999,13 @@
         var summaryLaunch = moneySystem.launch_readiness || {};
         var summaryExpectedNext = Number(summaryLaunch.expected_next_window_sends || moneySystem.expected_next_window_sends || 0);
         var summaryState = String(moneySystem.state || "");
+        var summaryTotals = (((evidence || {}).totals || {}).intent_event_counts || {});
+        var summaryCheckout = Number(summaryTotals.checkout_click || 0);
+        var summaryEntryPrice = Number((((success || {}).revenue_objective || {}).entry_test_price_usd) || ((moneySystem.revenue_objective || {}).entry_test_price_usd) || ((relayMoney || {}).entry_test_price_usd) || 1);
+        var summaryPublicOffer = success.public_offer_preflight || {};
+        var summaryProductLive = summaryEntryPrice > 0 && Number(launchSystem.relay_public_offer_smoke_test || 0) > 0;
+        var summaryPayFirstLive = summaryProductLive && summaryPublicOffer.contains_checkout_action && summaryPublicOffer.contains_checkout_url && summaryPublicOffer.contains_price && (summaryPublicOffer.contains_pay_first_copy !== false);
+        var summaryFirstMoneyPathLive = summaryPayFirstLive && summaryPublicOffer.contains_primary_money_path === true;
         var viewsToday = rolling(evidence, "page_view", 1);
         var viewsBaseline = 0;
         var viewSignal = (positive.signals || []).find(function (signal) {
@@ -3027,7 +3033,7 @@
         $("summaryLine").textContent = Number(relayMoney.payments || 0) > 0 || Number(relayMoney.gross_usd || 0) > 0
           ? "Money signal exists."
           : (summaryState === "active_experiment_refill"
-              ? "Money: $0. $1 checkout live. Need one fresh buyer to finish the test."
+              ? "Made $0. " + money(summaryEntryPrice) + " checkout " + (summaryFirstMoneyPathLive ? "live" : "needs repair") + ". " + fmt(summaryCheckout) + " checkout clicks. 0 paid."
               : "No money yet. " + summaryProgress + "; " + move.value.toLowerCase() + ".");
         $("updatedAt").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
         $("rangeLabel").textContent = rangeName();
