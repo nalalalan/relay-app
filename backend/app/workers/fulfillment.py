@@ -170,7 +170,7 @@ def _guardrail_email(fields: dict[str, str], gate: ClientGateResult) -> tuple[st
             "If this was a mistake or a test, resend the form with the actual business call notes or transcript.\n\n"
             "If the text reflects an urgent real-world safety concern, contact local emergency services or an appropriate crisis resource immediately.\n\n"
             "No business packet was generated.\n\n"
-            "— Alan Operator"
+            "- RelayBrief"
         )
         return subject, body
 
@@ -179,7 +179,7 @@ def _guardrail_email(fields: dict[str, str], gate: ClientGateResult) -> tuple[st
         f"I received the submission for {client_name}, but there was not enough usable business call detail to generate a real handoff packet.\n\n"
         "Please resend with the actual call notes or transcript, plus any known decisions, next steps, open questions, or requested follow-up.\n\n"
         "No business packet was generated from the current submission.\n\n"
-        "— Alan Operator"
+        "- RelayBrief"
     )
     return subject, body
 

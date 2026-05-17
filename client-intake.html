@@ -1,235 +1,24 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>relay intake</title>
-  <meta name="description" content="Messy sales-call notes become clean follow-up, CRM-ready summaries, and a live view of what is converting.">
-  <link rel="canonical" href="https://relay.aolabs.io/client-intake.html" />
-  <meta name="twitter:image:alt" content="relay preview card.">
-  <meta property="og:image:alt" content="relay preview card.">
-  <meta property="og:image:type" content="image/png">
-  <meta property="og:image:secure_url" content="https://relay.aolabs.io/og-image-20260506-contained.png">
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="AO Labs">
-  <meta property="og:title" content="relay">
-  <meta property="og:description" content="Messy sales-call notes become clean follow-up, CRM-ready summaries, and a live view of what is converting.">
-  <meta property="og:url" content="https://relay.aolabs.io/">
-  <meta property="og:image" content="https://relay.aolabs.io/og-image-20260506-contained.png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="relay">
-  <meta name="twitter:description" content="Messy sales-call notes become clean follow-up, CRM-ready summaries, and a live view of what is converting.">
-  <meta name="twitter:image" content="https://relay.aolabs.io/og-image-20260506-contained.png">
-  <link rel="icon" href="https://aolabs.io/favicon.svg?v=20260516-suite-bloom" type="image/svg+xml">
-  <meta name="theme-color" content="#ffd6c5" />
-  <link rel="apple-touch-icon" href="https://aolabs.io/marks/ao-ink.svg?v=20260516-suite-bloom" />
-  <script src="site-config.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>RelayBrief intake</title>
+  <meta name="robots" content="noindex">
+  <link rel="canonical" href="https://relaybrief.com/client-intake.html">
+  <script>
+    window.location.replace("https://relaybrief.com/client-intake.html" + window.location.search + window.location.hash);
+  </script>
   <style>
-    :root{
-      --bg:#ffd6c5;
-      --panel:#fffaf6;
-      --text:#261712;
-      --muted:#715d56;
-      --line:#ead3c8;
-      --accent:#c98a53;
-      --accent-dark:#a66c3e;
-      --radius-xl:32px;
-      --shadow:0 18px 44px rgba(20,20,20,0.08);
-      --max:920px;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      background:var(--bg);
-      color:var(--text);
-      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      line-height:1.4;
-    }
-    a{color:inherit;text-decoration:none}
-    .wrap{width:min(calc(100% - 32px), var(--max));margin:0 auto}
-    .topbar{
-      position:sticky;top:0;z-index:20;
-      background:rgba(236,232,223,0.95);
-      backdrop-filter:blur(10px);
-      border-bottom:1px solid rgba(214,206,194,0.9);
-    }
-    .topbar-inner{
-      min-height:88px;display:flex;align-items:center;justify-content:space-between;gap:20px;
-    }
-    .brand{
-      display:inline-flex;align-items:center;gap:14px;font-size:22px;font-weight:900;letter-spacing:-0.04em;
-    }
-    .brand-mark{
-      width:42px;height:42px;border-radius:13px;border:2px solid var(--accent);
-      background:#f6efe7;display:grid;place-items:center;color:var(--accent);
-      font-weight:900;font-size:22px;line-height:1;box-shadow:inset 0 0 0 2px rgba(255,255,255,0.55);
-    }
-    .btn{
-      display:inline-flex;align-items:center;justify-content:center;min-height:56px;padding:0 24px;border-radius:18px;
-      border:1.5px solid var(--line);background:white;font-size:16px;font-weight:800;letter-spacing:-0.02em;
-      cursor:pointer;transition:transform .16s ease, box-shadow .16s ease, background .16s ease;
-      white-space:nowrap;
-    }
-    .btn:hover{transform:translateY(-1px);box-shadow:0 12px 24px rgba(20,20,20,0.08)}
-    .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
-    .btn-primary:hover{background:var(--accent-dark)}
-    .hero{padding:42px 0 54px}
-    .card{
-      background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-xl);
-      box-shadow:var(--shadow);padding:32px;
-    }
-    .eyebrow{
-      display:inline-flex;align-items:center;min-height:40px;padding:0 16px;border-radius:999px;
-      background:rgba(191,134,81,0.08);border:1px solid rgba(191,134,81,0.24);
-      color:var(--accent-dark);font-size:14px;font-weight:800;letter-spacing:-0.02em;margin-bottom:18px;
-    }
-    h1{margin:0 0 14px;font-size:clamp(42px,7vw,68px);line-height:0.95;letter-spacing:-0.06em}
-    p{margin:0 0 16px;color:var(--muted);font-size:20px;line-height:1.5}
-    .lead{max-width:760px}
-    label{display:block;margin:22px 0 8px;font-size:15px;font-weight:800}
-    input{
-      width:100%;min-height:58px;border-radius:18px;border:1px solid var(--line);
-      padding:0 18px;font-size:17px;background:white;color:var(--text);
-    }
-    .actions{margin-top:18px;display:flex;flex-wrap:wrap;gap:12px}
-    .status{margin-top:16px;min-height:26px;color:var(--muted);font-size:15px}
-    .status.error{color:#9d3f32}
-    .status.success{color:#35653f}
-    .notice{
-      margin-top:24px;padding:18px 20px;border-radius:20px;border:1px solid var(--line);
-      background:#efe7dc;color:#433c35;font-size:16px;line-height:1.55
-    }
-    .mini-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:26px}
-    .mini-card{background:white;border:1px solid var(--line);border-radius:20px;padding:20px}
-    .mini-card h3{margin:0 0 10px;font-size:18px;line-height:1.05;letter-spacing:-0.03em}
-    .mini-card p{margin:0;font-size:16px}
-    @media (max-width:760px){.actions{flex-direction:column}.btn{width:100%}.mini-grid{grid-template-columns:1fr}}
+    body{margin:0;background:#fbfaf7;color:#171511;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    main{width:min(calc(100% - 32px),680px);margin:0 auto;padding:56px 0}
+    a{color:inherit;text-underline-offset:3px}
   </style>
-  <link rel="stylesheet" href="https://aolabs.io/suite-header.css?v=20260516-suite-bloom">
 </head>
 <body>
-  <header class="suite-topbar" aria-label="relay navigation">
-    <div class="suite-brand-cluster">
-      <a class="suite-ao-home" href="https://aolabs.io/" aria-label="aolabs.io">
-        <img src="https://aolabs.io/marks/ao-ink.svg?v=20260516-suite-bloom" alt="">
-      </a>
-      <a class="suite-app-brand" href="index.html" aria-label="relay home">
-        <img class="suite-app-mark" src="https://aolabs.io/icons/relay.svg?v=20260508-icon-pass2" alt="">
-        <span class="suite-app-name">relay.aolabs.io</span>
-      </a>
-    </div>
-    <div class="suite-topbar-actions" aria-label="relay actions">
-      <a href="index.html">back</a>
-    </div>
-  </header>
-
-  <main class="hero">
-    <div class="wrap">
-      <section class="card">
-        <div class="eyebrow">Paid client access</div>
-        <h1>open your relay intake.</h1>
-        <p class="lead">If you already bought the packet, your payment email should contain a direct intake link. You can also enter your access code manually below.</p>
-
-        <label for="accessCode">Access code</label>
-        <input id="accessCode" type="text" autocomplete="off" placeholder="Enter your paid client access code" />
-
-        <div class="actions">
-          <button id="redeemBtn" type="button" class="btn btn-primary">Open client intake</button>
-          <a id="buyLink" class="btn" href="#" target="_blank" rel="noopener">Start the $40 relay</a>
-        </div>
-
-        <div id="status" class="status"></div>
-
-        <div class="mini-grid">
-          <article class="mini-card">
-            <h3>Buy first</h3>
-            <p>The public site shows proof and checkout. Paid clients get the intake link after purchase.</p>
-          </article>
-          <article class="mini-card">
-            <h3>Paste rough notes</h3>
-            <p>Bullets, fragments, and rushed call notes are fine as long as the real details are there.</p>
-          </article>
-          <article class="mini-card">
-            <h3>Get the relay back</h3>
-            <p>Relay sends the recap, next steps, and follow-up draft automatically.</p>
-          </article>
-        </div>
-
-        <div class="notice">
-          If you already paid but your direct link is missing, use the access code from your payment email. If you have not paid yet, use the button above and the intake link will unlock after checkout.
-        </div>
-      </section>
-    </div>
+  <main>
+    <h1>RelayBrief intake moved.</h1>
+    <p><a href="https://relaybrief.com/client-intake.html">Open relaybrief.com/client-intake.html</a>.</p>
   </main>
-
-  <script>
-    (function () {
-      var config = window.AO_CONFIG || {};
-      var apiBase = (config.API_BASE || "https://alan-operator-backend-production.up.railway.app").replace(/\/$/, "");
-      var firstMoneyUrl = (config.FIRST_MONEY_CHECKOUT_URL || "").trim();
-      var checkoutUrl = firstMoneyUrl || config.PACKET_CHECKOUT_URL || config.STRIPE_URL || "https://buy.stripe.com/bJeaEZb4mf6de64dSi2Nq02";
-      var priceLabel = firstMoneyUrl ? (config.FIRST_MONEY_PRICE_LABEL || "$1") : (config.PACKET_PRICE_LABEL || "$40");
-      var buttonEl = document.getElementById("redeemBtn");
-      var inputEl = document.getElementById("accessCode");
-      var statusEl = document.getElementById("status");
-      var buyLinkEl = document.getElementById("buyLink");
-      buyLinkEl.href = checkoutUrl;
-      buyLinkEl.textContent = firstMoneyUrl ? ("Buy " + priceLabel + " test") : ("Start the " + priceLabel + " relay");
-
-      function setStatus(message, kind) {
-        statusEl.textContent = message || "";
-        statusEl.className = "status" + (kind ? " " + kind : "");
-      }
-
-      async function redeem() {
-        var accessCode = (inputEl.value || "").trim();
-        if (!accessCode) {
-          setStatus("Enter your access code first.", "error");
-          return;
-        }
-
-        buttonEl.disabled = true;
-        inputEl.disabled = true;
-        setStatus("Checking access...", "");
-
-        try {
-          var response = await fetch(apiBase + "/client-gate/redeem", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ access_code: accessCode })
-          });
-
-          var data = await response.json();
-
-          if (data.status === "ok" && data.client_form_url) {
-            setStatus("Access granted. Opening intake...", "success");
-            window.location.href = data.client_form_url;
-            return;
-          }
-
-          setStatus(data.message || "Access denied.", "error");
-        } catch (error) {
-          setStatus("Could not verify access right now. Try again in a minute.", "error");
-        } finally {
-          buttonEl.disabled = false;
-          inputEl.disabled = false;
-        }
-      }
-
-      buttonEl.addEventListener("click", redeem);
-      inputEl.addEventListener("keydown", function (event) {
-        if (event.key === "Enter") redeem();
-      });
-
-      var params = new URLSearchParams(window.location.search);
-      var autoCode = (params.get("code") || "").trim();
-      if (autoCode) {
-        inputEl.value = autoCode;
-        redeem();
-      }
-    }());
-  </script>
 </body>
 </html>

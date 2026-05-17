@@ -139,7 +139,7 @@ def _score_fit(intake: BuyerIntake) -> tuple[int, List[str], str]:
         reasons.append("call volume is still unknown")
     elif 3 <= calls <= 30:
         score += 3
-        reasons.append("call volume is in the sweet spot for a 5-call pilot")
+        reasons.append("call volume is enough to test the $1 packet")
     elif 1 <= calls <= 2:
         score += 1
         reasons.append("call volume is low but still testable")
@@ -151,7 +151,7 @@ def _score_fit(intake: BuyerIntake) -> tuple[int, List[str], str]:
         reasons.append("very high call volume may need a more structured rollout than a simple pilot")
     else:
         score -= 2
-        reasons.append("call volume does not currently support the pilot")
+        reasons.append("call volume does not currently support the packet")
 
     if any(token in combined for token in FIT_VERTICAL_HINTS):
         score += 2
@@ -226,91 +226,91 @@ def render_buyer_reply(
         else "Your exact call volume is still unclear from the request."
     )
 
-    sample_html = _html_link(sample_packet_url, "View sample packet")
-    sample_text = _text_link(sample_packet_url, "View sample packet")
+    sample_html = _html_link(sample_packet_url, "View example output")
+    sample_text = _text_link(sample_packet_url, "View example output")
 
     if route == "pilot_path":
-        subject = "Your Alan Operator 5-call pilot request"
+        subject = "Your RelayBrief request"
         text_body = (
-            "Hi — Alan Operator here.\n\n"
-            f"Thanks for requesting the 5-call pilot for {agency}.\n\n"
+            "Hi - RelayBrief here.\n\n"
+            f"Thanks for sending details for {agency}.\n\n"
             f"{calls_text}\n\n"
             f"The main friction is {friction}.\n\n"
-            "To show exactly how this workflow is delivered, here is a sample handoff packet:\n\n"
+            "Here is an example output:\n\n"
             f"{sample_text}\n\n"
-            "If this looks right, I’ll send the pilot setup and next steps from here.\n\n"
-            "— Alan"
+            "If this looks right, use the $1 checkout at relaybrief.com or reply with one recent call note.\n\n"
+            "- Alan"
         )
         html_body = (
-            f"<p>Hi — Alan Operator here.</p>"
-            f"<p>Thanks for requesting the 5-call pilot for {escape(agency)}.</p>"
+            f"<p>Hi - RelayBrief here.</p>"
+            f"<p>Thanks for sending details for {escape(agency)}.</p>"
             f"<p>{escape(calls_text)}</p>"
             f"<p>The main friction is {escape(friction)}.</p>"
-            "<p>To show exactly how this workflow is delivered, here is a sample handoff packet:</p>"
+            "<p>Here is an example output:</p>"
             f"<p>{sample_html}</p>"
-            "<p>If this looks right, I’ll send the pilot setup and next steps from here.</p>"
-            "<p>— Alan</p>"
+            "<p>If this looks right, use the $1 checkout at relaybrief.com or reply with one recent call note.</p>"
+            "<p>- Alan</p>"
         )
         return subject, text_body, html_body
 
     if route == "clarify_path":
-        subject = "Your Alan Operator 5-call pilot request"
+        subject = "Your RelayBrief request"
         text_body = (
-            "Hi — Alan Operator here.\n\n"
-            f"Thanks for requesting the 5-call pilot for {agency}.\n\n"
-            "Based on this request, I’m not yet sure the 5-call pilot is the right fit. "
+            "Hi - RelayBrief here.\n\n"
+            f"Thanks for sending details for {agency}.\n\n"
+            "Based on this request, I am not yet sure RelayBrief is the right fit. "
             "This workflow is strongest when a founder-led team needs post-call follow-up, next steps, "
             "CRM-ready updates, and proposal direction after real sales calls.\n\n"
-            "To show exactly how this workflow is delivered, here is a sample handoff packet:\n\n"
+            "Here is an example output:\n\n"
             f"{sample_text}\n\n"
-            "If that is still the workflow you want, reply with one recent real call example and I’ll tell you whether the pilot makes sense.\n\n"
-            "— Alan"
+            "If that is still the workflow you want, reply with one recent real call note and I will tell you whether the $1 packet makes sense.\n\n"
+            "- Alan"
         )
         html_body = (
-            f"<p>Hi — Alan Operator here.</p>"
-            f"<p>Thanks for requesting the 5-call pilot for {escape(agency)}.</p>"
-            "<p>Based on this request, I’m not yet sure the 5-call pilot is the right fit. "
+            f"<p>Hi - RelayBrief here.</p>"
+            f"<p>Thanks for sending details for {escape(agency)}.</p>"
+            "<p>Based on this request, I am not yet sure RelayBrief is the right fit. "
             "This workflow is strongest when a founder-led team needs post-call follow-up, next steps, "
             "CRM-ready updates, and proposal direction after real sales calls.</p>"
-            "<p>To show exactly how this workflow is delivered, here is a sample handoff packet:</p>"
+            "<p>Here is an example output:</p>"
             f"<p>{sample_html}</p>"
-            "<p>If that is still the workflow you want, reply with one recent real call example and I’ll tell you whether the pilot makes sense.</p>"
-            "<p>— Alan</p>"
+            "<p>If that is still the workflow you want, reply with one recent real call note and I will tell you whether the $1 packet makes sense.</p>"
+            "<p>- Alan</p>"
         )
         return subject, text_body, html_body
 
-    subject = "Your Alan Operator 5-call pilot request"
+    subject = "Your RelayBrief request"
     text_body = (
-        "Hi — Alan Operator here.\n\n"
-        f"Thanks for requesting the 5-call pilot for {agency}.\n\n"
-        "Based on this request, I do not think the 5-call pilot is the right fit yet. "
+        "Hi - RelayBrief here.\n\n"
+        f"Thanks for sending details for {agency}.\n\n"
+        "Based on this request, I do not think RelayBrief is the right fit yet. "
         "This workflow is strongest when the buyer has real sales calls, visible post-call admin drag, "
         "and a need for follow-up material that moves the deal forward.\n\n"
-        "To show exactly how this workflow is delivered, here is a sample handoff packet:\n\n"
+        "Here is an example output:\n\n"
         f"{sample_text}\n\n"
-        "Reply with one recent real sales-call example and I can tell you whether there is a better entry point than the pilot.\n\n"
-        "— Alan"
+        "Reply with one recent real sales-call note and I can tell you whether the $1 packet makes sense.\n\n"
+        "- Alan"
     )
     html_body = (
-        f"<p>Hi — Alan Operator here.</p>"
-        f"<p>Thanks for requesting the 5-call pilot for {escape(agency)}.</p>"
-        "<p>Based on this request, I do not think the 5-call pilot is the right fit yet. "
+        f"<p>Hi - RelayBrief here.</p>"
+        f"<p>Thanks for sending details for {escape(agency)}.</p>"
+        "<p>Based on this request, I do not think RelayBrief is the right fit yet. "
         "This workflow is strongest when the buyer has real sales calls, visible post-call admin drag, "
         "and a need for follow-up material that moves the deal forward.</p>"
-        "<p>To show exactly how this workflow is delivered, here is a sample handoff packet:</p>"
+        "<p>Here is an example output:</p>"
         f"<p>{sample_html}</p>"
-        "<p>Reply with one recent real sales-call example and I can tell you whether there is a better entry point than the pilot.</p>"
-        "<p>— Alan</p>"
+        "<p>Reply with one recent real sales-call note and I can tell you whether the $1 packet makes sense.</p>"
+        "<p>- Alan</p>"
     )
     return subject, text_body, html_body
 
 
 def next_action_for_route(route: str) -> str:
     if route == "pilot_path":
-        return "Send pilot setup and ask for the first 5-call batch window."
+        return "Send the $1 checkout and ask for one recent call note."
     if route == "clarify_path":
-        return "Ask for one recent real call example before approving the pilot."
-    return "Do not send the pilot setup. Ask for a concrete sales-call example or soft-disqualify."
+        return "Ask for one recent real call note before recommending the packet."
+    return "Ask for a concrete sales-call note or soft-disqualify."
 
 
 def founder_digest_line(intake: BuyerIntake, fit_band: str, route: str, friction: str) -> str:

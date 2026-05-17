@@ -38,39 +38,35 @@ GENERIC_INBOX_LOCAL_PARTS = {
 RECOVERY_STEP_TEMPLATES = [
     StepTemplate(
         step_number=1,
-        subject="after-call follow-up",
+        subject="RelayBrief one-call follow-up test",
         body=(
-            "Hey - quick question.\n\n"
-            "When a good sales or client call ends, does your team already have someone who turns the messy notes into the recap, follow-up email, next steps, and CRM update the same day?\n\n"
-            "I built Relay for that after-call cleanup. No software setup - you send rough notes, and the finished handoff comes back ready to use.\n\n"
-            "Worth sending the sample?\n\n"
+            "Hi - I run RelayBrief at relaybrief.com.\n\n"
+            "It is a {entry_price_label} one-call follow-up test: rough call notes in; recap, follow-up draft, next steps, open questions, and CRM note out.\n\n"
+            "Stripe handles checkout. No app, extension, executable, account, or password.\n\n"
+            "If that is useful, use relaybrief.com. If not, no need to reply.\n\n"
             "- Alan"
         ),
         delay_after_prev_days=0,
     ),
     StepTemplate(
         step_number=2,
-        subject="re: after-call follow-up",
+        subject="re: RelayBrief one-call follow-up test",
         body=(
-            "Following up once with the concrete version.\n\n"
-            "Sample packet:\n"
+            "Following up once with the example output:\n"
             "{sample_url}\n\n"
-            "The use case is simple: send rough notes from one real call, get back the client-ready recap, follow-up draft, open questions, and CRM-ready update.\n\n"
-            "If you have one messy call from this week, I can turn it around as a $40 test.\n\n"
+            "The test is one call for {entry_price_label} through Stripe. No software download, account, or password.\n\n"
             "- Alan"
         ),
         delay_after_prev_days=1,
     ),
     StepTemplate(
         step_number=3,
-        subject="re: after-call follow-up",
+        subject="re: RelayBrief one-call follow-up test",
         body=(
             "Last note from me.\n\n"
-            "If after-call follow-up is a real bottleneck, the lowest-friction test is one call for $40:\n"
+            "If one call is worth testing, checkout is here:\n"
             "{packet_checkout_url}\n\n"
-            "More detail is here:\n"
-            "{landing_page_url}\n\n"
-            "If it is not relevant, no worries - I will not keep chasing.\n\n"
+            "If not, no need to reply.\n\n"
             "- Alan"
         ),
         delay_after_prev_days=2,
@@ -246,7 +242,7 @@ def _sample_url() -> str:
     return (
         os.getenv("RELAY_SAMPLE_URL", "").strip()
         or os.getenv("SAMPLE_PDF_URL", "").strip()
-        or "https://relay.aolabs.io/sample.pdf"
+        or "https://relaybrief.com/sample.pdf"
     )
 
 
@@ -290,8 +286,9 @@ def _render_body(template: StepTemplate, prospect: AcquisitionProspect) -> str:
         packet_checkout_url=entry_checkout_url(),
         landing_page_url=_landing_page_url(),
         sample_url=_sample_url(),
+        entry_price_label=entry_price_label(),
     )
-    return body.replace("$40", entry_price_label()).strip()
+    return body.strip()
 
 
 def _active_experiment_context(outreach) -> dict[str, Any]:

@@ -79,7 +79,7 @@ def _normalize_buyer_payload(payload: dict[str, Any]) -> dict[str, str]:
 def _sample_pdf_url() -> str:
     return (
         getattr(settings, "sample_pdf_url", "")
-            or "https://relay.aolabs.io/sample.pdf"
+            or "https://relaybrief.com/sample.pdf"
     )
 
 
@@ -191,39 +191,39 @@ def _build_good_fit_email(fields: dict[str, str]) -> tuple[str, str]:
     sample_pdf_url = _sample_pdf_url()
 
     blocks = [
-        _paragraph("Hi — Alan Operator here."),
-        _paragraph(f"Thanks for requesting the 5-call pilot for {agency}."),
+        _paragraph("Hi - RelayBrief here."),
+        _paragraph(f"Thanks for sending details for {agency}."),
     ]
     if calls_line:
         blocks.append(_paragraph(calls_line))
     blocks.append(_paragraph(f"The main friction is {friction}."))
-    blocks.append(_paragraph("To show exactly how this workflow is delivered, here is a sample handoff packet:"))
-    blocks.append(_link_paragraph("View sample packet", sample_pdf_url))
-    blocks.append(_paragraph("If this looks right, I’ll send the pilot setup and next steps from here."))
-    blocks.append(_paragraph("— Alan"))
-    return "Your Alan Operator 5-call pilot request", _wrap_email(blocks)
+    blocks.append(_paragraph("Here is an example output:"))
+    blocks.append(_link_paragraph("View example output", sample_pdf_url))
+    blocks.append(_paragraph("If this looks right, use the $1 checkout at relaybrief.com or reply with one recent call note."))
+    blocks.append(_paragraph("- Alan"))
+    return "Your RelayBrief request", _wrap_email(blocks)
 
 
 def _build_lower_fit_email(fields: dict[str, str]) -> tuple[str, str]:
     agency = fields.get("agency_name") or "your agency"
     sample_pdf_url = _sample_pdf_url()
     blocks = [
-        _paragraph("Hi — Alan Operator here."),
-        _paragraph(f"Thanks for requesting the 5-call pilot for {agency}."),
+        _paragraph("Hi - RelayBrief here."),
+        _paragraph(f"Thanks for sending details for {agency}."),
         _paragraph(
-            "Based on this request, I’m not yet sure the 5-call pilot is the right fit. "
+            "Based on this request, I am not yet sure RelayBrief is the right fit. "
             "This workflow is strongest when a founder-led team needs post-call follow-up, "
             "next steps, CRM-ready updates, and proposal direction after real sales calls."
         ),
-        _paragraph("To show exactly how this workflow is delivered, here is a sample handoff packet:"),
-        _link_paragraph("View sample packet", sample_pdf_url),
+        _paragraph("Here is an example output:"),
+        _link_paragraph("View example output", sample_pdf_url),
         _paragraph(
-            "If that is still the workflow you want, reply with one recent real call example "
-            "and I’ll tell you whether the pilot makes sense."
+            "If that is still the workflow you want, reply with one recent real call note "
+            "and I will tell you whether the $1 packet makes sense."
         ),
-        _paragraph("— Alan"),
+        _paragraph("- Alan"),
     ]
-    return "Your Alan Operator 5-call pilot request", _wrap_email(blocks)
+    return "Your RelayBrief request", _wrap_email(blocks)
 
 
 def _build_buyer_email(fields: dict[str, str]) -> tuple[str, str]:

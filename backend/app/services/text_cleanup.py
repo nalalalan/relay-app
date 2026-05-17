@@ -6,8 +6,8 @@ import re
 
 def scrub_placeholders(text: str) -> str:
     cleaned = text or ""
-    cleaned = cleaned.replace("[Your Name]", "Alan Operator")
-    cleaned = cleaned.replace("[your name]", "Alan Operator")
+    cleaned = cleaned.replace("[Your Name]", "RelayBrief")
+    cleaned = cleaned.replace("[your name]", "RelayBrief")
     cleaned = cleaned.replace("[name if available]", "there")
     cleaned = cleaned.replace("[Name if available]", "there")
     cleaned = re.sub(r"\[[^\]]+\]", "", cleaned)
@@ -229,4 +229,3 @@ def clean_packet_text(text: str) -> str:
     cleaned = cleaned.replace("Follow-up and next-step proposal should go out this week.", "A follow-up and proposal outline should go out this week.")
     cleaned = cleaned.replace("Follow-up and next-step proposal should go out this week", "A follow-up and proposal outline should go out this week.")
     return cleaned.strip()
-

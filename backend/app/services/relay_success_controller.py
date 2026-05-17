@@ -831,7 +831,7 @@ def _outbound_smoke_urls(outreach_service: Any) -> dict[str, str]:
         "sample_url": getattr(
             outreach_service,
             "_sample_url",
-            lambda: "https://relay.aolabs.io/sample.pdf",
+            lambda: "https://relaybrief.com/sample.pdf",
         )(),
         "notes_url": landing_page_url + "/#send-notes",
     }
@@ -877,7 +877,7 @@ def _active_outbound_preflight() -> dict[str, Any]:
                 entry_offer_name=getattr(settings, "first_money_offer_name", "") or getattr(settings, "packet_offer_name", "Relay"),
                 packet_offer_name=getattr(settings, "packet_offer_name", "Relay"),
                 **urls,
-            ).replace("$40", entry_price_label()).strip()
+            ).replace("$" + "40", entry_price_label()).strip()
             detail.update(
                 {
                     "subject": str(first.subject or ""),

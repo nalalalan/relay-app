@@ -95,7 +95,7 @@ OPTIMIZED_STEP_TEMPLATES = [
         subject="client call follow-up",
         body=(
             "Hey - quick question.\n\n"
-            "I built Relay to turn messy notes from one client or sales call into the finished recap, follow-up draft, next steps, and CRM-ready update.\n\n"
+            "I run RelayBrief to turn rough notes from one client or sales call into a recap, follow-up draft, next steps, open questions, and CRM note.\n\n"
             "If one call is sitting half-finished at {company_name}, you can send the rough notes here and I will look at it:\n"
             "{notes_url}\n\n"
             "Sample:\n"
@@ -113,7 +113,7 @@ OPTIMIZED_STEP_TEMPLATES = [
             "The useful part is not more software. It is getting the post-call cleanup finished when the team is busy.\n\n"
             "Relay can work from rough bullets, a transcript, or an ugly notes dump. The low-friction test is to send one real call here:\n"
             "{notes_url}\n\n"
-            "If it is a fit, I can turn it around as a paid $40 packet.\n\n"
+            "If it is a fit, I can turn it around as a paid {entry_price_label} packet.\n\n"
             "Worth doing, or should I close the loop?\n\n"
             "- Alan"
         ),
@@ -127,7 +127,7 @@ OPTIMIZED_STEP_TEMPLATES = [
             "If after-call cleanup is not a real bottleneck, no worries.\n\n"
             "If one call is worth testing, send the messy notes here:\n"
             "{notes_url}\n\n"
-            "Or start the $40 paid packet directly here:\n"
+            "Or start the {entry_price_label} paid packet directly here:\n"
             "{packet_checkout_url}\n\n"
             "Either way, this is my last email unless you reply.\n\n"
             "- Alan"
@@ -144,7 +144,7 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
             subject="client call follow-up sample",
             body=(
                 "Hey - quick question.\n\n"
-                "I built Relay to turn messy notes from one client or sales call into the finished recap, follow-up draft, next steps, and CRM-ready update.\n\n"
+                "I run RelayBrief to turn rough notes from one client or sales call into a recap, follow-up draft, next steps, open questions, and CRM note.\n\n"
                 "Sample packet:\n"
                 "{sample_url}\n\n"
                 "If one call is sitting half-finished at {company_name}, you can send the rough notes here:\n"
@@ -162,7 +162,7 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
                 "The sample shows the format. The useful part is getting the actual post-call cleanup finished when the team is busy.\n\n"
                 "Send one messy note here and I will look at whether it fits:\n"
                 "{notes_url}\n\n"
-                "If it is a fit, the paid one-call packet is $40.\n\n"
+                "If it is a fit, the paid one-call packet is {entry_price_label}.\n\n"
                 "- Alan"
             ),
             delay_after_prev_days=1,
@@ -175,7 +175,7 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
                 "If the sample is not relevant, no worries.\n\n"
                 "If one real call is worth testing, send rough notes here:\n"
                 "{notes_url}\n\n"
-                "Or start the $40 packet directly here:\n"
+                "Or start the {entry_price_label} packet directly here:\n"
                 "{packet_checkout_url}\n\n"
                 "- Alan"
             ),
@@ -189,7 +189,7 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
             body=(
                 "Hey - quick question for {company_name}.\n\n"
                 "After a strong client or sales call, who owns the recap, next steps, follow-up email, and CRM update?\n\n"
-                "I built Relay for that cleanup. Your team sends rough notes, and the finished handoff comes back ready to use.\n\n"
+                "I run RelayBrief for that cleanup. Your team sends rough notes, and the packet comes back by email.\n\n"
                 "If nobody clearly owns that job, you can send one messy note here and I will look at it:\n"
                 "{notes_url}\n\n"
                 "- Alan"
@@ -218,7 +218,7 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
                 "If post-call cleanup is already owned and fast, no worries.\n\n"
                 "If one call is worth testing, send rough notes here:\n"
                 "{notes_url}\n\n"
-                "Or start the $40 packet here:\n"
+                "Or start the {entry_price_label} packet here:\n"
                 "{packet_checkout_url}\n\n"
                 "- Alan"
             ),
@@ -231,10 +231,10 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
             subject="one-call cleanup test",
             body=(
                 "Hey - quick question.\n\n"
-                "I am testing a $40 done-for-you Relay: send rough notes from one sales or client call, get back the recap, follow-up draft, next steps, and CRM-ready update.\n\n"
+                "I am testing a {entry_price_label} done-for-you Relay: send rough notes from one sales or client call, get back the recap, follow-up draft, next steps, and CRM-ready update.\n\n"
                 "Sample:\n"
                 "{sample_url}\n\n"
-                "Buy the $40 packet:\n"
+                "Buy the {entry_price_label} packet:\n"
                 "{packet_checkout_url}\n\n"
                 "Or send rough notes first:\n"
                 "{notes_url}\n\n"
@@ -247,7 +247,7 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
             subject="re: one-call cleanup test",
             body=(
                 "Following up once.\n\n"
-                "The test is intentionally small: one real call, $40, finished handoff back to you.\n\n"
+                "The test is intentionally small: one real call, {entry_price_label}, finished handoff back to you.\n\n"
                 "If it saves even one delayed follow-up, it should be obvious quickly.\n\n"
                 "{packet_checkout_url}\n\n"
                 "- Alan"
@@ -275,7 +275,7 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
             subject="one-call follow-up cleanup",
             body=(
                 "Hey - quick question.\n\n"
-                "If {company_name} has one sales or client call where the follow-up is stuck in rough notes, I can turn it into the client-ready recap, follow-up draft, next steps, and CRM-ready update for $40.\n\n"
+                "If {company_name} has one sales or client call where the follow-up is stuck in rough notes, I can turn it into the client-ready recap, follow-up draft, next steps, and CRM-ready update for {entry_price_label}.\n\n"
                 "The paid test is here:\n"
                 "{packet_checkout_url}\n\n"
                 "If you want me to look at fit first, send the rough note here:\n"
@@ -289,7 +289,7 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
             subject="re: one-call follow-up cleanup",
             body=(
                 "Following up once.\n\n"
-                "This is not a software rollout. It is one messy call turned into a finished handoff for $40.\n\n"
+                "This is not a software rollout. It is one messy call turned into a finished handoff for {entry_price_label}.\n\n"
                 "If delayed follow-up is costing time, the smallest test is here:\n"
                 "{packet_checkout_url}\n\n"
                 "- Alan"
@@ -315,7 +315,7 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
             subject="proposal follow-up cleanup",
             body=(
                 "Hey - quick question.\n\n"
-                "If {company_name} has one sales call where the next step is stuck in notes instead of getting sent, I can turn the rough notes into the follow-up email, recap, open questions, and CRM-ready update for $40.\n\n"
+                "If {company_name} has one sales call where the next step is stuck in notes instead of getting sent, I can turn the rough notes into the follow-up email, recap, open questions, and CRM-ready update for {entry_price_label}.\n\n"
                 "This is for one stalled opportunity, not a software rollout.\n\n"
                 "Start the paid test:\n"
                 "{packet_checkout_url}\n\n"
@@ -331,7 +331,7 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
             body=(
                 "Following up once.\n\n"
                 "The offer is simple: one stalled follow-up becomes a finished client-ready handoff.\n\n"
-                "If the deal is worth more than $40, cleanup should not be the bottleneck.\n\n"
+                "If the deal is worth more than {entry_price_label}, cleanup should not be the bottleneck.\n\n"
                 "Paid test:\n"
                 "{packet_checkout_url}\n\n"
                 "- Alan"
@@ -344,7 +344,7 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
             body=(
                 "Last note from me.\n\n"
                 "If every follow-up is already fast, ignore this.\n\n"
-                "If one opportunity is stuck because the notes are not cleaned up, the $40 test is here:\n"
+                "If one opportunity is stuck because the notes are not cleaned up, the {entry_price_label} test is here:\n"
                 "{packet_checkout_url}\n\n"
                 "- Alan"
             ),
@@ -358,7 +358,7 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
             body=(
                 "Hey - quick question.\n\n"
                 "When a good sales or client call ends at {company_name}, do follow-ups ever sit because the recap, next steps, and CRM update are still rough notes?\n\n"
-                "Relay is a $40 cleanup for one call: send rough notes, get the client-ready follow-up handoff back.\n\n"
+                "Relay is a {entry_price_label} cleanup for one call: send rough notes, get the client-ready follow-up handoff back.\n\n"
                 "If one delayed follow-up is worth fixing, the paid test is here:\n"
                 "{packet_checkout_url}\n\n"
                 "Or send the rough note here if you want me to check fit first:\n"
@@ -387,7 +387,7 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
             body=(
                 "Last note from me.\n\n"
                 "If delayed follow-up is not a bottleneck, no worries.\n\n"
-                "If one call is worth cleaning up, the $40 test is here:\n"
+                "If one call is worth cleaning up, the {entry_price_label} test is here:\n"
                 "{packet_checkout_url}\n\n"
                 "- Alan"
             ),
@@ -395,6 +395,51 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
         ),
     ],
 }
+
+TRUST_FIRST_OUTREACH_TEMPLATES = [
+    StepTemplate(
+        step_number=1,
+        subject="RelayBrief one-call follow-up test",
+        body=(
+            "Hi - I run RelayBrief at relaybrief.com.\n\n"
+            "It is a {entry_price_label} one-call follow-up test: rough call notes in; recap, follow-up draft, next steps, open questions, and CRM note out.\n\n"
+            "No download, install, account, or password. Stripe handles checkout:\n"
+            "{packet_checkout_url}\n\n"
+            "If that is not relevant, no need to reply.\n\n"
+            "- Alan"
+        ),
+        delay_after_prev_days=0,
+    ),
+    StepTemplate(
+        step_number=2,
+        subject="re: RelayBrief one-call follow-up test",
+        body=(
+            "Following up once.\n\n"
+            "RelayBrief is just a small paid service at relaybrief.com: one call, {entry_price_label}, Stripe checkout, no download or account.\n\n"
+            "If you want to check it first, the example output is here:\n"
+            "{sample_url}\n\n"
+            "If not, no need to reply.\n\n"
+            "- Alan"
+        ),
+        delay_after_prev_days=1,
+    ),
+    StepTemplate(
+        step_number=3,
+        subject="re: RelayBrief one-call follow-up test",
+        body=(
+            "Last note from me.\n\n"
+            "The one-call test is here if it is useful later:\n"
+            "{packet_checkout_url}\n\n"
+            "No download, install, account, or password.\n\n"
+            "- Alan"
+        ),
+        delay_after_prev_days=2,
+    ),
+]
+
+OPTIMIZED_STEP_TEMPLATES = TRUST_FIRST_OUTREACH_TEMPLATES
+for _variant_name in list(OPTIMIZED_STEP_TEMPLATE_VARIANTS):
+    OPTIMIZED_STEP_TEMPLATE_VARIANTS[_variant_name] = TRUST_FIRST_OUTREACH_TEMPLATES
 
 _applied = False
 _original_outreach_status: Callable[[], dict[str, Any]] | None = None
@@ -461,7 +506,7 @@ def _sample_url() -> str:
     return (
         os.getenv("RELAY_SAMPLE_URL", "").strip()
         or os.getenv("SAMPLE_PDF_URL", "").strip()
-        or "https://relay.aolabs.io/sample.pdf"
+        or "https://relaybrief.com/sample.pdf"
     )
 
 
@@ -786,7 +831,7 @@ def _render_body(template: StepTemplate, prospect: AcquisitionProspect) -> str:
         sample_url=_sample_url(),
         notes_url=_notes_url(),
     )
-    return body.replace("$40", price_label).strip()
+    return body.replace("{entry_price_label}", price_label).strip()
 
 
 def _quality_snapshot(session) -> dict[str, Any]:
@@ -1427,13 +1472,11 @@ def optimized_run_custom_outreach_cycle() -> dict[str, Any]:
 def _zero_touch_close_reply() -> str:
     price_label = entry_price_label()
     return (
-        "Yes - here is the sample packet:\n"
+        "Yes - here is the RelayBrief example output:\n"
         f"{_sample_url()}\n\n"
-        "The easiest next step is to send one messy call note here:\n"
-        f"{_notes_url()}\n\n"
-        f"If you want the paid priority test now, the one-call packet is {price_label}:\n"
+        f"The one-call test is {price_label} through Stripe:\n"
         f"{entry_checkout_url()}\n\n"
-        "I will turn it into the recap, follow-up draft, open questions, and CRM-ready update.\n\n"
+        "No download, install, account, or password. After checkout, send one rough call note and the packet comes back by email.\n\n"
         "- Alan"
     )
 

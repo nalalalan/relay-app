@@ -14,7 +14,7 @@ def draft_buyer_engine_row(buyer: BuyerRequestIn) -> dict:
 
     first_message = (
         "Saw that your team is handling sales calls and the post-call follow-up still carries founder/admin drag. "
-        "Alan Operator is built to turn rough notes into the recap, next steps, CRM update, and proposal direction while the deal is still warm."
+        "RelayBrief turns rough notes from one sales or client call into a recap, follow-up draft, next steps, open questions, and CRM note."
     )
 
     return {

@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.core.config import entry_checkout_url, settings
+from app.core.config import entry_checkout_url, entry_price_label, settings
 from app.db.base import SessionLocal
 from app.models.buyer_acquisition_v1 import BuyerAcquisitionMessage, BuyerAcquisitionProspect
 
@@ -359,19 +359,17 @@ def import_source_records(
 
 
 def _build_initial_subject(prospect: BuyerAcquisitionProspect) -> str:
-    base = prospect.company_name or prospect.domain or "your agency"
-    return f"quick idea for {base} after discovery calls"
+    return "RelayBrief one-call follow-up test"
 
 
 def _build_initial_body(prospect: BuyerAcquisitionProspect) -> str:
-    opener = prospect.personalization_line or f"Saw {prospect.company_name} and thought this might fit."
+    first_name = prospect.contact_name.split()[0] if prospect.contact_name else ""
+    greeting = f"Hi {first_name}," if first_name else "Hi,"
     return (
-        f"Hey{f' {prospect.contact_name.split()[0]}' if prospect.contact_name else ''},\n\n"
-        f"{opener}\n\n"
-        "I built a tiny done-for-you post-call packet for founder-led paid media shops. "
-        "You drop in rough notes from one real discovery call and it sends back a client-ready recap, clear next steps, CRM-ready update text, and proposal-starting direction.\n\n"
-        "Not trying to send you to a big funnel first. I just want to see if this is useful enough to run once on a real call.\n\n"
-        "If you want, reply with yes and I’ll send the one-call path.\n\n"
+        f"{greeting}\n\n"
+        "I run RelayBrief at relaybrief.com.\n\n"
+        "It is a $1 one-call follow-up test: rough call notes in; recap, follow-up draft, next steps, open questions, and CRM note out.\n\n"
+        "No download, install, account, or password. Stripe handles checkout. If that is useful, use relaybrief.com. If not, no need to reply.\n\n"
         "- Alan"
     )
 
@@ -472,10 +470,10 @@ def classify_reply_text(reply_text: str) -> str:
 def _build_positive_reply_body(prospect: BuyerAcquisitionProspect) -> str:
     intake_url = getattr(settings, "client_intake_url", "") or settings.client_intake_destination
     return (
-        f"Great.\n\n"
-        f"Fastest path is one real call. Pay here: {entry_checkout_url()}\n\n"
-        f"Then drop the rough notes here: {intake_url}\n\n"
-        "You’ll get back the packet by email with the recap, next steps, open questions, CRM-ready update text, and proposal-starting direction.\n\n"
+        "Great.\n\n"
+        f"The one-call test is {entry_price_label()} through Stripe:\n{entry_checkout_url()}\n\n"
+        f"Then send the rough notes here:\n{intake_url}\n\n"
+        "No download, install, account, or password. The packet comes back by email.\n\n"
         "- Alan"
     )
 

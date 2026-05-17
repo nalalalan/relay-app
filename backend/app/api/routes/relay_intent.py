@@ -41,7 +41,7 @@ def _sample_packet_url() -> str:
     return (
         os.getenv("RELAY_SAMPLE_URL", "").strip()
         or os.getenv("SAMPLE_PDF_URL", "").strip()
-        or "https://relay.aolabs.io/sample.pdf"
+        or "https://relaybrief.com/sample.pdf"
     )
 
 
@@ -1073,15 +1073,15 @@ def _sample_email_html(to_email: str) -> str:
     safe_email = escape(to_email)
     return f"""
     <div style="font-family:Arial,sans-serif;line-height:1.55;color:#221b17;max-width:620px">
-      <p>Here is the Relay sample packet:</p>
-      <p><a href="{sample_url}" style="color:#a05f2f;font-weight:700">Open the Relay sample PDF</a></p>
+      <p>Here is the RelayBrief example output:</p>
+      <p><a href="{sample_url}" style="color:#222;font-weight:700">Open the example PDF</a></p>
       <p>
-        Relay turns rough call notes into client-ready follow-through:
+        RelayBrief turns rough call notes into client-ready follow-through:
         recap, next steps, follow-up, and CRM update.
       </p>
       <p>
-        If you want the live one-call test, start here:
-        <a href="{checkout_url}" style="color:#a05f2f;font-weight:700">Start the {price_label} relay</a>
+        If you want the one-call test, pay through Stripe:
+        <a href="{checkout_url}" style="color:#222;font-weight:700">Pay {price_label} with Stripe</a>
       </p>
       <p style="font-size:13px;color:#756961">
         Sent to {safe_email} from <a href="{relay_url}" style="color:#756961">relaybrief.com</a>.
@@ -1099,7 +1099,7 @@ def _send_sample_email(to_email: str) -> dict[str, Any]:
 
         response = ResendClient().send_email(
             to_email=to_email,
-            subject="Relay sample packet",
+            subject="RelayBrief example output",
             html=_sample_email_html(to_email),
             from_email=settings.from_email_fulfillment or settings.from_email_outbound,
             reply_to=settings.reply_to_email,
@@ -1127,7 +1127,7 @@ def _send_messy_notes_email(payload: RelayIntentLeadIn, email: str, score: int) 
 
     html = f"""
     <div style="font-family:Arial,sans-serif;line-height:1.55;color:#221b17;max-width:720px">
-      <p><strong>New Relay messy-notes submission</strong></p>
+      <p><strong>New RelayBrief notes submission</strong></p>
       <p><strong>Email:</strong> {safe_email}<br>
       <strong>Score:</strong> {score}<br>
       <strong>Note length:</strong> {escape(str(note_length))}</p>
@@ -1145,7 +1145,7 @@ def _send_messy_notes_email(payload: RelayIntentLeadIn, email: str, score: int) 
 
         response = ResendClient().send_email(
             to_email=settings.reply_to_email,
-            subject=f"New Relay notes from {email}",
+            subject=f"New RelayBrief notes from {email}",
             html=html,
             from_email=settings.from_email_fulfillment or settings.from_email_outbound,
             reply_to=email,
@@ -1167,17 +1167,17 @@ def _messy_notes_customer_email_html(to_email: str) -> str:
     safe_email = escape(to_email)
     return f"""
     <div style="font-family:Arial,sans-serif;line-height:1.55;color:#221b17;max-width:620px">
-      <p>Got your Relay notes.</p>
+      <p>Got your RelayBrief notes.</p>
       <p>
-        The paid next step is the one-call packet. I turn one messy sales or client call
-        into the recap, next steps, follow-up draft, open questions, and CRM-ready update.
+         The paid next step is the one-call packet. I turn one messy sales or client call
+         into the recap, next steps, follow-up draft, open questions, and CRM-ready update.
       </p>
       <p>
-        <a href="{checkout_url}" style="color:#a05f2f;font-weight:700">Start the {price_label} packet</a>
+         <a href="{checkout_url}" style="color:#222;font-weight:700">Pay {price_label} with Stripe</a>
       </p>
       <p>
         Sample:
-        <a href="{sample_url}" style="color:#a05f2f;font-weight:700">open the sample packet</a>
+        <a href="{sample_url}" style="color:#222;font-weight:700">open the example output</a>
       </p>
       <p style="font-size:13px;color:#756961">
         If you need to resend or add detail, use <a href="{notes_url}" style="color:#756961">the notes form</a>.
@@ -1196,7 +1196,7 @@ def _send_messy_notes_customer_email(email: str) -> dict[str, Any]:
 
         response = ResendClient().send_email(
             to_email=email,
-            subject="Got your Relay notes",
+            subject="Got your RelayBrief notes",
             html=_messy_notes_customer_email_html(email),
             from_email=settings.from_email_fulfillment or settings.from_email_outbound,
             reply_to=settings.reply_to_email,

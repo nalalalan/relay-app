@@ -6,7 +6,7 @@ from typing import Any, Dict, Iterable, List
 from app.services.buyer_engine_v1 import buyer_decision_to_dict, run_buyer_engine_v1
 
 
-DEFAULT_SAMPLE_PACKET_URL = "https://relay.aolabs.io/sample.pdf"
+DEFAULT_SAMPLE_PACKET_URL = "https://relaybrief.com/sample.pdf"
 
 
 def process_buyer_submissions(

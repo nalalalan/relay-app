@@ -234,7 +234,7 @@ def choose_outreach_angle(lead: LeadCandidate, fit_band: str) -> str:
 
 def choose_offer(fit_band: str) -> str:
     if fit_band == "high_priority":
-        return "5-call pilot"
+        return "$1 one-call packet"
     if fit_band == "nurture":
         return "call example review"
     return "no current offer"
@@ -261,36 +261,33 @@ def render_outreach(lead: LeadCandidate, fit_band: str, outreach_angle: str, rec
     company = lead.company_name or "your team"
 
     if fit_band == "high_priority":
-        subject = f"{company} — post-call follow-through"
+        subject = "RelayBrief one-call follow-up test"
         body = (
             f"Hi {first_name},\n\n"
-            f"I took a look at {company} and it seems like the real friction may be {outreach_angle}. "
-            "I built Alan Operator to handle the messy post-call layer: recap, next steps, follow-up material, "
-            "and CRM-ready handoff after real sales calls.\n\n"
-            f"The easiest way to test fit is a {recommended_offer}. "
-            "If useful, send one recent real call example and I’ll show you what the output would look like.\n\n"
-            "— Alan"
+            "I run RelayBrief at relaybrief.com.\n\n"
+            "It is a $1 one-call follow-up test: rough call notes in; recap, follow-up draft, next steps, open questions, and CRM note out.\n\n"
+            "No download, install, account, or password. Stripe handles checkout. If that is useful, use relaybrief.com. If not, no need to reply.\n\n"
+            "- Alan"
         )
         return subject, body
 
     if fit_band == "nurture":
-        subject = f"{company} — quick fit check"
+        subject = "RelayBrief fit check"
         body = (
             f"Hi {first_name},\n\n"
-            f"I’m not fully sure yet whether {company} is a fit for Alan Operator, "
-            "but if post-call follow-through is eating time after real sales calls, it may still be worth a quick look.\n\n"
-            "If you send one recent call example or a short description of the bottleneck, I can tell you quickly whether this is a fit.\n\n"
-            "— Alan"
+            "I run RelayBrief at relaybrief.com.\n\n"
+            "It may be relevant if rough sales or client-call notes are turning into delayed follow-up. The test is $1 for one call through Stripe.\n\n"
+            "No download, install, account, or password. If that is not relevant, no need to reply.\n\n"
+            "- Alan"
         )
         return subject, body
 
-    subject = f"{company} — not a priority fit"
+    subject = "RelayBrief fit check"
     body = (
         f"Hi {first_name},\n\n"
-        f"I looked at {company}, and this does not look like the strongest fit for Alan Operator right now. "
-        "The system works best when a team has real sales calls, post-call admin drag, and a need for follow-up and next-step execution.\n\n"
-        "If that changes, send one concrete sales-call example and I can reassess quickly.\n\n"
-        "— Alan"
+        "I run RelayBrief at relaybrief.com. It is a $1 one-call follow-up packet from rough call notes.\n\n"
+        "This only makes sense if post-call follow-up is actually slow or annoying. If not, no need to reply.\n\n"
+        "- Alan"
     )
     return subject, body
 

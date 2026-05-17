@@ -29,8 +29,8 @@ class Settings(BaseSettings):
 
     outbound_domain: str = "mail.aolabs.io"
     fulfillment_domain: str = "mail.aolabs.io"
-    from_email_outbound: str = "Alan @ AO Labs <hello@mail.aolabs.io>"
-    from_email_fulfillment: str = "Alan @ AO Labs <hello@mail.aolabs.io>"
+    from_email_outbound: str = "RelayBrief <hello@mail.aolabs.io>"
+    from_email_fulfillment: str = "RelayBrief <hello@mail.aolabs.io>"
     landing_page_url: str = "https://relaybrief.com"
     reply_to_email: str = "alan@aolabs.io"
 
@@ -57,16 +57,16 @@ class Settings(BaseSettings):
     acq_target_keywords: str = "paid media,ppc,google ads,meta ads,performance marketing"
     acq_excluded_keywords: str = "saas,software,transcription,call recording,note taking"
 
-    packet_offer_name: str = "One live packet - $40"
-    packet_checkout_url: str = "https://buy.stripe.com/bJeaEZb4mf6de64dSi2Nq02"
-    first_money_offer_name: str = "First paid Relay test"
+    packet_offer_name: str = "RelayBrief one-call packet"
+    packet_checkout_url: str = "https://buy.stripe.com/bJe28t7Sa7DLgec29A2Nq08"
+    first_money_offer_name: str = "RelayBrief $1 one-call test"
     first_money_checkout_url: str = "https://buy.stripe.com/bJe28t7Sa7DLgec29A2Nq08"
     first_money_price_usd: float = 1.0
     minimum_weekly_target_usd: float = 1.0
     packet_5_pack_url: str = ""
     weekly_sprint_url: str = ""
     monthly_autopilot_url: str = ""
-    client_intake_destination: str = ""
+    client_intake_destination: str = "https://relaybrief.com/client-intake.html"
     ops_admin_token: str = ""
 
 
@@ -120,6 +120,6 @@ def entry_offer_name() -> str:
             os.getenv("RELAY_FIRST_MONEY_OFFER_NAME", "").strip()
             or os.getenv("FIRST_MONEY_OFFER_NAME", "").strip()
             or str(settings.first_money_offer_name or "").strip()
-            or "First paid Relay test"
+            or "RelayBrief $1 one-call test"
         )
-    return str(settings.packet_offer_name or "One live packet - $40")
+    return str(settings.packet_offer_name or "RelayBrief one-call packet")

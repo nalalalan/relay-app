@@ -718,7 +718,7 @@ def _ensure_stripe_paid_prospect(
         prospect = AcquisitionProspect(
             external_id=external_id,
             contact_email=email,
-            company_name="paid Relay buyer",
+            company_name="paid RelayBrief buyer",
             source="stripe",
             fit_score=100,
             fit_band="paid",
@@ -733,7 +733,7 @@ def _ensure_stripe_paid_prospect(
     if email and not prospect.contact_email:
         prospect.contact_email = email
     if not prospect.company_name:
-        prospect.company_name = "paid Relay buyer"
+        prospect.company_name = "paid RelayBrief buyer"
     prospect.source = prospect.source or "stripe"
     prospect.fit_score = max(int(prospect.fit_score or 0), 100)
     prospect.fit_band = prospect.fit_band or "paid"

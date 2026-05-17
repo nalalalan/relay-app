@@ -6,11 +6,11 @@ window.AO_CONFIG = {
   RELAY_INTENT_SUMMARY_URL: "https://alan-operator-backend-production.up.railway.app/api/relay/intent-summary",
   FIRST_MONEY_CHECKOUT_URL: "https://buy.stripe.com/bJe28t7Sa7DLgec29A2Nq08",
   FIRST_MONEY_PRICE_LABEL: "$1",
-  PACKET_CHECKOUT_URL: "https://buy.stripe.com/bJeaEZb4mf6de64dSi2Nq02",
-  PACKET_PRICE_LABEL: "$40",
+  PACKET_CHECKOUT_URL: "https://buy.stripe.com/bJe28t7Sa7DLgec29A2Nq08",
+  PACKET_PRICE_LABEL: "$1",
   PACKET_5_PACK_URL: "https://buy.stripe.com/28EaEZgoGf6d7HG9C22Nq03",
   WEEKLY_SPRINT_URL: "https://buy.stripe.com/8x200l0pIcY54vu8xY2Nq05",
   MONTHLY_AUTOPILOT_URL: "https://buy.stripe.com/aFaeVf0pI3nv6DC15w2Nq06",
   SAMPLE_PDF_URL: "sample.pdf",
-  CLIENT_GATE_PAGE: "client-intake.html"
+  CLIENT_GATE_PAGE: "https://relaybrief.com/client-intake.html"
 };
