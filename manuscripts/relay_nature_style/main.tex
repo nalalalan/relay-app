@@ -187,9 +187,9 @@ Audit point & 2026-05-04T17:00:00-04:00 & Defines when the window should be eval
 
 \subsection{The product surface is part of the experiment}
 
-The buyer-facing surface is intentionally direct. The current \texttt{relaybrief.com} page presents Relay as a standalone paid product rather than as an AO Labs project route: the header contains only the Relay identity and a neutral order action. A visitor can start a USD~1 one-call order, can use a lower-priority notes form if the notes are already available, and can view a sample that shows a rough note converted into a finished follow-up packet. These interface elements are not only conversion elements; they are also sensors. Viewing the sample, focusing the note field, submitting notes, clicking checkout, and entering an email all create evidence used by the proof contract.
+The buyer-facing surface is intentionally plain. The current \texttt{relaybrief.com} page presents Relay as a standalone paid product rather than as an AO Labs project route: the header contains only the Relay identity, and the main surface is a compact service-order record. A visitor can start a USD~1 one-call checkout, open a sample PDF, or expand a lower-priority notes form if notes are already available. These interface elements are not only conversion elements; they are also sensors. Viewing the sample, focusing the note field, submitting notes, clicking checkout, and entering an email all create evidence used by the proof contract.
 
-Figure~\ref{fig:product_surface} shows the current production product surface used by the experiment. The desktop page presents the offer, USD~1 checkout, order terms, sample packet preview, and note-intake form in one view. The mobile view compresses the same path into a single-column flow. The preview is included here because future claims about buyer behaviour depend on what buyers actually saw.
+Figure~\ref{fig:product_surface} shows the current production product surface used by the experiment. The desktop page presents only the price, scope, included output, Stripe payment path, checkout action, sample link, and collapsed notes form. The mobile view preserves the same order without adding a separate sales layout. The product surface is included here because future claims about buyer behaviour depend on what buyers actually saw.
 
 \begin{figure}[tbp]
     \centering
@@ -208,7 +208,7 @@ Figure~\ref{fig:product_surface} shows the current production product surface us
 \label{fig:product_surface}
 \end{figure}
 
-The returned artifact is a follow-up packet. Figure~\ref{fig:sample_packet} shows the sample preview used on the product page. This matters because the experimental offer is not a vague artificial-intelligence claim; it is a concrete promise that rough sales-call notes can be converted into a recap, follow-up draft, next-step table, open questions, and CRM-ready update.
+The returned artifact is a follow-up packet. Figure~\ref{fig:sample_packet} shows the sample packet reachable from the product page. This matters because the experimental offer is not a vague artificial-intelligence claim; it is a concrete promise that rough sales-call notes can be converted into a recap, follow-up draft, next-step table, open questions, and CRM-ready update.
 
 \begin{figure}[tbp]
     \centering
