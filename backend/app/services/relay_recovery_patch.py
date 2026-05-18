@@ -38,11 +38,11 @@ GENERIC_INBOX_LOCAL_PARTS = {
 RECOVERY_STEP_TEMPLATES = [
     StepTemplate(
         step_number=1,
-        subject="RelayBrief one-call follow-up test",
+        subject="one follow-up email",
         body=(
             "Hi - I run RelayBrief at relaybrief.com.\n\n"
-            "It turns one rough sales or client-call note into a recap, follow-up draft, next steps, open questions, and CRM note.\n\n"
-            "No app, extension, executable, account, password, or card form. If you send one rough note, I reply with a short plain-text preview first. The finished packet is {entry_price_label} only if the preview is useful.\n\n"
+            "It turns rough notes from one sales or client call into one clean follow-up email.\n\n"
+            "No app, extension, executable, account, password, or card form. If you send one rough note, I reply with a short follow-up email preview first. Pay {entry_price_label} only if it helps.\n\n"
             "If that is not relevant, no need to reply.\n\n"
             "- Alan"
         ),
@@ -50,21 +50,21 @@ RECOVERY_STEP_TEMPLATES = [
     ),
     StepTemplate(
         step_number=2,
-        subject="re: RelayBrief one-call follow-up test",
+        subject="re: one follow-up email",
         body=(
             "Following up once with the example output:\n"
             "{sample_url}\n\n"
-            "The test is one call by email: send one rough note, get a short preview first, pay {entry_price_label} only if useful. No software download, account, password, or card form.\n\n"
+            "The test is one call by email: send one rough note, get a short follow-up email preview first, pay {entry_price_label} only if useful. No software download, account, password, or card form.\n\n"
             "- Alan"
         ),
         delay_after_prev_days=1,
     ),
     StepTemplate(
         step_number=3,
-        subject="re: RelayBrief one-call follow-up test",
+        subject="re: one follow-up email",
         body=(
             "Last note from me.\n\n"
-            "If one call is worth testing, send one rough note through relaybrief.com. I will preview it before any payment.\n\n"
+            "If one call is worth testing, send one rough note through relaybrief.com. I will send a follow-up email preview before any payment.\n\n"
             "If not, no need to reply.\n\n"
             "- Alan"
         ),

@@ -181,7 +181,7 @@ def _money_objective_status(*, money: dict[str, Any], outreach: dict[str, Any], 
     elif payments <= 0:
         state = "needs_first_paid_test"
         success_condition = (
-            f"collect the first paid ${test_price_usd:.0f} packet; "
+            f"collect the first paid ${test_price_usd:.0f} follow-up email; "
             f"one sale clears the ${weekly_target_usd:.0f}/week minimum"
         )
     else:
@@ -1076,11 +1076,10 @@ def _sample_email_html(to_email: str) -> str:
       <p>Here is the RelayBrief example output:</p>
       <p><a href="{sample_url}" style="color:#222;font-weight:700">Open the example PDF</a></p>
       <p>
-        RelayBrief turns rough call notes into client-ready follow-through:
-        recap, next steps, follow-up, and CRM update.
+        RelayBrief turns one rough call note into one client-ready follow-up email.
       </p>
       <p>
-        If you want the one-call test, pay through Stripe:
+        If you want the paid version, pay through Stripe:
         <a href="{checkout_url}" style="color:#222;font-weight:700">Pay {price_label} with Stripe</a>
       </p>
       <p style="font-size:13px;color:#756961">
@@ -1169,8 +1168,8 @@ def _messy_notes_customer_email_html(to_email: str) -> str:
     <div style="font-family:Arial,sans-serif;line-height:1.55;color:#221b17;max-width:620px">
       <p>Got your RelayBrief notes.</p>
       <p>
-         The paid next step is the one-call packet. I turn one messy sales or client call
-         into the recap, next steps, follow-up draft, open questions, and CRM-ready update.
+         The paid next step is one follow-up email. I turn one messy sales or client call
+         note into a client-ready email and one concrete next step.
       </p>
       <p>
          <a href="{checkout_url}" style="color:#222;font-weight:700">Pay {price_label} with Stripe</a>

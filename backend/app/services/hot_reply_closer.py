@@ -33,7 +33,7 @@ class HotReplyDecision:
 
 def _ladder_block() -> str:
     packet = entry_checkout_url()
-    offers = [(f"one live packet ({entry_price_label()})", packet)]
+    offers = [(f"one follow-up email ({entry_price_label()})", packet)]
     seen = {packet}
     candidates = [
         (

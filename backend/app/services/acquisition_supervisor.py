@@ -785,7 +785,7 @@ def _clean_reply_text(s: str) -> str:
 
 def _zero_touch_reply() -> str:
     checkout_url = entry_checkout_url()
-    offers = [(f"one live packet ({entry_price_label()})", checkout_url)]
+    offers = [(f"one follow-up email ({entry_price_label()})", checkout_url)]
     seen = {checkout_url}
     for label, url in [
         ("5-call sprint ($750)", getattr(settings, "packet_5_pack_url", "")),

@@ -890,10 +890,14 @@ def _active_outbound_preflight() -> dict[str, Any]:
                     "contains_sample_url": urls["sample_url"] in body,
                     "contains_notes_url": urls["notes_url"] in body,
                     "contains_preview_first_path": (
-                        "short plain-text preview" in body.lower()
+                        (
+                            "short plain-text preview" in body.lower()
+                            or "short follow-up email preview" in body.lower()
+                        )
                         and (
                             "before any payment" in body.lower()
                             or "only if the preview is useful" in body.lower()
+                            or "only if it helps" in body.lower()
                         )
                         and "no download" in body.lower()
                         and "card form" in body.lower()
@@ -979,10 +983,12 @@ def _public_offer_preflight() -> dict[str, Any]:
             'data-primary-money-path="checkout-first"' in page_text
             or 'data-primary-money-path="email-first-payment-after-fit"' in page_text
             or 'data-primary-money-path="free-preview-payment-after-fit"' in page_text
+            or 'data-primary-money-path="free-email-preview-payment-after-fit"' in page_text
         )
         email_first_money_path = (
             'data-primary-money-path="email-first-payment-after-fit"' in page_text
             or 'data-primary-money-path="free-preview-payment-after-fit"' in page_text
+            or 'data-primary-money-path="free-email-preview-payment-after-fit"' in page_text
         )
         paid_intake_path = "client-intake.html" in combined_text
         paid_intake_copy = (
@@ -1000,7 +1006,12 @@ def _public_offer_preflight() -> dict[str, Any]:
             and ("after checkout" in page_lower or paid_intake_copy)
         )
         payment_after_fit_copy = (
-            ("email one rough call note first" in page_lower or "email one note" in page_lower or "email rough note" in page_lower)
+            (
+                "email one rough call note first" in page_lower
+                or "email one note" in page_lower
+                or "email rough note" in page_lower
+                or "email rough notes from one call" in page_lower
+            )
             and ("$1" in combined_text)
             and ("stripe" in page_lower)
             and (
@@ -1009,6 +1020,8 @@ def _public_offer_preflight() -> dict[str, Any]:
                 or "after the job is accepted" in page_lower
                 or "after preview" in page_lower
                 or "only if you want the finished packet" in page_lower
+                or "only if it helps" in page_lower
+                or "pay $1 if you use it" in page_lower
             )
             and ("no card details on this site" in page_lower or "no card form" in page_lower)
         )
@@ -2274,7 +2287,7 @@ def _money_proof_mandate(snapshot: dict[str, Any], bottleneck: str) -> dict[str,
         "success_condition": (
             "minimum money proof met"
             if gross_usd >= weekly_target_usd
-            else f"collect the first paid {entry_price_label()} packet; minimum target ${weekly_target_usd:.2f}/week"
+            else f"collect the first paid {entry_price_label()} follow-up email; minimum target ${weekly_target_usd:.2f}/week"
         ),
         "allowed_autonomous_action": primary_action,
         "forbidden_until_proof": [

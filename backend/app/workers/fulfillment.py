@@ -37,6 +37,7 @@ MASTER_HEADERS = [
 
 FIELD_TO_HEADER = {
     "Where should we send your handoff packet?": "email",
+    "Where should we send your follow-up email?": "email",
     "Client or company name": "client_name",
     "What should this focus on?": "focus",
     "Preferred tone for the follow-up email": "tone",
@@ -142,7 +143,8 @@ def _load_module(path: Path, module_name: str):
 def _extract_client_fields(payload: dict[str, Any]) -> dict[str, str]:
     fields = _field_map(payload)
     return {
-        "email": fields.get("Where should we send your handoff packet?", ""),
+        "email": fields.get("Where should we send your follow-up email?", "")
+        or fields.get("Where should we send your handoff packet?", ""),
         "client_name": clean_agency_name(fields.get("Client or company name", "")),
         "focus": fields.get("What should this focus on?", "").strip(),
         "tone": fields.get("Preferred tone for the follow-up email", "").strip(),
@@ -163,22 +165,22 @@ def _guardrail_email(fields: dict[str, str], gate: ClientGateResult) -> tuple[st
     client_name = fields.get("client_name") or "this submission"
 
     if gate.status == "unsafe":
-        subject = "I could not generate a business handoff from that submission"
+        subject = "I could not generate a follow-up email from that submission"
         body = (
-            "I received the submission, but I could not generate a normal business handoff from the text that was provided.\n\n"
+            "I received the submission, but I could not generate a normal business follow-up email from the text that was provided.\n\n"
             "The notes appear to contain personal safety or self-harm language instead of usable business call details.\n\n"
             "If this was a mistake or a test, resend the form with the actual business call notes or transcript.\n\n"
             "If the text reflects an urgent real-world safety concern, contact local emergency services or an appropriate crisis resource immediately.\n\n"
-            "No business packet was generated.\n\n"
+            "No follow-up email was generated.\n\n"
             "- RelayBrief"
         )
         return subject, body
 
-    subject = "Need more detail before I can generate your handoff packet"
+    subject = "Need more detail before I can write the follow-up email"
     body = (
-        f"I received the submission for {client_name}, but there was not enough usable business call detail to generate a real handoff packet.\n\n"
-        "Please resend with the actual call notes or transcript, plus any known decisions, next steps, open questions, or requested follow-up.\n\n"
-        "No business packet was generated from the current submission.\n\n"
+        f"I received the submission for {client_name}, but there was not enough usable business call detail to write a real follow-up email.\n\n"
+        "Please resend with the actual call notes or transcript, plus any known decision, next step, or requested follow-up.\n\n"
+        "No follow-up email was generated from the current submission.\n\n"
         "- RelayBrief"
     )
     return subject, body
@@ -238,13 +240,13 @@ def run_importer(payload: dict[str, Any]) -> str:
 
 def _builtin_packet(row_data: dict[str, str]) -> str:
     client_name = row_data.get("client_name") or "your client"
-    focus = row_data.get("focus") or "next steps and follow-up"
+    focus = row_data.get("focus") or "follow-up"
     tone = row_data.get("tone") or "clear, calm, and direct"
     raw_notes = row_data.get("raw_notes") or ""
     notes_preview = "\n".join(line.strip() for line in raw_notes.splitlines() if line.strip())[:2500]
     return clean_packet_text(
         f"""
-Post-Call Handoff Packet - {client_name}
+Follow-up email - {client_name}
 
 Focus
 {focus}
@@ -252,30 +254,25 @@ Focus
 Tone
 {tone}
 
-Executive recap
-The call notes point to a follow-through need around {focus}. The immediate priority is to turn the messy notes into a clear handoff: what was discussed, what matters, what remains open, and what should happen next.
+Subject
+Following up on our call
 
-Next steps
-1. Confirm the main outcome from the call.
-2. Send the follow-up note below while the conversation is still warm.
-3. Move the open questions into the next client touchpoint.
-4. Put the CRM-ready update into the account record.
-
-Follow-up draft
+Email body
 Hi,
 
-Thanks for the conversation. Based on the call, the main priority is {focus}. The next move is to confirm the open items, align on ownership, and keep momentum without adding extra back-and-forth.
+Thanks for the conversation. Based on the call notes, the main follow-up is {focus}. The next move is to confirm the useful details while the discussion is still fresh and keep the next action simple.
 
-Here are the next steps I have captured:
-- Confirm the desired outcome.
-- Resolve the open questions.
-- Decide who owns the next action.
-- Set the next check-in or delivery point.
+Here is what I have captured:
+- Main priority: {focus}
+- Next action: confirm the concrete next step
+- Timing: reply while the conversation is still warm
 
-If I missed anything important, send it over and I will update the handoff.
+If I missed anything important, send it over and I will update the email.
 
-CRM-ready update
-Call completed. Focus: {focus}. Follow-up needed. Open items and next actions should be confirmed with the client before the next delivery step.
+Best,
+
+One next-step sentence
+Confirm the next action for {client_name} and keep the follow-up moving.
 
 Source notes
 {notes_preview}

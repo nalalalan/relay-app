@@ -199,7 +199,7 @@ def _build_good_fit_email(fields: dict[str, str]) -> tuple[str, str]:
     blocks.append(_paragraph(f"The main friction is {friction}."))
     blocks.append(_paragraph("Here is an example output:"))
     blocks.append(_link_paragraph("View example output", sample_pdf_url))
-    blocks.append(_paragraph("If this looks right, reply with one recent call note. I will send a short plain-text preview first. The finished packet is $1 only if the preview is useful."))
+    blocks.append(_paragraph("If this looks right, reply with one recent call note. I will send a short follow-up email preview first. Pay $1 only if it helps."))
     blocks.append(_paragraph("- Alan"))
     return "Your RelayBrief request", _wrap_email(blocks)
 
@@ -213,13 +213,13 @@ def _build_lower_fit_email(fields: dict[str, str]) -> tuple[str, str]:
         _paragraph(
             "Based on this request, I am not yet sure RelayBrief is the right fit. "
             "This workflow is strongest when a founder-led team needs post-call follow-up, "
-            "next steps, CRM-ready updates, and proposal direction after real sales calls."
+            "a clean client-ready email, and one concrete next step after real sales calls."
         ),
         _paragraph("Here is an example output:"),
         _link_paragraph("View example output", sample_pdf_url),
         _paragraph(
             "If that is still the workflow you want, reply with one recent real call note "
-            "and I will send a short plain-text preview before any payment."
+            "and I will send a short follow-up email preview before any payment."
         ),
         _paragraph("- Alan"),
     ]

@@ -107,11 +107,11 @@ def choose_launch_type(opportunity: QualifiedOpportunity) -> tuple[LaunchType, s
     # 2) Deterministic override:
     # agency-like + pilot_path should prefer a small paid test unless the notes explicitly say audit.
     if opportunity.route == "pilot_path" and _looks_like_agency(combined) and not _mentions_audit(combined):
-        return "pilot_first", "$1 one-call test", "The opportunity already looks like a strong post-call execution fit."
+        return "pilot_first", "$1 follow-up email", "The opportunity already looks like a strong post-call execution fit."
 
     # 3) Agency-like + proposal-follow-through pain should also prefer pilot-first.
     if _looks_like_agency(combined) and _mentions_proposal_delay(combined) and not _mentions_audit(combined):
-        return "pilot_first", "$1 one-call test", "The main pain looks like post-call execution and proposal follow-through."
+        return "pilot_first", "$1 follow-up email", "The main pain looks like post-call execution and proposal follow-through."
 
     # 4) Local-service diagnostic work should prefer audit-first.
     if _looks_like_local_service(combined) and (_mentions_audit(combined) or _mentions_tracking_or_attribution(combined)):
@@ -127,7 +127,7 @@ def choose_launch_type(opportunity: QualifiedOpportunity) -> tuple[LaunchType, s
 
     # 7) Remaining agency-like cases fall to pilot-first.
     if _mentions_proposal_delay(combined) or _looks_like_agency(combined):
-        return "pilot_first", "$1 one-call test", "The main pain looks like post-call execution and proposal follow-through."
+        return "pilot_first", "$1 follow-up email", "The main pain looks like post-call execution and proposal follow-through."
 
     return "clarify_first", "Clarify-first fit check", "There is not enough commercial specificity yet."
 
@@ -138,7 +138,7 @@ def price_guidance_for(launch_type: LaunchType, opportunity: QualifiedOpportunit
             return "$500-$1,500 diagnostic audit depending on complexity"
         return "$500-$2,000 diagnostic audit depending on call complexity and tracking depth"
     if launch_type == "pilot_first":
-        return "$1 one-call test through Stripe"
+        return "$1 follow-up email through Stripe"
     return "No price yet — clarify scope first"
 
 
@@ -191,7 +191,7 @@ def scope_outline_for(launch_type: LaunchType, opportunity: QualifiedOpportunity
     if launch_type == "pilot_first":
         return [
             "Process one real sales call through the RelayBrief workflow.",
-            "Generate recap, next steps, follow-up draft, and CRM-ready handoff.",
+            "Generate one client-ready follow-up email and a concrete next step.",
             "Review whether the output quality justifies a larger follow-up workflow.",
         ]
 
@@ -205,7 +205,7 @@ def scope_outline_for(launch_type: LaunchType, opportunity: QualifiedOpportunity
 def best_next_move_for(launch_type: LaunchType) -> str:
     mapping = {
         "audit_first": "Offer a short paid diagnostic audit as the next step.",
-        "pilot_first": "Offer the $1 one-call packet as the next step.",
+        "pilot_first": "Offer the $1 follow-up email as the next step.",
         "clarify_first": "Ask for one recent real call example before proposing paid work.",
     }
     return mapping[launch_type]
@@ -220,7 +220,7 @@ def buyer_email_for(opportunity: QualifiedOpportunity, launch_type: LaunchType, 
         body = (
             f"Hi {first_name},\n\n"
             "Based on what I have so far, I would not jump straight into a paid step yet. "
-            "The cleanest move is to look at one recent real call example first so I can tell you whether the right entry point is a short audit, the $1 one-call packet, or something else.\n\n"
+            "The cleanest move is to look at one recent real call example first so I can tell you whether the right entry point is a short audit, the $1 follow-up email, or something else.\n\n"
             "If you send one concrete example, I can point you to the right next step quickly.\n\n"
             "— Alan"
         )

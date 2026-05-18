@@ -57,9 +57,9 @@ class Settings(BaseSettings):
     acq_target_keywords: str = "paid media,ppc,google ads,meta ads,performance marketing"
     acq_excluded_keywords: str = "saas,software,transcription,call recording,note taking"
 
-    packet_offer_name: str = "RelayBrief one-call packet"
+    packet_offer_name: str = "RelayBrief follow-up email"
     packet_checkout_url: str = "https://buy.stripe.com/bJe28t7Sa7DLgec29A2Nq08"
-    first_money_offer_name: str = "RelayBrief $1 one-call test"
+    first_money_offer_name: str = "RelayBrief $1 follow-up email"
     first_money_checkout_url: str = "https://buy.stripe.com/bJe28t7Sa7DLgec29A2Nq08"
     first_money_price_usd: float = 1.0
     minimum_weekly_target_usd: float = 1.0
@@ -120,6 +120,6 @@ def entry_offer_name() -> str:
             os.getenv("RELAY_FIRST_MONEY_OFFER_NAME", "").strip()
             or os.getenv("FIRST_MONEY_OFFER_NAME", "").strip()
             or str(settings.first_money_offer_name or "").strip()
-            or "RelayBrief $1 one-call test"
+            or "RelayBrief $1 follow-up email"
         )
-    return str(settings.packet_offer_name or "RelayBrief one-call packet")
+    return str(settings.packet_offer_name or "RelayBrief follow-up email")

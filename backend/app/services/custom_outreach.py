@@ -60,7 +60,7 @@ LEGACY_STEP_TEMPLATES: list[StepTemplate] = [
             "Just following up once.\n\n"
             "This is the kind of output I mean:\n"
             "{landing_page_url}\n\n"
-            "It’s not software to set up. You send rough notes from one real call, and you get back the finished recap, next steps, follow-up draft, and CRM-ready update.\n\n"
+            "It is not software to set up. You send rough notes from one real call, and you get back one clean follow-up email.\n\n"
             "Would that be useful on one real call?\n\n"
             "- Alan"
         ),
@@ -88,7 +88,7 @@ STEP_TEMPLATES = [
         subject="after-call follow-up",
         body=(
             "Hey - quick question.\n\n"
-            "When a good sales or client call ends, does your team already have someone who turns the messy notes into the recap, follow-up email, next steps, and CRM update the same day?\n\n"
+            "When a good sales or client call ends, does your team already have someone who turns the messy notes into a clean follow-up email the same day?\n\n"
             "I run RelayBrief for that after-call cleanup. It is a paid one-call service at relaybrief.com; no app, extension, account, or password.\n\n"
             "Worth sending the sample?\n\n"
             "- Alan"
@@ -100,9 +100,9 @@ STEP_TEMPLATES = [
         subject="re: after-call follow-up",
         body=(
             "Following up once with the concrete version.\n\n"
-            "Sample packet:\n"
+            "Example output:\n"
             "{sample_url}\n\n"
-            "The use case is simple: send rough notes from one real call, get back the client-ready recap, follow-up draft, open questions, and CRM-ready update.\n\n"
+            "The use case is simple: send rough notes from one real call and get back one client-ready follow-up email.\n\n"
             "If you have one messy call from this week, I can turn it around as a {entry_price_label} test.\n\n"
             "- Alan"
         ),
@@ -133,7 +133,7 @@ STEP_TEMPLATE_VARIANTS: dict[str, list[StepTemplate]] = {
             subject="after-call follow-up",
             body=(
                 "Hey - quick question.\n\n"
-                "I run RelayBrief to turn rough notes from one sales or client call into a recap, follow-up draft, next steps, open questions, and CRM note.\n\n"
+                "I run RelayBrief to turn rough notes from one sales or client call into one clean follow-up email.\n\n"
                 "Here is the example output:\n"
                 "{sample_url}\n\n"
                 "If there is one messy follow-up from this week, worth testing the {entry_price_label} version?\n\n"
@@ -147,7 +147,7 @@ STEP_TEMPLATE_VARIANTS: dict[str, list[StepTemplate]] = {
             body=(
                 "Following up once.\n\n"
                 "The useful part is not more software. It is getting the post-call cleanup finished when the team is busy.\n\n"
-                "If you send rough notes from one real call, Relay sends back the recap, follow-up draft, open questions, and CRM-ready update.\n\n"
+                "If you send rough notes from one real call, Relay sends back one client-ready follow-up email.\n\n"
                 "Sample:\n"
                 "{sample_url}\n\n"
                 "- Alan"
@@ -173,8 +173,8 @@ STEP_TEMPLATE_VARIANTS: dict[str, list[StepTemplate]] = {
             subject="who owns after-call cleanup?",
             body=(
                 "Hey - quick question for {company_name}.\n\n"
-                "After a strong client or sales call, who owns the recap, next steps, follow-up email, and CRM update?\n\n"
-                "I run RelayBrief for that cleanup. Your team sends rough notes, and the packet comes back by email.\n\n"
+                "After a strong client or sales call, who owns the follow-up email?\n\n"
+                "I run RelayBrief for that cleanup. Your team sends rough notes, and the follow-up email comes back by email.\n\n"
                 "If that is already handled, ignore me. If not, worth sending the sample?\n\n"
                 "- Alan"
             ),
@@ -185,9 +185,9 @@ STEP_TEMPLATE_VARIANTS: dict[str, list[StepTemplate]] = {
             subject="re: who owns after-call cleanup?",
             body=(
                 "Following up once with the concrete version.\n\n"
-                "Sample packet:\n"
+                "Example output:\n"
                 "{sample_url}\n\n"
-                "This is built for the gap after a good call: the work is obvious, but nobody wants to turn rough notes into a clean client-ready handoff.\n\n"
+                "This is built for the gap after a good call: the follow-up is obvious, but nobody wants to turn rough notes into the actual email.\n\n"
                 "Worth testing on one real call?\n\n"
                 "- Alan"
             ),
@@ -212,12 +212,12 @@ STEP_TEMPLATE_VARIANTS: dict[str, list[StepTemplate]] = {
             subject="one-call cleanup test",
             body=(
                 "Hey - quick question.\n\n"
-                "I am testing a {entry_price_label} done-for-you Relay: send rough notes from one sales or client call, get back the recap, follow-up draft, next steps, and CRM-ready update.\n\n"
+                "I am testing a {entry_price_label} done-for-you Relay: send rough notes from one sales or client call, get back one clean follow-up email.\n\n"
                 "Sample:\n"
                 "{sample_url}\n\n"
                 "Send rough notes first:\n"
                 "{notes_url}\n\n"
-                "I will reply with a short plain-text preview. The finished packet is {entry_price_label} only if the preview is useful.\n\n"
+                "I will reply with a short follow-up email preview. Pay {entry_price_label} only if it helps.\n\n"
                 "- Alan"
             ),
             delay_after_prev_days=0,
@@ -227,7 +227,7 @@ STEP_TEMPLATE_VARIANTS: dict[str, list[StepTemplate]] = {
             subject="re: one-call cleanup test",
             body=(
                 "Following up once.\n\n"
-                "The test is intentionally small: one real call, plain-text preview first, finished handoff only if useful.\n\n"
+                "The test is intentionally small: one real call, follow-up email preview first, payment only if useful.\n\n"
                 "No download, account, password, or card form on the site.\n\n"
                 "- Alan"
             ),
@@ -253,8 +253,8 @@ STEP_TEMPLATE_VARIANTS: dict[str, list[StepTemplate]] = {
             subject="one-call follow-up cleanup",
             body=(
                 "Hey - quick question.\n\n"
-                "If {company_name} has one sales or client call where the follow-up is stuck in rough notes, I can turn it into the client-ready recap, follow-up draft, next steps, and CRM-ready update.\n\n"
-                "Reply with the rough note first. I will send a short plain-text preview before any payment.\n\n"
+                "If {company_name} has one sales or client call where the follow-up is stuck in rough notes, I can turn it into one client-ready follow-up email.\n\n"
+                "Reply with the rough note first. I will send a short follow-up email preview before any payment.\n\n"
                 "Sample format:\n"
                 "{sample_url}\n\n"
                 "- Alan"
@@ -266,7 +266,7 @@ STEP_TEMPLATE_VARIANTS: dict[str, list[StepTemplate]] = {
             subject="re: one-call follow-up cleanup",
             body=(
                 "Following up once.\n\n"
-                "This is not a software rollout. It is one messy call turned into a preview first, then a finished handoff only if useful.\n\n"
+                "This is not a software rollout. It is one messy call turned into a preview first, then a finished follow-up email only if useful.\n\n"
                 "If delayed follow-up is costing time, reply with one rough note.\n\n"
                 "- Alan"
             ),
@@ -290,9 +290,9 @@ STEP_TEMPLATE_VARIANTS: dict[str, list[StepTemplate]] = {
             subject="proposal follow-up cleanup",
             body=(
                 "Hey - quick question.\n\n"
-                "If {company_name} has one sales call where the next step is stuck in notes instead of getting sent, I can turn the rough notes into the follow-up email, recap, open questions, and CRM-ready update.\n\n"
+                "If {company_name} has one sales call where the next step is stuck in notes instead of getting sent, I can turn the rough notes into one follow-up email.\n\n"
                 "This is for one stalled opportunity, not a software rollout.\n\n"
-                "Reply with the rough notes first. I will send a short plain-text preview before any payment.\n\n"
+                "Reply with the rough notes first. I will send a short follow-up email preview before any payment.\n\n"
                 "- Alan"
             ),
             delay_after_prev_days=0,
@@ -302,7 +302,7 @@ STEP_TEMPLATE_VARIANTS: dict[str, list[StepTemplate]] = {
             subject="re: proposal follow-up cleanup",
             body=(
                 "Following up once.\n\n"
-                "The offer is simple: one stalled follow-up becomes a finished client-ready handoff.\n\n"
+                "The offer is simple: one stalled follow-up becomes one finished client-ready email.\n\n"
                 "If the deal matters, cleanup should not be the bottleneck.\n\n"
                 "Send one rough note if you want me to preview it first.\n\n"
                 "- Alan"
@@ -327,8 +327,8 @@ STEP_TEMPLATE_VARIANTS: dict[str, list[StepTemplate]] = {
             subject="delayed follow-up after calls",
             body=(
                 "Hey - quick question.\n\n"
-                "When a good sales or client call ends at {company_name}, do follow-ups ever sit because the recap, next steps, and CRM update are still rough notes?\n\n"
-                "Relay is cleanup for one call: send rough notes, get a short plain-text preview, then pay {entry_price_label} only if the finished handoff is useful.\n\n"
+                "When a good sales or client call ends at {company_name}, do follow-ups ever sit because the email is still rough notes?\n\n"
+                "Relay is cleanup for one call: send rough notes, get a short follow-up email preview, then pay {entry_price_label} only if it helps.\n\n"
                 "- Alan"
             ),
             delay_after_prev_days=0,
@@ -364,11 +364,11 @@ STEP_TEMPLATE_VARIANTS: dict[str, list[StepTemplate]] = {
 TRUST_FIRST_STEP_TEMPLATES: list[StepTemplate] = [
     StepTemplate(
         step_number=1,
-        subject="RelayBrief one-call follow-up test",
+        subject="one follow-up email",
         body=(
             "Hi - I run RelayBrief at relaybrief.com.\n\n"
-            "It turns one rough sales or client-call note into a recap, follow-up draft, next steps, open questions, and CRM note.\n\n"
-            "No download, install, account, password, or card form. If you send one rough note, I reply with a short plain-text preview first. The finished packet is {entry_price_label} only if the preview is useful.\n\n"
+            "It turns rough notes from one sales or client call into one clean follow-up email.\n\n"
+            "No download, install, account, password, or card form. If you send one rough note, I reply with a short follow-up email preview first. Pay {entry_price_label} only if it helps.\n\n"
             "If that is not relevant, no need to reply.\n\n"
             "- Alan"
         ),
@@ -376,13 +376,13 @@ TRUST_FIRST_STEP_TEMPLATES: list[StepTemplate] = [
     ),
     StepTemplate(
         step_number=2,
-        subject="re: RelayBrief one-call follow-up test",
+        subject="re: one follow-up email",
         body=(
             "Following up once.\n\n"
-            "RelayBrief is one-call cleanup by email: no download, account, password, or card form on the site.\n\n"
+            "RelayBrief is one-call email cleanup: no download, account, password, or card form on the site.\n\n"
             "Example output:\n"
             "{sample_url}\n\n"
-            "If you send one rough note, I reply with a short plain-text preview first. The finished packet is {entry_price_label} only if it is useful.\n\n"
+            "If you send one rough note, I reply with a short follow-up email preview first. Pay {entry_price_label} only if it is useful.\n\n"
             "If not, no need to reply.\n\n"
             "- Alan"
         ),
@@ -390,10 +390,10 @@ TRUST_FIRST_STEP_TEMPLATES: list[StepTemplate] = [
     ),
     StepTemplate(
         step_number=3,
-        subject="re: RelayBrief one-call follow-up test",
+        subject="re: one follow-up email",
         body=(
             "Last note from me.\n\n"
-            "If it is useful later, send one rough call note through relaybrief.com. I will reply with a short preview before any payment.\n\n"
+            "If it is useful later, send one rough call note through relaybrief.com. I will reply with a short follow-up email preview before any payment.\n\n"
             "No download, install, account, password, or card form.\n\n"
             "- Alan"
         ),

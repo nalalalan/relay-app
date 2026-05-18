@@ -238,7 +238,7 @@ def render_buyer_reply(
             f"The main friction is {friction}.\n\n"
             "Here is an example output:\n\n"
             f"{sample_text}\n\n"
-            "If this looks right, reply with one recent call note. I will send a short plain-text preview first. The finished packet is $1 only if the preview is useful.\n\n"
+            "If this looks right, reply with one recent call note. I will send a short follow-up email preview first. Pay $1 only if it helps.\n\n"
             "- Alan"
         )
         html_body = (
@@ -248,7 +248,7 @@ def render_buyer_reply(
             f"<p>The main friction is {escape(friction)}.</p>"
             "<p>Here is an example output:</p>"
             f"<p>{sample_html}</p>"
-            "<p>If this looks right, reply with one recent call note. I will send a short plain-text preview first. The finished packet is $1 only if the preview is useful.</p>"
+            "<p>If this looks right, reply with one recent call note. I will send a short follow-up email preview first. Pay $1 only if it helps.</p>"
             "<p>- Alan</p>"
         )
         return subject, text_body, html_body
@@ -259,22 +259,22 @@ def render_buyer_reply(
             "Hi - RelayBrief here.\n\n"
             f"Thanks for sending details for {agency}.\n\n"
             "Based on this request, I am not yet sure RelayBrief is the right fit. "
-            "This workflow is strongest when a founder-led team needs post-call follow-up, next steps, "
-            "CRM-ready updates, and proposal direction after real sales calls.\n\n"
+            "This workflow is strongest when a founder-led team needs one clean follow-up email "
+            "and a concrete next step after a real sales call.\n\n"
             "Here is an example output:\n\n"
             f"{sample_text}\n\n"
-            "If that is still the workflow you want, reply with one recent real call note and I will send a short plain-text preview before any payment.\n\n"
+            "If that is still the workflow you want, reply with one recent real call note and I will send a short follow-up email preview before any payment.\n\n"
             "- Alan"
         )
         html_body = (
             f"<p>Hi - RelayBrief here.</p>"
             f"<p>Thanks for sending details for {escape(agency)}.</p>"
             "<p>Based on this request, I am not yet sure RelayBrief is the right fit. "
-            "This workflow is strongest when a founder-led team needs post-call follow-up, next steps, "
-            "CRM-ready updates, and proposal direction after real sales calls.</p>"
+            "This workflow is strongest when a founder-led team needs one clean follow-up email "
+            "and a concrete next step after a real sales call.</p>"
             "<p>Here is an example output:</p>"
             f"<p>{sample_html}</p>"
-            "<p>If that is still the workflow you want, reply with one recent real call note and I will send a short plain-text preview before any payment.</p>"
+            "<p>If that is still the workflow you want, reply with one recent real call note and I will send a short follow-up email preview before any payment.</p>"
             "<p>- Alan</p>"
         )
         return subject, text_body, html_body
@@ -288,7 +288,7 @@ def render_buyer_reply(
         "and a need for follow-up material that moves the deal forward.\n\n"
         "Here is an example output:\n\n"
         f"{sample_text}\n\n"
-        "Reply with one recent real sales-call note and I can send a short plain-text preview before any payment.\n\n"
+        "Reply with one recent real sales-call note and I can send a short follow-up email preview before any payment.\n\n"
         "- Alan"
     )
     html_body = (
@@ -299,7 +299,7 @@ def render_buyer_reply(
         "and a need for follow-up material that moves the deal forward.</p>"
         "<p>Here is an example output:</p>"
         f"<p>{sample_html}</p>"
-        "<p>Reply with one recent real sales-call note and I can send a short plain-text preview before any payment.</p>"
+        "<p>Reply with one recent real sales-call note and I can send a short follow-up email preview before any payment.</p>"
         "<p>- Alan</p>"
     )
     return subject, text_body, html_body
@@ -307,9 +307,9 @@ def render_buyer_reply(
 
 def next_action_for_route(route: str) -> str:
     if route == "pilot_path":
-        return "Ask for one recent call note and send a plain-text preview before payment."
+        return "Ask for one recent call note and send a follow-up email preview before payment."
     if route == "clarify_path":
-        return "Ask for one recent real call note before recommending the packet."
+        return "Ask for one recent real call note before recommending the follow-up email."
     return "Ask for a concrete sales-call note or soft-disqualify."
 
 

@@ -359,7 +359,7 @@ def import_source_records(
 
 
 def _build_initial_subject(prospect: BuyerAcquisitionProspect) -> str:
-    return "RelayBrief one-call follow-up test"
+    return "one follow-up email"
 
 
 def _build_initial_body(prospect: BuyerAcquisitionProspect) -> str:
@@ -368,8 +368,8 @@ def _build_initial_body(prospect: BuyerAcquisitionProspect) -> str:
     return (
         f"{greeting}\n\n"
         "I run RelayBrief at relaybrief.com.\n\n"
-        "It turns one rough sales or client-call note into a recap, follow-up draft, next steps, open questions, and CRM note.\n\n"
-        "No download, install, account, password, or card form. If you send one rough note, I reply with a short plain-text preview first. The finished packet is $1 only if the preview is useful.\n\n"
+        "It turns rough notes from one sales or client call into one clean follow-up email.\n\n"
+        "No download, install, account, password, or card form. If you send one rough note, I reply with a short follow-up email preview first. Pay $1 only if it helps.\n\n"
         "- Alan"
     )
 
@@ -471,9 +471,10 @@ def _build_positive_reply_body(prospect: BuyerAcquisitionProspect) -> str:
     intake_url = getattr(settings, "client_intake_url", "") or settings.client_intake_destination
     return (
         "Great.\n\n"
-        f"The one-call test is {entry_price_label()} through Stripe:\n{entry_checkout_url()}\n\n"
-        f"Then send the rough notes here:\n{intake_url}\n\n"
-        "No download, install, account, or password. The packet comes back by email.\n\n"
+        "Send one rough note first and I will reply with a short follow-up email preview.\n\n"
+        f"If it helps, the {entry_price_label()} Stripe link is here:\n{entry_checkout_url()}\n\n"
+        f"If you prefer the intake page:\n{intake_url}\n\n"
+        "No download, install, account, or password. The email comes back by email.\n\n"
         "- Alan"
     )
 

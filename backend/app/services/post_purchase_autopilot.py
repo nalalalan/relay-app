@@ -184,7 +184,7 @@ def _relay_notes_tally_payload(lead: RelayIntentLead, email: str) -> dict[str, A
     ).strip()
     focus = str(
         metadata.get("focus")
-        or "recap, next steps, follow-up draft, open questions, and CRM-ready update"
+        or "one client-ready follow-up email and one next step"
     ).strip()
     tone = str(metadata.get("tone") or "clear and professional").strip()
 
@@ -197,7 +197,7 @@ def _relay_notes_tally_payload(lead: RelayIntentLead, email: str) -> dict[str, A
             "respondentId": f"relay-lead-{lead.id}",
             "createdAt": lead.created_at.isoformat() if lead.created_at else datetime.utcnow().isoformat(),
             "fields": [
-                field("Where should we send your handoff packet?", email),
+                field("Where should we send your follow-up email?", email),
                 field("Client or company name", client_name),
                 field("What should this focus on?", focus),
                 field("Preferred tone for the follow-up email", tone),
@@ -357,7 +357,7 @@ def send_paid_onboarding_for_email(email: str) -> dict[str, Any]:
             _p(f"Thanks - you're in for {company}."),
             _p("Next step is just sending the details for the first real call."),
             _p(f"Intake: {intake_url}"),
-            _p("Once that comes through, the packet gets built and sent back automatically."),
+            _p("Once that comes through, the follow-up email gets written and sent back."),
             _p("- Alan"),
         ]
         send_result = _send_html_email(email, subject, blocks)
@@ -386,11 +386,11 @@ def send_intake_ack_for_email(email: str) -> dict[str, Any]:
         if _event_exists(session, prospect.external_id, "autopilot_intake_ack_sent"):
             return {"status": "skipped", "summary": "already sent"}
 
-        subject = "Got it - packet is in motion"
+        subject = "Got it - email is in motion"
         blocks = [
             _p("Got it."),
-            _p("I have what I need from the intake and the packet is in motion."),
-            _p("You'll get the finished recap, next steps, and follow-up draft automatically."),
+            _p("I have what I need from the intake and the follow-up email is in motion."),
+            _p("You'll get one finished client-ready follow-up email."),
             _p("- Alan"),
         ]
         send_result = _send_html_email(email, subject, blocks)
@@ -456,9 +456,9 @@ def run_paid_intake_reminder_sweep(hours: int = 12) -> dict[str, Any]:
 
             subject = "Quick reminder - send the call details"
             blocks = [
-                _p("Quick reminder - I still need the call details to generate the packet."),
+                _p("Quick reminder - I still need the call details to write the follow-up email."),
                 _p(f"Intake: {intake_url}"),
-                _p("Once that is in, the packet gets built automatically."),
+                _p("Once that is in, the follow-up email gets written."),
                 _p("- Alan"),
             ]
             send_result = _send_html_email(prospect.contact_email, subject, blocks)
@@ -512,7 +512,7 @@ def run_post_delivery_upsell_sweep(hours: int = 24) -> dict[str, Any]:
             subject = "Want this for more calls?"
             blocks = [
                 _p("If you want this for more calls, easiest move is just to use the next-step links below."),
-                _p(f"5-pack / next packet: {_pack_url()}"),
+                _p(f"More follow-up emails: {_pack_url()}"),
                 _p(f"Monthly / site: {_monthly_url()}"),
                 _p("If you do want the same flow running automatically for future calls, that's the path."),
                 _p("- Alan"),
@@ -571,15 +571,15 @@ def run_messy_notes_checkout_followup_sweep(hours: int = 2) -> dict[str, Any]:
             blocks = [
                 _p("I have your messy notes."),
                 _p(
-                    "If you want me to turn that into the actual packet, the paid one-call test is the next step."
+                    "If you want me to turn that into the follow-up email, the paid one-call test is the next step."
                 ),
                 _a(_entry_packet_label(), _entry_packet_link()),
-                _p("I will turn it into the recap, next steps, follow-up draft, open questions, and CRM-ready update."),
+                _p("I will turn it into one client-ready follow-up email and one concrete next step."),
                 _p("- Alan"),
             ]
             _send_conversion_email(
                 to_email=lead.email,
-                subject="Want me to turn this into the packet?",
+                subject="Want me to turn this into the email?",
                 blocks=blocks,
                 event_type="autopilot_messy_notes_checkout_followup_sent",
                 prospect_external_id=external_id,
@@ -654,7 +654,7 @@ def run_messy_notes_second_followup_sweep(hours: int = 24) -> dict[str, Any]:
             external_id = f"relay-lead:{lead.id}"
             blocks = [
                 _p("Closing the loop on your RelayBrief notes."),
-                _p(f"If you still want one rough call turned into the handoff packet, the {entry_price_label()} one-call test is the next step."),
+                _p(f"If you still want one rough call turned into a clean follow-up email, the {entry_price_label()} one-call test is the next step."),
                 _a(_entry_packet_label(), _entry_packet_link()),
                 _p("No download, install, account, or password. If you want to add or replace the rough notes first, send them here."),
                 _a("Send messy notes", _notes_url()),
@@ -662,7 +662,7 @@ def run_messy_notes_second_followup_sweep(hours: int = 24) -> dict[str, Any]:
             ]
             _send_conversion_email(
                 to_email=lead.email,
-                subject="Should I still turn this into the packet?",
+                subject="Should I still turn this into the email?",
                 blocks=blocks,
                 event_type="autopilot_messy_notes_second_followup_sent",
                 prospect_external_id=external_id,
@@ -730,7 +730,7 @@ def run_sample_request_notes_followup_sweep(hours: int = 24) -> dict[str, Any]:
                 _p("You asked for the RelayBrief example output."),
                 _p("The real test is one rough call note: bullets, transcript fragment, or notes dump."),
                 _a("Send messy notes", _notes_url()),
-                _p(f"If you already know you want the paid packet, the one-call test is {entry_price_label()} through Stripe."),
+                _p(f"If you already know you want the paid follow-up email, the one-call test is {entry_price_label()} through Stripe."),
                 _a(_entry_packet_label(), _entry_packet_link()),
                 _p("- Alan"),
             ]
@@ -823,7 +823,7 @@ def run_sample_request_second_followup_sweep(hours: int = 72) -> dict[str, Any]:
                 _p("Checking once more after the RelayBrief example output."),
                 _p("The useful test is still one rough call note. Send the rough version and the next step stays simple."),
                 _a("Send messy notes", _notes_url()),
-                _p(f"If you already know you want the paid packet, the one-call test is {entry_price_label()} through Stripe."),
+                _p(f"If you already know you want the paid follow-up email, the one-call test is {entry_price_label()} through Stripe."),
                 _a(_entry_packet_label(), _entry_packet_link()),
                 _p("- Alan"),
             ]
@@ -927,7 +927,7 @@ def run_checkout_intent_followup_sweep(hours: int = 1) -> dict[str, Any]:
             external_id = f"relay-session:{session_id}"
             blocks = [
                 _p("You opened the RelayBrief payment path."),
-                _p(f"If you still want one messy call turned into a finished recap, follow-up draft, CRM-ready update, and next-step checklist, the {entry_price_label()} packet is here."),
+                _p(f"If you still want one messy call turned into a finished follow-up email, the {entry_price_label()} link is here."),
                 _a(_entry_packet_label(), _entry_packet_link()),
                 _p("If you want to add or resend rough notes first, use the notes form."),
                 _a("Send messy notes", _notes_url()),
@@ -935,7 +935,7 @@ def run_checkout_intent_followup_sweep(hours: int = 1) -> dict[str, Any]:
             ]
             _send_conversion_email(
                 to_email=lead.email,
-                subject="Still want the RelayBrief packet?",
+                subject="Still want the RelayBrief email?",
                 blocks=blocks,
                 event_type="autopilot_checkout_intent_followup_sent",
                 prospect_external_id=external_id,
@@ -1011,8 +1011,8 @@ def run_checkout_intent_second_followup_sweep(hours: int = 24) -> dict[str, Any]
                 session_id = followup.prospect_external_id.split(":", 1)[1].strip()
             external_id = f"relay-session:{session_id}"
             blocks = [
-                _p("Closing the loop on the RelayBrief packet."),
-                _p(f"If you still want the one-call handoff, the {entry_price_label()} path is still the fastest way to get the recap, follow-up draft, CRM-ready update, and next-step checklist finished."),
+                _p("Closing the loop on the RelayBrief follow-up email."),
+                _p(f"If you still want the one-call email, the {entry_price_label()} path is still the fastest way to get it finished."),
                 _a(_entry_packet_label(), _entry_packet_link()),
                 _p("If the call notes are not ready yet, send the rough version first and the next step stays simple."),
                 _a("Send messy notes", _notes_url()),
