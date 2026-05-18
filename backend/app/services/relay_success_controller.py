@@ -9,7 +9,7 @@ import httpx
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.config import entry_checkout_url, entry_price_label, settings
+from app.core.config import entry_checkout_url, entry_price_label, entry_price_usd, settings
 from app.db.base import SessionLocal
 from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect
 from app.models.relay_intent import RelayIntentEvent, RelayIntentLead
@@ -966,22 +966,54 @@ def _public_offer_preflight() -> dict[str, Any]:
 
         combined_text = page_text + "\n" + config_text
         page_lower = page_text.lower()
-        primary_money_path = 'data-primary-money-path="checkout-first"' in page_text
-        checkout_first_copy = "checkout first" in page_lower and "pay $1" in page_lower
+        primary_money_path = (
+            'data-primary-money-path="checkout-first"' in page_text
+            or 'data-primary-money-path="email-first-payment-after-fit"' in page_text
+        )
+        email_first_money_path = 'data-primary-money-path="email-first-payment-after-fit"' in page_text
+        paid_intake_path = "client-intake.html" in combined_text
+        paid_intake_copy = (
+            ("payment email gives" in page_lower or "stripe receipt gives" in page_lower)
+            and "intake link" in page_lower
+        )
+        notes_path_ok = (
+            'id="send-notes"' in page_text
+            or "#send-notes" in page_text
+            or (paid_intake_path and paid_intake_copy)
+        )
+        checkout_first_copy = (
+            ("checkout first" in page_lower or "stripe checkout" in page_lower)
+            and ("pay $1" in page_lower or "$1" in combined_text)
+            and ("after checkout" in page_lower or paid_intake_copy)
+        )
+        payment_after_fit_copy = (
+            ("email one rough call note first" in page_lower or "email one note" in page_lower)
+            and ("$1" in combined_text)
+            and ("stripe" in page_lower)
+            and ("after alan accepts" in page_lower or "after acceptance" in page_lower or "after the job is accepted" in page_lower)
+            and ("no card details on this site" in page_lower or "no card form" in page_lower)
+        )
+        money_path_copy = checkout_first_copy or payment_after_fit_copy
         detail.update(
             {
                 "status_code": page_response.status_code,
                 "final_url": str(page_response.url),
                 "body_length": len(page_text),
                 "sample_status_code": sample_status,
-                "contains_notes_form": "notesForm" in page_text or 'id="notes"' in page_text,
+                "contains_notes_form": 'id="notesForm"' in page_text or 'id="notes"' in page_text,
                 "contains_send_notes_anchor": 'id="send-notes"' in page_text or "#send-notes" in page_text,
+                "contains_paid_intake_path": paid_intake_path,
+                "contains_paid_intake_copy": paid_intake_copy,
+                "notes_path_ok": notes_path_ok,
+                "contains_email_first_money_path": email_first_money_path,
                 "contains_lead_api": "/api/relay/lead" in combined_text,
                 "contains_checkout_action": "checkout_click" in page_text or "js-checkout" in page_text,
                 "contains_checkout_url": bool(checkout_url and checkout_url in combined_text),
                 "contains_pay_first_copy": "pay first" in page_lower,
                 "contains_primary_money_path": primary_money_path,
                 "contains_checkout_first_copy": checkout_first_copy,
+                "contains_payment_after_fit_copy": payment_after_fit_copy,
+                "contains_money_path_copy": money_path_copy,
                 "checkout_action_count": page_text.count("js-checkout"),
                 "pay_one_dollar_count": page_text.lower().count("pay $1"),
                 "send_notes_first_count": page_text.lower().count("send notes first"),
@@ -993,18 +1025,16 @@ def _public_offer_preflight() -> dict[str, Any]:
             missing.append("PUBLIC_OFFER_PAGE_HTTP_STATUS")
         if detail["looks_blocked"]:
             missing.append("PUBLIC_OFFER_PAGE_BLOCKED")
-        if not detail["contains_notes_form"]:
-            missing.append("PUBLIC_OFFER_NOTES_FORM")
         if not detail["contains_lead_api"]:
             missing.append("PUBLIC_OFFER_LEAD_API")
-        if not detail["contains_send_notes_anchor"]:
-            missing.append("PUBLIC_OFFER_SEND_NOTES_ANCHOR")
+        if not notes_path_ok:
+            missing.append("PUBLIC_OFFER_NOTES_PATH")
         if not detail["contains_checkout_action"]:
             missing.append("PUBLIC_OFFER_CHECKOUT_ACTION")
         if checkout_url and not detail["contains_checkout_url"]:
             missing.append("PUBLIC_OFFER_CHECKOUT_URL")
-        if not detail["contains_pay_first_copy"]:
-            missing.append("PUBLIC_OFFER_PAY_FIRST_COPY")
+        if not detail["contains_money_path_copy"]:
+            missing.append("PUBLIC_OFFER_MONEY_PATH_COPY")
         if not detail["contains_primary_money_path"]:
             missing.append("PUBLIC_OFFER_PRIMARY_MONEY_PATH")
         if not detail["contains_price"]:
@@ -1245,13 +1275,14 @@ def _payment_webhook_preflight() -> dict[str, Any]:
             verify_stripe_signature_header,
         )
 
+        sample_amount_total = max(int(round(entry_price_usd() * 100)), 1)
         sample_payload = {
             "id": "evt_relay_payment_preflight",
             "type": "checkout.session.completed",
             "data": {
                 "object": {
                     "id": "cs_relay_payment_preflight",
-                    "amount_total": 4000,
+                    "amount_total": sample_amount_total,
                     "currency": "usd",
                     "customer_details": {"email": "buyer@example.com"},
                     "customer_email": "buyer@example.com",
