@@ -269,7 +269,7 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
             subject="one-call follow-up cleanup",
             body=(
                 "Hey - quick question.\n\n"
-                "If {company_name} has one sales or client call where the follow-up is stuck in rough notes, I can turn it into one client-ready follow-up email.\n\n"
+                "If {company_name} has one sales or client call where the follow-up is still rough notes, I can turn it into one client-ready follow-up email.\n\n"
                 "Send the rough note first:\n"
                 "{notes_url}\n\n"
                 "I will reply with a short follow-up email preview before any payment.\n\n"
@@ -294,7 +294,7 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
             body=(
                 "Last note from me.\n\n"
                 "If this is not a real problem, no worries.\n\n"
-                "If one stuck call is worth cleaning up, send one rough note through relaybrief.com. I will preview it before any payment.\n\n"
+                "If one rough call note is worth cleaning up, send it through relaybrief.com. I will preview the email before any payment.\n\n"
                 "- Alan"
             ),
             delay_after_prev_days=2,
@@ -306,7 +306,7 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
             subject="proposal follow-up cleanup",
             body=(
                 "Hey - quick question.\n\n"
-                "If {company_name} has one sales call where the next step is stuck in notes instead of getting sent, I can turn the rough notes into one follow-up email.\n\n"
+                "If {company_name} has one sales call where the next step is still sitting in notes, I can turn the rough notes into one follow-up email.\n\n"
                 "This is for one stalled opportunity, not a software rollout.\n\n"
                 "Send the rough notes first:\n"
                 "{notes_url}\n\n"
@@ -333,7 +333,7 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
             body=(
                 "Last note from me.\n\n"
                 "If every follow-up is already fast, ignore this.\n\n"
-                "If one opportunity is stuck because the notes are not cleaned up, send one rough note through relaybrief.com. I will preview it before any payment.\n\n"
+                "If one opportunity still needs a follow-up because the notes are not cleaned up, send one rough note through relaybrief.com. I will preview it before any payment.\n\n"
                 "- Alan"
             ),
             delay_after_prev_days=2,
@@ -385,11 +385,11 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
 TRUST_FIRST_OUTREACH_TEMPLATES = [
     StepTemplate(
         step_number=1,
-        subject="stuck follow-up email",
+        subject="follow-up email from rough notes",
         body=(
             "Hi - I run RelayBrief at relaybrief.com.\n\n"
-            "It turns one stuck sales or client follow-up into a ready-to-send email from rough notes.\n\n"
-            "Reply with one rough note first. No download, install, account, password, card form, or payment before preview. If the preview helps, I send the {entry_price_label} Stripe link with it.\n\n"
+            "It turns one rough sales or client-call note into one follow-up email.\n\n"
+            "Reply with the rough note first. No download, install, account, password, card form, or payment before preview. If you use the email, I send the {entry_price_label} Stripe link with it.\n\n"
             "If that is not relevant, no need to reply.\n\n"
             "- Alan"
         ),
@@ -1460,7 +1460,7 @@ def _zero_touch_close_reply() -> str:
         "Yes - here is the RelayBrief example output:\n"
         f"{_sample_url()}\n\n"
         "Send one rough note first and I will reply with a short follow-up email preview.\n\n"
-        f"If the preview helps, I will include the {price_label} Stripe link with it.\n\n"
+        f"If you use the email, I will include the {price_label} Stripe link with it.\n\n"
         "No download, install, account, password, or card form on the site.\n\n"
         "- Alan"
     )

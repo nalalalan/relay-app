@@ -893,15 +893,14 @@ def _active_outbound_preflight() -> dict[str, Any]:
                         (
                             "short plain-text preview" in body.lower()
                             or "short follow-up email preview" in body.lower()
-                            or "ready-to-send email" in body.lower()
-                            or "ready-to-send preview" in body.lower()
+                            or "one follow-up email" in body.lower()
                         )
                         and (
                             "before any payment" in body.lower()
                             or "payment before preview" in body.lower()
                             or "only if the preview is useful" in body.lower()
                             or "only if it helps" in body.lower()
-                            or "if the preview helps" in body.lower()
+                            or "if you use the email" in body.lower()
                         )
                         and "card form" in body.lower()
                     ),
@@ -983,8 +982,7 @@ def _public_offer_preflight() -> dict[str, Any]:
         combined_text = page_text + "\n" + config_text
         page_lower = page_text.lower()
         primary_money_path = (
-            'data-primary-money-path="checkout-first"' in page_text
-            or 'data-primary-money-path="email-first-payment-after-fit"' in page_text
+            'data-primary-money-path="email-first-payment-after-fit"' in page_text
             or 'data-primary-money-path="free-preview-payment-after-fit"' in page_text
             or 'data-primary-money-path="free-email-preview-payment-after-fit"' in page_text
         )
@@ -1003,11 +1001,6 @@ def _public_offer_preflight() -> dict[str, Any]:
             or "#send-notes" in page_text
             or (paid_intake_path and paid_intake_copy)
         )
-        checkout_first_copy = (
-            ("checkout first" in page_lower or "stripe checkout" in page_lower)
-            and ("pay $1" in page_lower or "$1" in combined_text)
-            and ("after checkout" in page_lower or paid_intake_copy)
-        )
         payment_after_fit_copy = (
             (
                 "email one rough call note first" in page_lower
@@ -1015,7 +1008,7 @@ def _public_offer_preflight() -> dict[str, Any]:
                 or "email rough note" in page_lower
                 or "email rough notes from one call" in page_lower
                 or "email the rough note from one call" in page_lower
-                or "email stuck note" in page_lower
+                or "one rough call note" in page_lower
             )
             and ("$1" in combined_text)
             and ("stripe" in page_lower)
@@ -1027,13 +1020,13 @@ def _public_offer_preflight() -> dict[str, Any]:
                 or "only if you want the finished packet" in page_lower
                 or "only if it helps" in page_lower
                 or "pay $1 if you use it" in page_lower
+                or "pay $1 only if you use it" in page_lower
                 or "no checkout before preview" in page_lower
-                or "$1 after a usable draft" in page_lower
-                or "ready-to-send preview" in page_lower
+                or "one follow-up email" in page_lower
             )
             and ("no card details on this site" in page_lower or "no card form" in page_lower)
         )
-        money_path_copy = checkout_first_copy or payment_after_fit_copy
+        money_path_copy = payment_after_fit_copy
         requires_public_checkout = not email_first_money_path
         detail.update(
             {
@@ -1053,7 +1046,7 @@ def _public_offer_preflight() -> dict[str, Any]:
                 "contains_checkout_url": bool(checkout_url and checkout_url in combined_text),
                 "contains_pay_first_copy": "pay first" in page_lower,
                 "contains_primary_money_path": primary_money_path,
-                "contains_checkout_first_copy": checkout_first_copy,
+                "contains_checkout_first_copy": False,
                 "contains_payment_after_fit_copy": payment_after_fit_copy,
                 "contains_money_path_copy": money_path_copy,
                 "checkout_action_count": page_text.count("js-checkout"),
