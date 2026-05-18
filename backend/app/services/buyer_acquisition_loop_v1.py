@@ -367,8 +367,8 @@ def _build_initial_body(prospect: BuyerAcquisitionProspect) -> str:
     greeting = f"Hi {first_name}," if first_name else "Hi,"
     return (
         f"{greeting}\n\n"
-        "If you have one sales or client call that still needs a follow-up email, reply with the rough notes.\n\n"
-        "I will reply with one sendable email preview you can paste. You do not need to click a link, upload anything, download anything, make an account, share a password, or enter a card before preview. If you use the email, I send the $1 Stripe link with it.\n\n"
+        "If one sales or client call still needs a follow-up email, reply with a few rough bullets.\n\n"
+        "You can remove names or private details. I will reply with one follow-up email draft you can paste. You do not need to click a link, upload anything, download anything, make an account, share a password, enter a card, or pay before preview. If you use the email, I send the $1 Stripe link with the draft.\n\n"
         "- Alan"
     )
 
@@ -469,8 +469,8 @@ def classify_reply_text(reply_text: str) -> str:
 def _build_positive_reply_body(prospect: BuyerAcquisitionProspect) -> str:
     return (
         "Great.\n\n"
-        "Reply with one rough call note. I will send one sendable email preview first.\n\n"
-        f"If you use the email, I will include the {entry_price_label()} Stripe link with it.\n\n"
+        "Reply with a few rough bullets from one call. Remove names or private details if needed. I will send one follow-up email draft first.\n\n"
+        f"If you use the email, I will include the {entry_price_label()} Stripe link with the draft.\n\n"
         "No link click, upload, download, account, card, password, or payment before preview. The email comes back by email.\n\n"
         "- Alan"
     )

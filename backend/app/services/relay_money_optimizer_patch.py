@@ -294,7 +294,7 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
             body=(
                 "Last note from me.\n\n"
                 "If this is not a real problem, no worries.\n\n"
-                "If one rough call note is worth cleaning up, send it through relaybrief.com. I will preview the email before any payment.\n\n"
+                "If one call is worth cleaning up, reply with a few rough bullets. I will send the email draft before any payment.\n\n"
                 "- Alan"
             ),
             delay_after_prev_days=2,
@@ -387,8 +387,8 @@ TRUST_FIRST_OUTREACH_TEMPLATES = [
         step_number=1,
         subject="follow-up email from rough notes",
         body=(
-            "Hi - if you have one sales or client call that still needs a follow-up email, reply with the rough notes.\n\n"
-            "I will reply with one sendable email preview you can paste. You do not need to click a link, upload anything, download anything, make an account, share a password, or enter a card before preview. If you use the email, I send the {entry_price_label} Stripe link with it.\n\n"
+            "Hi - if one sales or client call still needs a follow-up email, reply with a few rough bullets.\n\n"
+            "You can remove names or private details. I will reply with one follow-up email draft you can paste. You do not need to click a link, upload anything, download anything, make an account, share a password, enter a card, or pay before preview. If you use the email, I send the {entry_price_label} Stripe link with the draft.\n\n"
             "If that is not relevant, no need to reply.\n\n"
             "- Alan"
         ),
@@ -413,7 +413,7 @@ TRUST_FIRST_OUTREACH_TEMPLATES = [
         subject="re: one follow-up email",
         body=(
             "Last note from me.\n\n"
-            "If it is useful later, reply with one rough call note. I will send one sendable email preview before any payment.\n\n"
+            "If it is useful later, reply with a few rough bullets from one call. I will send one follow-up email draft before any payment.\n\n"
             "No link click, upload, download, account, password, card form, or payment before preview.\n\n"
             "- Alan"
         ),
@@ -1458,8 +1458,8 @@ def _zero_touch_close_reply() -> str:
     return (
         "Yes - here is the RelayBrief example output:\n"
         f"{_sample_url()}\n\n"
-        "Reply with one rough note first and I will send one sendable email preview.\n\n"
-        f"If you use the email, I will include the {price_label} Stripe link with it.\n\n"
+        "Reply with a few rough bullets from one call and I will send one follow-up email draft.\n\n"
+        f"If you use the email, I will include the {price_label} Stripe link with the draft.\n\n"
         "No link click, upload, download, account, card, password, or payment before preview.\n\n"
         "- Alan"
     )

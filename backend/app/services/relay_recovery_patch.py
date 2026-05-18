@@ -40,8 +40,8 @@ RECOVERY_STEP_TEMPLATES = [
         step_number=1,
         subject="follow-up email from rough notes",
         body=(
-            "Hi - if you have one sales or client call that still needs a follow-up email, reply with the rough notes.\n\n"
-            "I will reply with one sendable email preview you can paste. You do not need to click a link, upload anything, download anything, make an account, share a password, or enter a card before preview. If you use the email, I send the {entry_price_label} Stripe link with it.\n\n"
+            "Hi - if one sales or client call still needs a follow-up email, reply with a few rough bullets.\n\n"
+            "You can remove names or private details. I will reply with one follow-up email draft you can paste. You do not need to click a link, upload anything, download anything, make an account, share a password, enter a card, or pay before preview. If you use the email, I send the {entry_price_label} Stripe link with the draft.\n\n"
             "If that is not relevant, no need to reply.\n\n"
             "- Alan"
         ),
