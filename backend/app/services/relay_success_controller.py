@@ -889,6 +889,15 @@ def _active_outbound_preflight() -> dict[str, Any]:
                     "contains_price": entry_price_label() in body,
                     "contains_sample_url": urls["sample_url"] in body,
                     "contains_notes_url": urls["notes_url"] in body,
+                    "contains_preview_first_path": (
+                        "short plain-text preview" in body.lower()
+                        and (
+                            "before any payment" in body.lower()
+                            or "only if the preview is useful" in body.lower()
+                        )
+                        and "no download" in body.lower()
+                        and "card form" in body.lower()
+                    ),
                 }
             )
             if not str(first.subject or "").strip():
@@ -896,7 +905,7 @@ def _active_outbound_preflight() -> dict[str, Any]:
             if not body:
                 missing.append("ACTIVE_OUTBOUND_BODY")
             if variant in ESCALATED_MONEY_VARIANTS:
-                if not detail["contains_checkout_url"]:
+                if not detail["contains_checkout_url"] and not detail["contains_preview_first_path"]:
                     missing.append("ESCALATED_OUTBOUND_CHECKOUT_LINK")
                 if not detail["contains_price"]:
                     missing.append("ESCALATED_OUTBOUND_PRICE_COPY")
