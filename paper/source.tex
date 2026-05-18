@@ -139,7 +139,7 @@
 \end{center}
 
 \vspace{0.35em}
-\noindent\textbf{Autonomous agents can write, route, and execute workflows, but commercial autonomy is hard to evaluate when constraints, buyer signals, and outcomes live in scattered logs. We report Relay, a continuously updated deployment record for a notes-first revenue agent governed by an explicit proof contract. The system converts a broad commercial goal into a state machine with permitted actions, forbidden actions, bottlenecks, proof windows, buyer-intent signals, payment outcomes, and compact research-journal entries. At the latest production read, the seven-day public-intent window contained 63 page views and 7 sample clicks, while the outbound proof remained in \texttt{stalled\_opportunity\_direct} with 9/10 active-sample sends, 0 replies, 0 payments, and USD~0.00 gross revenue. The result is therefore an execution finding, not a demand finding. The contribution is not a claim that Relay makes money. It is a falsifiable protocol for making autonomous revenue experimentation auditable enough that future success, failure, and regressions can be interpreted.}
+\noindent\textbf{Autonomous agents can write, route, and execute workflows, but commercial autonomy is hard to evaluate when constraints, buyer signals, and outcomes live in scattered logs. We report Relay, a continuously updated deployment record for a notes-first revenue agent governed by an explicit proof contract. The system converts a broad commercial goal into a state machine with permitted actions, forbidden actions, bottlenecks, proof windows, buyer-intent signals, payment outcomes, and compact research-journal entries. At the latest production read, the seven-day public-intent window contained 62 page views and 7 sample clicks, while the outbound proof remained in \texttt{stalled\_opportunity\_direct} with 9/10 active-sample sends, 0 replies, 0 payments, and USD~0.00 gross revenue. The result is therefore an execution finding, not a demand finding. The contribution is not a claim that Relay makes money. It is a falsifiable protocol for making autonomous revenue experimentation auditable enough that future success, failure, and regressions can be interpreted.}
 
 \newpage
 \pagestyle{fancy}
@@ -236,7 +236,7 @@ The saved operational snapshot showed a live route surface and a configured back
 \midrule
 Route surface & Stripe and Tally webhooks, client gate, production routes, autopilot routes, intent summary, research journal & Relay was a deployed operational system, not only a static page. & Route robustness under buyer load. \\
 Configuration & 11 of 11 checked environment requirements present & Payment, intake, delivery, and tracking routes had required configuration. & Correct behaviour for every future edge case. \\
-Intent & 63 page views, 7 sample clicks, 2 note-intake clicks, 0 checkout clicks, 0 lead captures in the latest seven-day read & There was measurable site interaction. & Product-market fit or statistically reliable conversion. \\
+Intent & 62 page views, 7 sample clicks, 2 note-intake clicks, 0 checkout clicks, 0 lead captures in the latest seven-day read & There was measurable site interaction. & Product-market fit or statistically reliable conversion. \\
 Filtered buyer signal & 18 real page views, 1 real lead, 2 internal test leads separated & Internal activity was not treated as buyer demand. & A large external buyer sample. \\
 Outbound & 60 rolling seven-day sends, 0 replies, 0 payments, 0 send failures & Prior outreach and non-response were visible. & Outbound conversion. \\
 Money & USD~0.00 gross revenue, zero non-test payments & Profit was not yet proven. & Autonomous money-making success. \\
@@ -274,7 +274,7 @@ Manual owner intervention & Experiment becomes contaminated. & Mark the window a
 
 \subsection{Current operating state}
 
-The latest live check was read from the production Relay API at approximately 2026-05-18T06:58Z. It updates the paper beyond the initial May 4 evidence lock without changing the interpretation standard. The system has more observed intent than the initial snapshot, but it still has no real buyer revenue. The previous \texttt{hard\_paid\_test\_direct} reply-observation window matured with zero replies and zero payments, and the controller rotated without operator choice into \texttt{stalled\_opportunity\_direct}. The active sample remains at 9/10. One additional active send is due in the next send window, and the next audit is 2026-05-18 at 5:00 PM Eastern. The current source revision also changes the product surface and preflight rule from pay-first to email-first/payment-after-acceptance because the observed no-payment state and repeated trust complaints made the payment-first page a poor first-money path.
+The latest live check was read from the production Relay API at approximately 2026-05-18T07:25Z. It updates the paper beyond the initial May 4 evidence lock without changing the interpretation standard. The system has more observed intent than the initial snapshot, but it still has no real buyer revenue. The previous \texttt{hard\_paid\_test\_direct} reply-observation window matured with zero replies and zero payments, and the controller rotated without operator choice into \texttt{stalled\_opportunity\_direct}. The active sample remains at 9/10. One additional active send is due in the next send window, and the next audit is 2026-05-18 at 5:00 PM Eastern. The current source revision also changes the product surface and preflight rule from pay-first to email-first/payment-after-acceptance because the observed no-payment state and repeated trust complaints made the payment-first page a poor first-money path.
 
 \begin{table}[tbp]
 \centering
@@ -288,7 +288,7 @@ The latest live check was read from the production Relay API at approximately 20
 \textbf{Field} & \textbf{Live value} \\
 \midrule
 One-day intent & 12 page views, 28 page-engagement events, 1 sample click, 0 leads. \\
-Seven-day intent & 63 page views, 164 page-engagement events, 7 sample clicks, 2 note-intake clicks, 0 leads. \\
+Seven-day intent & 62 page views, 164 page-engagement events, 7 sample clicks, 2 note-intake clicks, 0 leads. \\
 Revenue & USD~0.00 gross revenue; 0 payments. \\
 Outbound execution & The active sample is 9/10; the next window is expected to send 1 additional active lead and move progress to 10/10. \\
 Active experiment & \texttt{stalled\_opportunity\_direct}; 9/10 active-sample sends observed; 1 active send remaining; next audit 2026-05-18 at 5:00 PM Eastern. \\
@@ -364,7 +364,7 @@ Relay is now treated as a paper-backed operational system. Any substantive chang
 
 \subsection{Statistics and sample size}
 
-No hypothesis test was performed. The initial evidence-lock observations were descriptive: 56 page views, 18 filtered real page views, 8 link clicks, 3 checkout clicks, 3 lead-capture events, 1 filtered real lead, 60 rolling seven-day outbound sends, 0 replies, 0 payments, and 0 send failures. The latest live operating observations are also descriptive: 63 seven-day page views, 7 sample clicks, 2 note-intake clicks, 0 leads, 0 replies, 0 payments, and USD~0.00 gross revenue. The active outbound state is \texttt{stalled\_opportunity\_direct} at 9/10 progress with one active send expected in the next window, so the current observation is still an execution and trust-friction finding rather than evidence of demand failure. The dashboard readiness state is an implementation-readiness measure, not a revenue result; the only revenue endpoint remains a non-owner Stripe payment. Future statistical claims require completed samples, matured observation windows, and a predeclared analysis plan.
+No hypothesis test was performed. The initial evidence-lock observations were descriptive: 56 page views, 18 filtered real page views, 8 link clicks, 3 checkout clicks, 3 lead-capture events, 1 filtered real lead, 60 rolling seven-day outbound sends, 0 replies, 0 payments, and 0 send failures. The latest live operating observations are also descriptive: 62 seven-day page views, 7 sample clicks, 2 note-intake clicks, 0 leads, 0 replies, 0 payments, and USD~0.00 gross revenue. The active outbound state is \texttt{stalled\_opportunity\_direct} at 9/10 progress with one active send expected in the next window, so the current observation is still an execution and trust-friction finding rather than evidence of demand failure. The dashboard readiness state is an implementation-readiness measure, not a revenue result; the only revenue endpoint remains a non-owner Stripe payment. Future statistical claims require completed samples, matured observation windows, and a predeclared analysis plan.
 
 \subsection{AI assistance disclosure}
 
