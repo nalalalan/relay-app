@@ -22,7 +22,7 @@ BUYER_FIELD_MAP = {
     "How many discovery or sales calls do you handle per week?": "calls_per_week",
     "How many discovery or sales calls per week?": "calls_per_week",
     "Biggest post-call bottleneck": "bottleneck",
-    "Optional stuck lead, rough follow-up draft, or a few bullets": "rough_notes",
+    "Optional rough follow-up draft or a few bullets": "rough_notes",
 }
 
 
@@ -199,9 +199,9 @@ def _build_good_fit_email(fields: dict[str, str]) -> tuple[str, str]:
     blocks.append(_paragraph(f"The main friction is {friction}."))
     blocks.append(_paragraph("Here is an example output:"))
     blocks.append(_link_paragraph("View example output", sample_pdf_url))
-    blocks.append(_paragraph("If this looks right, reply with one stuck lead, last reply, or rough follow-up draft. I will send a short follow-up email preview first. No payment before preview."))
+    blocks.append(_paragraph("If this looks right, reply with one rough follow-up draft or a few bullets. I will send one cleaner email first. No payment before preview."))
     blocks.append(_paragraph("- Alan"))
-    return "stuck lead follow-up", _wrap_email(blocks)
+    return "rough follow-up rewrite", _wrap_email(blocks)
 
 
 def _build_lower_fit_email(fields: dict[str, str]) -> tuple[str, str]:
@@ -212,18 +212,18 @@ def _build_lower_fit_email(fields: dict[str, str]) -> tuple[str, str]:
         _paragraph(f"Thanks for sending details for {agency}."),
         _paragraph(
             "Based on this request, I am not yet sure this is the right fit. "
-            "This is strongest when a founder-led team has one stuck lead, "
-            "one real last reply or rough draft, and needs one clear next email."
+            "This is strongest when a founder-led team has one follow-up sitting as a rough draft "
+            "and needs one cleaner email to send."
         ),
         _paragraph("Here is an example output:"),
         _link_paragraph("View example output", sample_pdf_url),
         _paragraph(
-            "If that is still the workflow you want, reply with one stuck lead, last reply, or rough follow-up draft "
-            "and I will send a short follow-up email preview before any payment."
+            "If that is still the workflow you want, reply with one rough follow-up draft or a few bullets "
+            "and I will send one cleaner email before any payment."
         ),
         _paragraph("- Alan"),
     ]
-    return "stuck lead follow-up", _wrap_email(blocks)
+    return "rough follow-up rewrite", _wrap_email(blocks)
 
 
 def _build_buyer_email(fields: dict[str, str]) -> tuple[str, str]:

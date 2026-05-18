@@ -41,6 +41,7 @@ FIELD_TO_HEADER = {
     "Client or company name": "client_name",
     "What should this focus on?": "focus",
     "Preferred tone for the follow-up email": "tone",
+    "Paste your rough follow-up draft or bullets": "raw_notes",
     "Paste your stuck lead, rough follow-up draft, or bullets": "raw_notes",
     "Paste your rough client call notes": "raw_notes",
 }
@@ -150,8 +151,8 @@ def _extract_client_fields(payload: dict[str, Any]) -> dict[str, str]:
         "focus": fields.get("What should this focus on?", "").strip(),
         "tone": fields.get("Preferred tone for the follow-up email", "").strip(),
         "raw_notes": (
-            fields.get("Paste your stuck lead, rough follow-up draft, or bullets", "")
-            or fields.get("Paste your rough follow-up draft or bullets", "")
+            fields.get("Paste your rough follow-up draft or bullets", "")
+            or fields.get("Paste your stuck lead, rough follow-up draft, or bullets", "")
         ).strip()
         or fields.get("Paste your rough client call notes", "").strip(),
     }

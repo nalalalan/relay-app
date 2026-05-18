@@ -234,7 +234,7 @@ def choose_outreach_angle(lead: LeadCandidate, fit_band: str) -> str:
 
 def choose_offer(fit_band: str) -> str:
     if fit_band == "high_priority":
-        return "$1 follow-up email"
+        return "$1 follow-up rewrite"
     if fit_band == "nurture":
         return "call example review"
     return "no current offer"
@@ -261,31 +261,31 @@ def render_outreach(lead: LeadCandidate, fit_band: str, outreach_angle: str, rec
     company = lead.company_name or "your team"
 
     if fit_band == "high_priority":
-        subject = "stuck lead follow-up"
+        subject = "rough follow-up rewrite"
         body = (
             f"Hi {first_name},\n\n"
-            "If one prospect, client, or lead has gone quiet, reply with the last reply, a rough draft, or a few bullets.\n\n"
-            "You can remove names or private details. I will reply with one follow-up email meant to get a yes, no, or next step. No link click, upload, download, account, password, card form, or payment before preview. If you use it, I send the $1 Stripe link afterward.\n\n"
+            "If you have a follow-up email sitting as a rough draft or a few bullets, reply with it.\n\n"
+            "You can remove names or private details. I will reply with one cleaner email you can paste and send. No link click, upload, download, account, password, card form, or payment before preview. If you use it, I send the $1 Stripe link afterward.\n\n"
             "- Alan"
         )
         return subject, body
 
     if fit_band == "nurture":
-        subject = "stuck lead follow-up"
+        subject = "rough follow-up rewrite"
         body = (
             f"Hi {first_name},\n\n"
-            "This may be relevant if one prospect, client, or lead has gone quiet and needs a follow-up.\n\n"
-            "You can reply with the last reply, a rough follow-up draft, or a few bullets and get one email draft first. Remove names or private details if needed. No link click, upload, download, account, card form, or payment before preview.\n\n"
+            "This may be relevant if a follow-up email is still sitting as a rough draft.\n\n"
+            "You can reply with the rough follow-up draft or a few bullets and get one cleaner email first. Remove names or private details if needed. No link click, upload, download, account, card form, or payment before preview.\n\n"
             "If that is not relevant, no need to reply.\n\n"
             "- Alan"
         )
         return subject, body
 
-    subject = "stuck lead follow-up"
+    subject = "rough follow-up rewrite"
     body = (
         f"Hi {first_name},\n\n"
-        "I turn one stuck lead, last reply, or rough draft into one follow-up email. Preview first. Pay only if you use it.\n\n"
-        "This only makes sense if a quiet prospect or client still needs one clear next email. If not, no need to reply.\n\n"
+        "I turn one rough follow-up draft into one cleaner email you can paste and send. Preview first. Pay only if you use it.\n\n"
+        "This only makes sense if there is a real follow-up you already need to send. If not, no need to reply.\n\n"
         "- Alan"
     )
     return subject, body

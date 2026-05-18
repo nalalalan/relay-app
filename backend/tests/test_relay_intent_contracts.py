@@ -71,20 +71,20 @@ def test_success_governor_does_not_rotate_before_reply_window_deadline():
     assert mandate["state"] == "observe_reply_window"
 
 
-def test_reply_autoclose_accepts_stuck_lead_preview_path():
+def test_reply_autoclose_accepts_followup_rewrite_preview_path():
     reply_text = (
-        "totally - one follow-up email: preview first, $1 only after it helps\n\n"
-        "send one stuck lead first. preview first; payment link afterward if you use it"
+        "totally - one follow-up rewrite: preview first, $1 only after it helps\n\n"
+        "send one rough follow-up first. preview first; payment link afterward if you use it"
     )
 
     assert _reply_text_has_preview_first_path(reply_text)
 
 
-def test_public_offer_accepts_current_stuck_lead_preview_path():
+def test_public_offer_accepts_current_followup_rewrite_preview_path():
     page_text = (
         '<main data-primary-money-path="free-email-preview-payment-after-fit">'
-        "One lead went quiet. I'll write the follow-up. "
-        "Reply with one stuck lead, the last reply, a rough draft or a few bullets. "
+        "Send the rough follow-up. I'll make it sendable. "
+        "Reply with a rough draft or a few bullets. "
         "No link click, upload, download, account, password, card form, or payment before preview. "
         "If you use it, I send the $1 Stripe link afterward."
         "</main>"

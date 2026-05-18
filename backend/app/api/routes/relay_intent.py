@@ -1073,13 +1073,13 @@ def _sample_email_html(to_email: str) -> str:
     safe_email = escape(to_email)
     return f"""
     <div style="font-family:Arial,sans-serif;line-height:1.55;color:#221b17;max-width:620px">
-      <p>Here is the RelayBrief example output:</p>
+      <p>Here is the example follow-up rewrite:</p>
       <p><a href="{sample_url}" style="color:#222;font-weight:700">Open the example PDF</a></p>
       <p>
-        RelayBrief turns one stuck lead, last reply, or rough follow-up draft into one follow-up email meant to get a yes, no, or next step.
+        Alan turns one rough follow-up draft or a few bullets into one cleaner email you can paste and send.
       </p>
       <p>
-        If you want the paid version, pay through Stripe:
+        If you use the result, pay through Stripe afterward:
         <a href="{checkout_url}" style="color:#222;font-weight:700">Pay {price_label} with Stripe</a>
       </p>
       <p style="font-size:13px;color:#756961">
@@ -1098,7 +1098,7 @@ def _send_sample_email(to_email: str) -> dict[str, Any]:
 
         response = ResendClient().send_email(
             to_email=to_email,
-            subject="RelayBrief example output",
+            subject="Example follow-up rewrite",
             html=_sample_email_html(to_email),
             from_email=settings.from_email_fulfillment or settings.from_email_outbound,
             reply_to=settings.reply_to_email,
@@ -1126,7 +1126,7 @@ def _send_messy_notes_email(payload: RelayIntentLeadIn, email: str, score: int) 
 
     html = f"""
     <div style="font-family:Arial,sans-serif;line-height:1.55;color:#221b17;max-width:720px">
-      <p><strong>New RelayBrief notes submission</strong></p>
+      <p><strong>New follow-up draft submission</strong></p>
       <p><strong>Email:</strong> {safe_email}<br>
       <strong>Score:</strong> {score}<br>
       <strong>Note length:</strong> {escape(str(note_length))}</p>
@@ -1144,7 +1144,7 @@ def _send_messy_notes_email(payload: RelayIntentLeadIn, email: str, score: int) 
 
         response = ResendClient().send_email(
             to_email=settings.reply_to_email,
-            subject=f"New RelayBrief notes from {email}",
+            subject=f"New follow-up draft from {email}",
             html=html,
             from_email=settings.from_email_fulfillment or settings.from_email_outbound,
             reply_to=email,
@@ -1166,10 +1166,9 @@ def _messy_notes_customer_email_html(to_email: str) -> str:
     safe_email = escape(to_email)
     return f"""
     <div style="font-family:Arial,sans-serif;line-height:1.55;color:#221b17;max-width:620px">
-      <p>Got your RelayBrief notes.</p>
+      <p>Got your follow-up draft.</p>
       <p>
-         The paid next step is one follow-up email. I turn one stuck lead,
-         last reply, rough draft, or a few bullets into an email meant to get a yes, no, or next step.
+         I turn one rough follow-up draft or a few bullets into one cleaner email you can paste and send.
       </p>
       <p>
          <a href="{checkout_url}" style="color:#222;font-weight:700">Pay {price_label} with Stripe</a>
@@ -1195,7 +1194,7 @@ def _send_messy_notes_customer_email(email: str) -> dict[str, Any]:
 
         response = ResendClient().send_email(
             to_email=email,
-            subject="Got your RelayBrief notes",
+            subject="Got your follow-up draft",
             html=_messy_notes_customer_email_html(email),
             from_email=settings.from_email_fulfillment or settings.from_email_outbound,
             reply_to=settings.reply_to_email,

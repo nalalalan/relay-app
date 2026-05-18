@@ -124,7 +124,7 @@ def _followup_wait_email(payload: CloseOpportunity) -> tuple[str, str]:
     body = (
         f"Hi {first_name},\n\n"
         "No problem. I’ll leave this here for now. "
-        "If timing changes, send one stuck lead, last reply, or rough follow-up draft and I can re-open the next step quickly.\n\n"
+        "If timing changes, send one rough follow-up draft or a few bullets and I can re-open the next step quickly.\n\n"
         "— Alan"
     )
     return subject, body

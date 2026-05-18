@@ -735,7 +735,11 @@ def _reply_text_has_preview_first_path(reply_text: str) -> bool:
         or "only after it helps" in text
     )
     has_accepted_input_path = (
-        "send one rough note" in text
+        "send one rough follow-up" in text
+        or "reply with one rough follow-up" in text
+        or "send one rough draft" in text
+        or "reply with one rough draft" in text
+        or "send one rough note" in text
         or "reply with one rough" in text
         or "send one stuck lead" in text
         or "reply with one stuck" in text

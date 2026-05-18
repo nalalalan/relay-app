@@ -230,7 +230,7 @@ def render_buyer_reply(
     sample_text = _text_link(sample_packet_url, "View example output")
 
     if route == "pilot_path":
-        subject = "stuck lead follow-up"
+        subject = "rough follow-up rewrite"
         text_body = (
             "Hi - Alan here.\n\n"
             f"Thanks for sending details for {agency}.\n\n"
@@ -238,7 +238,7 @@ def render_buyer_reply(
             f"The main friction is {friction}.\n\n"
             "Here is an example output:\n\n"
             f"{sample_text}\n\n"
-            "If this looks right, reply with one stuck lead, last reply, or rough follow-up draft. I will send a short follow-up email preview first. No payment before preview.\n\n"
+            "If this looks right, reply with one rough follow-up draft or a few bullets. I will send one cleaner email first. No payment before preview.\n\n"
             "- Alan"
         )
         html_body = (
@@ -248,47 +248,47 @@ def render_buyer_reply(
             f"<p>The main friction is {escape(friction)}.</p>"
             "<p>Here is an example output:</p>"
             f"<p>{sample_html}</p>"
-            "<p>If this looks right, reply with one stuck lead, last reply, or rough follow-up draft. I will send a short follow-up email preview first. No payment before preview.</p>"
+            "<p>If this looks right, reply with one rough follow-up draft or a few bullets. I will send one cleaner email first. No payment before preview.</p>"
             "<p>- Alan</p>"
         )
         return subject, text_body, html_body
 
     if route == "clarify_path":
-        subject = "stuck lead follow-up"
+        subject = "rough follow-up rewrite"
         text_body = (
             "Hi - Alan here.\n\n"
             f"Thanks for sending details for {agency}.\n\n"
             "Based on this request, I am not yet sure this is the right fit. "
-            "This is strongest when a founder-led team has one stuck lead "
-            "and needs one email that gets a yes, no, or next step.\n\n"
+            "This is strongest when a founder-led team has one follow-up sitting as a rough draft "
+            "and needs one cleaner email to send.\n\n"
             "Here is an example output:\n\n"
             f"{sample_text}\n\n"
-            "If that is still the workflow you want, reply with one stuck lead, last reply, or rough follow-up draft and I will send a short follow-up email preview before any payment.\n\n"
+            "If that is still the workflow you want, reply with one rough follow-up draft or a few bullets and I will send one cleaner email before any payment.\n\n"
             "- Alan"
         )
         html_body = (
             f"<p>Hi - Alan here.</p>"
             f"<p>Thanks for sending details for {escape(agency)}.</p>"
             "<p>Based on this request, I am not yet sure this is the right fit. "
-            "This is strongest when a founder-led team has one stuck lead "
-            "and needs one email that gets a yes, no, or next step.</p>"
+            "This is strongest when a founder-led team has one follow-up sitting as a rough draft "
+            "and needs one cleaner email to send.</p>"
             "<p>Here is an example output:</p>"
             f"<p>{sample_html}</p>"
-            "<p>If that is still the workflow you want, reply with one stuck lead, last reply, or rough follow-up draft and I will send a short follow-up email preview before any payment.</p>"
+            "<p>If that is still the workflow you want, reply with one rough follow-up draft or a few bullets and I will send one cleaner email before any payment.</p>"
             "<p>- Alan</p>"
         )
         return subject, text_body, html_body
 
-    subject = "stuck lead follow-up"
+    subject = "rough follow-up rewrite"
     text_body = (
         "Hi - Alan here.\n\n"
         f"Thanks for sending details for {agency}.\n\n"
         "Based on this request, I do not think this is the right fit yet. "
-        "This is strongest when the buyer has one quiet prospect, a real last reply or rough draft, "
-        "and a need for follow-up material that moves the deal forward.\n\n"
+        "This is strongest when the buyer already has one rough follow-up draft or a few bullets "
+        "and wants one cleaner email to send.\n\n"
         "Here is an example output:\n\n"
         f"{sample_text}\n\n"
-        "Reply with one stuck lead, last reply, or rough follow-up draft and I can send a short follow-up email preview before any payment.\n\n"
+        "Reply with one rough follow-up draft or a few bullets and I can send one cleaner email before any payment.\n\n"
         "- Alan"
     )
     html_body = (
@@ -299,7 +299,7 @@ def render_buyer_reply(
         "and a need for follow-up material that moves the deal forward.</p>"
         "<p>Here is an example output:</p>"
         f"<p>{sample_html}</p>"
-        "<p>Reply with one stuck lead, last reply, or rough follow-up draft and I can send a short follow-up email preview before any payment.</p>"
+        "<p>Reply with one rough follow-up draft or a few bullets and I can send a short follow-up email preview before any payment.</p>"
         "<p>- Alan</p>"
     )
     return subject, text_body, html_body
@@ -307,9 +307,9 @@ def render_buyer_reply(
 
 def next_action_for_route(route: str) -> str:
     if route == "pilot_path":
-        return "Ask for one stuck lead and send a follow-up email preview before payment."
+        return "Ask for one rough follow-up draft and send a follow-up email preview before payment."
     if route == "clarify_path":
-        return "Ask for one stuck lead before recommending the follow-up email."
+        return "Ask for one rough follow-up draft before recommending the follow-up email."
     return "Ask for a concrete follow-up draft or soft-disqualify."
 
 

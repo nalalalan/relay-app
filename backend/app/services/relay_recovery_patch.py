@@ -38,10 +38,10 @@ GENERIC_INBOX_LOCAL_PARTS = {
 RECOVERY_STEP_TEMPLATES = [
     StepTemplate(
         step_number=1,
-        subject="stuck lead follow-up",
+        subject="rough follow-up rewrite",
         body=(
-            "Hi - if one sales or client call still needs a follow-up email, reply with a few rough bullets.\n\n"
-            "You can remove names or private details. I will reply with one follow-up email draft you can paste. No link click, upload, download, account, password, card form, or payment before preview. If you use it, I send the {entry_price_label} Stripe link afterward.\n\n"
+            "Hi - if one follow-up email is still sitting as a rough draft or a few bullets, reply with it.\n\n"
+            "You can remove names or private details. I will reply with one cleaner email you can paste and send. No link click, upload, download, account, password, card form, or payment before preview. If you use it, I send the {entry_price_label} Stripe link afterward.\n\n"
             "If that is not relevant, no need to reply.\n\n"
             "- Alan"
         ),
@@ -49,21 +49,21 @@ RECOVERY_STEP_TEMPLATES = [
     ),
     StepTemplate(
         step_number=2,
-        subject="re: one follow-up email",
+        subject="re: rough follow-up rewrite",
         body=(
             "Following up once with the example output:\n"
             "{sample_url}\n\n"
-            "The test is one stuck lead by email: send the last reply or rough draft, get a short follow-up email preview first. No payment before preview. No software download, account, password, or card form.\n\n"
+            "The test is one rough follow-up by email: send the rough draft or a few bullets, get one cleaner email first. No payment before preview. No software download, account, password, or card form.\n\n"
             "- Alan"
         ),
         delay_after_prev_days=1,
     ),
     StepTemplate(
         step_number=3,
-        subject="re: one follow-up email",
+        subject="re: rough follow-up rewrite",
         body=(
             "Last note from me.\n\n"
-            "If one stuck lead is worth testing, reply with the last reply or rough draft. I will send a follow-up email preview before any payment.\n\n"
+            "If one rough follow-up is worth cleaning up, reply with the rough draft or a few bullets. I will send one cleaner email before any payment.\n\n"
             "If not, no need to reply.\n\n"
             "- Alan"
         ),
