@@ -9,6 +9,7 @@ from app.api.routes.relay_intent import (
     _success_governor_contract,
 )
 from app.services.relay_success_controller import _reply_text_has_preview_first_path
+from app.services.relay_success_controller import _public_offer_text_has_preview_first_money_path
 
 
 def test_completed_sample_waits_during_reply_observation_window():
@@ -77,3 +78,16 @@ def test_reply_autoclose_accepts_stuck_lead_preview_path():
     )
 
     assert _reply_text_has_preview_first_path(reply_text)
+
+
+def test_public_offer_accepts_current_stuck_lead_preview_path():
+    page_text = (
+        '<main data-primary-money-path="free-email-preview-payment-after-fit">'
+        "One lead went quiet. I'll write the follow-up. "
+        "Reply with one stuck lead, the last reply, a rough draft or a few bullets. "
+        "No link click, upload, download, account, password, card form, or payment before preview. "
+        "If you use it, I send the $1 Stripe link afterward."
+        "</main>"
+    )
+
+    assert _public_offer_text_has_preview_first_money_path(page_text, page_text, "$1")

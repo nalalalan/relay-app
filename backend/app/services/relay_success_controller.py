@@ -743,6 +743,55 @@ def _reply_text_has_preview_first_path(reply_text: str) -> bool:
     return has_preview_or_payment_boundary and has_accepted_input_path
 
 
+def _public_offer_text_has_preview_first_money_path(
+    page_text: str,
+    combined_text: str,
+    price_label: str,
+) -> bool:
+    page_lower = (page_text or "").lower()
+    combined_lower = (combined_text or "").lower()
+    has_accepted_input_path = (
+        "email one rough follow-up draft" in page_lower
+        or "email the draft you would have sent" in page_lower
+        or "email the last reply" in page_lower
+        or "one stuck lead" in page_lower
+        or "stuck lead" in page_lower
+        or "rough follow-up draft" in page_lower
+        or "rough draft or a few bullets" in page_lower
+        or "email one note" in page_lower
+        or "email rough note" in page_lower
+    )
+    has_payment_boundary = (
+        "after alan accepts" in page_lower
+        or "after acceptance" in page_lower
+        or "after the job is accepted" in page_lower
+        or "after preview" in page_lower
+        or "payment before preview" in page_lower
+        or "payment link afterward" in page_lower
+        or "stripe link afterward" in page_lower
+        or "only if you want the finished packet" in page_lower
+        or "only if it helps" in page_lower
+        or "pay $1 if you use it" in page_lower
+        or "pay $1 only if you use it" in page_lower
+        or "pay only if you use it" in page_lower
+        or "payment only if useful" in page_lower
+        or "no checkout before preview" in page_lower
+        or "one follow-up email" in page_lower
+        or "yes, no, or next step" in page_lower
+    )
+    has_card_boundary = (
+        "no card details on this site" in page_lower
+        or "no card form" in page_lower
+        or "card form, or payment before preview" in page_lower
+        or "card form or payment before preview" in page_lower
+        or "card, or payment before preview" in page_lower
+        or "no checkout before preview" in page_lower
+    )
+    has_price = price_label in combined_text or price_label.lower() in combined_lower
+    has_stripe = "stripe" in page_lower or "stripe" in combined_lower
+    return has_accepted_input_path and has_price and has_stripe and has_payment_boundary and has_card_boundary
+
+
 def _payment_webhook_smoke_interval_hours() -> int:
     return max(_int_env("RELAY_PAYMENT_WEBHOOK_SMOKE_INTERVAL_HOURS", 6), 1)
 
@@ -1023,34 +1072,10 @@ def _public_offer_preflight() -> dict[str, Any]:
             or "#send-notes" in page_text
             or (paid_intake_path and paid_intake_copy)
         )
-        payment_after_fit_copy = (
-            (
-                "email one rough follow-up draft" in page_lower
-                or "email the draft you would have sent" in page_lower
-                or "email the last reply" in page_lower
-                or "one stuck lead" in page_lower
-                or "stuck lead" in page_lower
-                or "rough follow-up draft" in page_lower
-                or "rough draft or a few bullets" in page_lower
-                or "email one note" in page_lower
-                or "email rough note" in page_lower
-            )
-            and ("$1" in combined_text)
-            and ("stripe" in page_lower)
-            and (
-                "after alan accepts" in page_lower
-                or "after acceptance" in page_lower
-                or "after the job is accepted" in page_lower
-                or "after preview" in page_lower
-                or "only if you want the finished packet" in page_lower
-                or "only if it helps" in page_lower
-                or "pay $1 if you use it" in page_lower
-                or "pay $1 only if you use it" in page_lower
-                or "no checkout before preview" in page_lower
-                or "one follow-up email" in page_lower
-                or "yes, no, or next step" in page_lower
-            )
-            and ("no card details on this site" in page_lower or "no card form" in page_lower)
+        payment_after_fit_copy = _public_offer_text_has_preview_first_money_path(
+            page_text,
+            combined_text,
+            entry_price_label(),
         )
         money_path_copy = payment_after_fit_copy
         requires_public_checkout = not email_first_money_path
