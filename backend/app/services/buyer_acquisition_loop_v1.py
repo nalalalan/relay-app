@@ -359,7 +359,7 @@ def import_source_records(
 
 
 def _build_initial_subject(prospect: BuyerAcquisitionProspect) -> str:
-    return "one follow-up email"
+    return "stuck follow-up email"
 
 
 def _build_initial_body(prospect: BuyerAcquisitionProspect) -> str:
@@ -368,8 +368,8 @@ def _build_initial_body(prospect: BuyerAcquisitionProspect) -> str:
     return (
         f"{greeting}\n\n"
         "I run RelayBrief at relaybrief.com.\n\n"
-        "It turns rough notes from one sales or client call into one clean follow-up email.\n\n"
-        "No download, install, account, password, card form, or payment before preview. If the preview helps, I send the $1 Stripe link with it.\n\n"
+        "It turns one stuck sales or client follow-up into a ready-to-send email from rough notes.\n\n"
+        "Reply with one rough note first. No download, install, account, password, card form, or payment before preview. If the preview helps, I send the $1 Stripe link with it.\n\n"
         "- Alan"
     )
 

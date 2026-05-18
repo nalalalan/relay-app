@@ -261,12 +261,12 @@ def render_outreach(lead: LeadCandidate, fit_band: str, outreach_angle: str, rec
     company = lead.company_name or "your team"
 
     if fit_band == "high_priority":
-        subject = "one follow-up email"
+        subject = "stuck follow-up email"
         body = (
             f"Hi {first_name},\n\n"
             "I run RelayBrief at relaybrief.com.\n\n"
-            "It turns rough notes from one sales or client call into one clean follow-up email.\n\n"
-            "No download, install, account, password, card form, or payment before preview. If the preview helps, I send the $1 Stripe link with it.\n\n"
+            "It turns one stuck sales or client follow-up into a ready-to-send email from rough notes.\n\n"
+            "Reply with one rough note first. No download, install, account, password, card form, or payment before preview. If the preview helps, I send the $1 Stripe link with it.\n\n"
             "- Alan"
         )
         return subject, body
@@ -276,7 +276,7 @@ def render_outreach(lead: LeadCandidate, fit_band: str, outreach_angle: str, rec
         body = (
             f"Hi {first_name},\n\n"
             "I run RelayBrief at relaybrief.com.\n\n"
-            "It may be relevant if rough sales or client-call notes are turning into delayed follow-up. You can send one rough note and get a short follow-up email preview first. No payment before preview.\n\n"
+            "It may be relevant if rough sales or client-call notes are turning into a stuck follow-up. You can reply with one rough note and get a ready-to-send email preview first. No payment before preview.\n\n"
             "No download, install, account, password, or card form. If that is not relevant, no need to reply.\n\n"
             "- Alan"
         )
@@ -285,7 +285,7 @@ def render_outreach(lead: LeadCandidate, fit_band: str, outreach_angle: str, rec
     subject = "RelayBrief fit check"
     body = (
         f"Hi {first_name},\n\n"
-        "I run RelayBrief at relaybrief.com. It turns one rough call note into one follow-up email. Preview first. Payment only after a useful preview.\n\n"
+        "I run RelayBrief at relaybrief.com. It turns one stuck follow-up into a ready-to-send email from rough notes. Preview first. Payment only after a useful preview.\n\n"
         "This only makes sense if post-call follow-up is actually slow or annoying. If not, no need to reply.\n\n"
         "- Alan"
     )

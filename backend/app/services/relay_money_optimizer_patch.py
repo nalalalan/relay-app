@@ -385,11 +385,11 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
 TRUST_FIRST_OUTREACH_TEMPLATES = [
     StepTemplate(
         step_number=1,
-        subject="one follow-up email",
+        subject="stuck follow-up email",
         body=(
             "Hi - I run RelayBrief at relaybrief.com.\n\n"
-            "It turns rough notes from one sales or client call into one clean follow-up email.\n\n"
-            "No download, install, account, password, card form, or payment before preview. If the preview helps, I send the {entry_price_label} Stripe link with it.\n\n"
+            "It turns one stuck sales or client follow-up into a ready-to-send email from rough notes.\n\n"
+            "Reply with one rough note first. No download, install, account, password, card form, or payment before preview. If the preview helps, I send the {entry_price_label} Stripe link with it.\n\n"
             "If that is not relevant, no need to reply.\n\n"
             "- Alan"
         ),

@@ -893,13 +893,16 @@ def _active_outbound_preflight() -> dict[str, Any]:
                         (
                             "short plain-text preview" in body.lower()
                             or "short follow-up email preview" in body.lower()
+                            or "ready-to-send email" in body.lower()
+                            or "ready-to-send preview" in body.lower()
                         )
                         and (
                             "before any payment" in body.lower()
+                            or "payment before preview" in body.lower()
                             or "only if the preview is useful" in body.lower()
                             or "only if it helps" in body.lower()
+                            or "if the preview helps" in body.lower()
                         )
-                        and "no download" in body.lower()
                         and "card form" in body.lower()
                     ),
                 }
@@ -1011,6 +1014,8 @@ def _public_offer_preflight() -> dict[str, Any]:
                 or "email one note" in page_lower
                 or "email rough note" in page_lower
                 or "email rough notes from one call" in page_lower
+                or "email the rough note from one call" in page_lower
+                or "email stuck note" in page_lower
             )
             and ("$1" in combined_text)
             and ("stripe" in page_lower)
@@ -1024,6 +1029,7 @@ def _public_offer_preflight() -> dict[str, Any]:
                 or "pay $1 if you use it" in page_lower
                 or "no checkout before preview" in page_lower
                 or "$1 after a usable draft" in page_lower
+                or "ready-to-send preview" in page_lower
             )
             and ("no card details on this site" in page_lower or "no card form" in page_lower)
         )
@@ -1217,6 +1223,18 @@ def _reply_autoclose_preflight() -> dict[str, Any]:
                 "reply_contains_checkout_url": bool(checkout_url and checkout_url in reply_text),
                 "reply_contains_price": entry_price_label() in reply_text,
                 "reply_contains_notes_url": bool(notes_url and notes_url in reply_text),
+                "reply_contains_preview_first_path": (
+                    (
+                        "preview before any payment" in reply_text.lower()
+                        or "preview first" in reply_text.lower()
+                        or "payment link only with a useful preview" in reply_text.lower()
+                        or "only after it helps" in reply_text.lower()
+                    )
+                    and (
+                        "send one rough note" in reply_text.lower()
+                        or "reply with one rough" in reply_text.lower()
+                    )
+                ),
             }
         )
         if not settings.buyer_acq_mailbox_address:
@@ -1235,7 +1253,7 @@ def _reply_autoclose_preflight() -> dict[str, Any]:
             missing.append("PACKET_CHECKOUT_URL")
         if intent == "negative" or not reply_text:
             missing.append("REPLY_AUTOCLOSE_TEXT")
-        if checkout_url and not detail["reply_contains_checkout_url"]:
+        if checkout_url and not detail["reply_contains_checkout_url"] and not detail["reply_contains_preview_first_path"]:
             missing.append("REPLY_AUTOCLOSE_CHECKOUT_LINK")
         if not detail["reply_contains_price"]:
             missing.append("REPLY_AUTOCLOSE_PRICE_COPY")
