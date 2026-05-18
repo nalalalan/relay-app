@@ -10,6 +10,7 @@ from app.api.routes.relay_intent import (
 )
 from app.services.relay_success_controller import _reply_text_has_preview_first_path
 from app.services.relay_success_controller import _public_offer_text_has_preview_first_money_path
+from app.services.relay_success_controller import _outbound_body_has_preview_first_path
 
 
 def test_completed_sample_waits_during_reply_observation_window():
@@ -91,3 +92,16 @@ def test_public_offer_accepts_current_followup_rewrite_preview_path():
     )
 
     assert _public_offer_text_has_preview_first_money_path(page_text, page_text, "$1")
+
+
+def test_outbound_preflight_accepts_current_email_first_copy():
+    body = (
+        "Hi - if you have a follow-up email sitting as a rough draft or a few bullets, reply with it.\n\n"
+        "You can remove names or private details. I will reply with one cleaner email you can paste and send. "
+        "No link click, upload, download, account, password, card form, or payment before preview. "
+        "If you use it, I send the $1 Stripe link afterward.\n\n"
+        "If that is not relevant, no need to reply.\n\n"
+        "- Alan"
+    )
+
+    assert _outbound_body_has_preview_first_path(body)

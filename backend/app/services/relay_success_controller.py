@@ -747,6 +747,41 @@ def _reply_text_has_preview_first_path(reply_text: str) -> bool:
     return has_preview_or_payment_boundary and has_accepted_input_path
 
 
+def _outbound_body_has_preview_first_path(body: str) -> bool:
+    text = (body or "").lower()
+    has_return_value = (
+        "one cleaner email" in text
+        or "one follow-up email" in text
+        or "follow-up email preview" in text
+        or "sendable email" in text
+        or "email you can paste and send" in text
+    )
+    has_input_path = (
+        "rough follow-up draft" in text
+        or "rough draft" in text
+        or "few bullets" in text
+        or "rough follow-up" in text
+    )
+    has_preview_or_payment_boundary = (
+        "before any payment" in text
+        or "payment before preview" in text
+        or "no payment before preview" in text
+        or "stripe link afterward" in text
+        or "payment link afterward" in text
+        or "only if useful" in text
+        or "if you use it" in text
+        or "if you use the email" in text
+    )
+    has_no_checkout_trust_boundary = (
+        "no link click" in text
+        or "no upload" in text
+        or "no download" in text
+        or "no account" in text
+        or "card form" in text
+    )
+    return has_return_value and has_input_path and has_preview_or_payment_boundary and has_no_checkout_trust_boundary
+
+
 def _public_offer_text_has_preview_first_money_path(
     page_text: str,
     combined_text: str,
@@ -959,26 +994,7 @@ def _active_outbound_preflight() -> dict[str, Any]:
                     "contains_price": entry_price_label() in body,
                     "contains_sample_url": urls["sample_url"] in body,
                     "contains_notes_url": urls["notes_url"] in body,
-                    "contains_preview_first_path": (
-                        (
-                            "short plain-text preview" in body.lower()
-                            or "short follow-up email preview" in body.lower()
-                            or "one clean email preview" in body.lower()
-                            or "one sendable email preview" in body.lower()
-                            or "one follow-up email" in body.lower()
-                        )
-                        and (
-                            "before any payment" in body.lower()
-                            or "payment before preview" in body.lower()
-                            or "only if the preview is useful" in body.lower()
-                            or "only if it helps" in body.lower()
-                            or "if you use the email" in body.lower()
-                        )
-                        and (
-                            "card form" in body.lower()
-                            or "enter a card" in body.lower()
-                        )
-                    ),
+                    "contains_preview_first_path": _outbound_body_has_preview_first_path(body),
                 }
             )
             if not str(first.subject or "").strip():
