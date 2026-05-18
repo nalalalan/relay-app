@@ -786,7 +786,7 @@ def _clean_reply_text(s: str) -> str:
 def _zero_touch_reply() -> str:
     return _clean_reply_text(
         "totally - keep it simple\n\n"
-        "reply with one rough call note. i will send the follow-up email preview first.\n\n"
+        "reply with rough notes from one call. i will send the follow-up email preview first.\n\n"
         f"if you use the email, i will include the {entry_price_label()} Stripe link with it."
     )
 

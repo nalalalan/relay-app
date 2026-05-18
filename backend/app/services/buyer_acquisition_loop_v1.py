@@ -367,9 +367,8 @@ def _build_initial_body(prospect: BuyerAcquisitionProspect) -> str:
     greeting = f"Hi {first_name}," if first_name else "Hi,"
     return (
         f"{greeting}\n\n"
-        "I run RelayBrief at relaybrief.com.\n\n"
-        "It turns one rough sales or client-call note into one follow-up email.\n\n"
-        "Reply with the rough note first. No download, install, account, password, card form, or payment before preview. If you use the email, I send the $1 Stripe link with it.\n\n"
+        "If you have one sales or client call that still needs a follow-up email, send the rough notes.\n\n"
+        "I will reply with one clean email preview you can paste. No download, install, account, password, card form, or payment before preview. If you use the email, I send the $1 Stripe link with it.\n\n"
         "- Alan"
     )
 

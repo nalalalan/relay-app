@@ -893,6 +893,7 @@ def _active_outbound_preflight() -> dict[str, Any]:
                         (
                             "short plain-text preview" in body.lower()
                             or "short follow-up email preview" in body.lower()
+                            or "one clean email preview" in body.lower()
                             or "one follow-up email" in body.lower()
                         )
                         and (
