@@ -754,10 +754,12 @@ def _outbound_body_has_preview_first_path(body: str) -> bool:
         or "one follow-up email" in text
         or "follow-up email preview" in text
         or "sendable email" in text
+        or "email you can send" in text
         or "email you can paste and send" in text
     )
     has_input_path = (
         "rough follow-up draft" in text
+        or "last reply" in text
         or "rough draft" in text
         or "few bullets" in text
         or "rough follow-up" in text
@@ -794,9 +796,12 @@ def _public_offer_text_has_preview_first_money_path(
         or "email the draft you would have sent" in page_lower
         or "email the last reply" in page_lower
         or "one stuck lead" in page_lower
+        or "one stuck follow-up" in page_lower
         or "stuck lead" in page_lower
+        or "stuck follow-up" in page_lower
         or "rough follow-up draft" in page_lower
         or "rough draft or a few bullets" in page_lower
+        or "rough draft, last reply" in page_lower
         or "email one note" in page_lower
         or "email rough note" in page_lower
     )

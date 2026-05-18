@@ -654,10 +654,10 @@ def run_messy_notes_second_followup_sweep(hours: int = 24) -> dict[str, Any]:
             external_id = f"relay-lead:{lead.id}"
             blocks = [
                 _p("Closing the loop on your follow-up email draft."),
-                _p(f"If you still want one rough follow-up draft turned into a follow-up email, the {entry_price_label()} $1 rewrite is the next step."),
+                _p(f"If you still want one stuck follow-up turned into an email you can send, the {entry_price_label()} $1 cleanup is the next step."),
                 _a(_entry_packet_label(), _entry_packet_link()),
-                _p("No download, install, account, or password. If you want to add or replace the rough follow-up context first, send it here."),
-                _a("Send rough follow-up", _notes_url()),
+                _p("No download, install, account, or password. If you want to add or replace the follow-up context first, send it here."),
+                _a("Send follow-up context", _notes_url()),
                 _p("- Alan"),
             ]
             _send_conversion_email(
@@ -728,15 +728,15 @@ def run_sample_request_notes_followup_sweep(hours: int = 24) -> dict[str, Any]:
             external_id = f"relay-lead:{lead.id}"
             blocks = [
                 _p("You asked for the example output."),
-                _p("The real test is one rough follow-up draft or a few bullets."),
-                _a("Send rough follow-up", _notes_url()),
-                _p(f"If you already know you want the paid follow-up email, the $1 rewrite is {entry_price_label()} through Stripe."),
+                _p("The real test is one stuck follow-up, last reply, rough draft, or a few bullets."),
+                _a("Send follow-up context", _notes_url()),
+                _p(f"If you already know you want the paid follow-up cleanup, the $1 cleanup is {entry_price_label()} through Stripe."),
                 _a(_entry_packet_label(), _entry_packet_link()),
                 _p("- Alan"),
             ]
             _send_conversion_email(
                 to_email=lead.email,
-                subject="Have one rough follow-up draft to test?",
+                subject="Have one stuck follow-up to test?",
                 blocks=blocks,
                 event_type="autopilot_sample_notes_followup_sent",
                 prospect_external_id=external_id,

@@ -84,8 +84,8 @@ def test_reply_autoclose_accepts_followup_rewrite_preview_path():
 def test_public_offer_accepts_current_followup_rewrite_preview_path():
     page_text = (
         '<main data-primary-money-path="free-email-preview-payment-after-fit">'
-        "Send the rough follow-up. I'll make it sendable. "
-        "Reply with a rough draft or a few bullets. "
+        "Send one stuck follow-up. I'll rewrite it. "
+        "Reply with a rough draft, last reply, or a few bullets. "
         "No link click, upload, download, account, password, card form, or payment before preview. "
         "If you use it, I send the $1 Stripe link afterward."
         "</main>"
@@ -96,8 +96,8 @@ def test_public_offer_accepts_current_followup_rewrite_preview_path():
 
 def test_outbound_preflight_accepts_current_email_first_copy():
     body = (
-        "Hi - if you have a follow-up email sitting as a rough draft or a few bullets, reply with it.\n\n"
-        "You can remove names or private details. I will reply with one cleaner email you can paste and send. "
+        "Hi - if one quote, call, or lead is stuck, reply with the last reply, rough draft, or a few bullets.\n\n"
+        "You can remove names or private details. I will reply with a subject line and one email you can send. "
         "No link click, upload, download, account, password, card form, or payment before preview. "
         "If you use it, I send the $1 Stripe link afterward.\n\n"
         "If that is not relevant, no need to reply.\n\n"

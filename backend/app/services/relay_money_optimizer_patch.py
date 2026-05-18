@@ -385,10 +385,10 @@ OPTIMIZED_STEP_TEMPLATE_VARIANTS = {
 TRUST_FIRST_OUTREACH_TEMPLATES = [
     StepTemplate(
         step_number=1,
-        subject="rough follow-up rewrite",
+        subject="follow-up email cleanup",
         body=(
-            "Hi - if you have a follow-up email sitting as a rough draft or a few bullets, reply with it.\n\n"
-            "You can remove names or private details. I will reply with one cleaner email you can paste and send. No link click, upload, download, account, password, card form, or payment before preview. If you use it, I send the {entry_price_label} Stripe link afterward.\n\n"
+            "Hi - if one quote, call, or lead is stuck, reply with the last reply, rough draft, or a few bullets.\n\n"
+            "You can remove names or private details. I will reply with a subject line and one email you can send. No link click, upload, download, account, password, card form, or payment before preview. If you use it, I send the {entry_price_label} Stripe link afterward.\n\n"
             "If that is not relevant, no need to reply.\n\n"
             "- Alan"
         ),
@@ -396,13 +396,13 @@ TRUST_FIRST_OUTREACH_TEMPLATES = [
     ),
     StepTemplate(
         step_number=2,
-        subject="re: rough follow-up rewrite",
+        subject="re: follow-up email cleanup",
         body=(
             "Following up once.\n\n"
             "This is manual follow-up cleanup by email: no download, account, password, upload, card form, or payment before preview.\n\n"
             "Example output:\n"
             "{sample_url}\n\n"
-            "If you send one rough follow-up, I reply with a short preview first. No payment before preview.\n\n"
+            "If you send one stuck follow-up, I reply with a short preview first. No payment before preview.\n\n"
             "If not, no need to reply.\n\n"
             "- Alan"
         ),
@@ -410,10 +410,10 @@ TRUST_FIRST_OUTREACH_TEMPLATES = [
     ),
     StepTemplate(
         step_number=3,
-        subject="re: rough follow-up rewrite",
+        subject="re: follow-up email cleanup",
         body=(
             "Last note from me.\n\n"
-            "If it is useful later, reply with one rough follow-up draft or a few bullets. I will send one cleaner email before any payment.\n\n"
+            "If it is useful later, reply with one stuck follow-up, last reply, rough draft, or a few bullets. I will send one sendable email before any payment.\n\n"
             "No link click, upload, download, account, password, card form, or payment before preview.\n\n"
             "- Alan"
         ),
