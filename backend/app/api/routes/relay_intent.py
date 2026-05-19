@@ -1076,7 +1076,7 @@ def _sample_email_html(to_email: str) -> str:
       <p>Here is the example follow-up rewrite:</p>
       <p><a href="{sample_url}" style="color:#222;font-weight:700">Open the example PDF</a></p>
       <p>
-        Alan turns one stuck follow-up, last reply, or rough draft into a subject line and one sendable email.
+        Alan turns one stale lead, last reply, or rough draft into a subject line and one follow-up email.
       </p>
       <p>
         If you use the result, pay through Stripe afterward:
@@ -1168,7 +1168,7 @@ def _messy_notes_customer_email_html(to_email: str) -> str:
     <div style="font-family:Arial,sans-serif;line-height:1.55;color:#221b17;max-width:620px">
       <p>Got your follow-up draft.</p>
       <p>
-         I turn one stuck follow-up, last reply, or rough draft into a subject line and one sendable email.
+         I turn one stale lead, last reply, or rough draft into a subject line and one follow-up email.
       </p>
       <p>
          <a href="{checkout_url}" style="color:#222;font-weight:700">Pay {price_label} with Stripe</a>

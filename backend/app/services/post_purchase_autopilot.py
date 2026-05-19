@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import html
 import hashlib
@@ -201,7 +201,7 @@ def _relay_notes_tally_payload(lead: RelayIntentLead, email: str) -> dict[str, A
                 field("Client or company name", client_name),
                 field("What should this focus on?", focus),
                 field("Preferred tone for the follow-up email", tone),
-                field("Paste your rough follow-up draft or bullets", notes),
+                field("Paste your stale lead, last reply, rough draft, or bullets", notes),
             ],
         }
     }
@@ -569,7 +569,7 @@ def run_messy_notes_checkout_followup_sweep(hours: int = 2) -> dict[str, Any]:
         try:
             external_id = f"relay-lead:{lead.id}"
             blocks = [
-                _p("I have your rough follow-up draft."),
+                _p("I have your stale lead, last reply, or rough draft."),
                 _p(
                     "If you want me to turn that into the follow-up email, the paid $1 rewrite is the next step."
                 ),
@@ -653,8 +653,8 @@ def run_messy_notes_second_followup_sweep(hours: int = 24) -> dict[str, Any]:
         try:
             external_id = f"relay-lead:{lead.id}"
             blocks = [
-                _p("Closing the loop on your follow-up email draft."),
-                _p(f"If you still want one stuck follow-up turned into an email you can send, the {entry_price_label()} $1 cleanup is the next step."),
+                _p("Closing the loop on your follow-up email."),
+                _p(f"If you still want one stale lead turned into a follow-up email, the {entry_price_label()} $1 cleanup is the next step."),
                 _a(_entry_packet_label(), _entry_packet_link()),
                 _p("No download, install, account, or password. If you want to add or replace the follow-up context first, send it here."),
                 _a("Send follow-up context", _notes_url()),
@@ -728,15 +728,15 @@ def run_sample_request_notes_followup_sweep(hours: int = 24) -> dict[str, Any]:
             external_id = f"relay-lead:{lead.id}"
             blocks = [
                 _p("You asked for the example output."),
-                _p("The real test is one stuck follow-up, last reply, rough draft, or a few bullets."),
+                _p("The real test is one stale lead, last reply, rough draft, or a few bullets."),
                 _a("Send follow-up context", _notes_url()),
-                _p(f"If you already know you want the paid follow-up cleanup, the $1 cleanup is {entry_price_label()} through Stripe."),
+                _p(f"If you already know the follow-up helped, the $1 payment is {entry_price_label()} through Stripe."),
                 _a(_entry_packet_label(), _entry_packet_link()),
                 _p("- Alan"),
             ]
             _send_conversion_email(
                 to_email=lead.email,
-                subject="Have one stuck follow-up to test?",
+                subject="Have one stale lead to test?",
                 blocks=blocks,
                 event_type="autopilot_sample_notes_followup_sent",
                 prospect_external_id=external_id,
@@ -821,8 +821,8 @@ def run_sample_request_second_followup_sweep(hours: int = 72) -> dict[str, Any]:
             external_id = f"relay-lead:{lead.id}"
             blocks = [
                 _p("Checking once more after the example output."),
-                _p("The useful test is still one rough follow-up draft. Send the rough version and the next step stays simple."),
-                _a("Send rough follow-up", _notes_url()),
+                _p("The useful test is still one stale lead, last reply, or rough draft. Send the last reply and the next step stays simple."),
+                _a("Send stale lead follow-up", _notes_url()),
                 _p(f"If you already know you want the paid follow-up email, the $1 rewrite is {entry_price_label()} through Stripe."),
                 _a(_entry_packet_label(), _entry_packet_link()),
                 _p("- Alan"),
@@ -927,10 +927,10 @@ def run_checkout_intent_followup_sweep(hours: int = 1) -> dict[str, Any]:
             external_id = f"relay-session:{session_id}"
             blocks = [
                 _p("You opened the payment path."),
-                _p(f"If you still want one rough follow-up draft turned into a finished follow-up email, the {entry_price_label()} link is here."),
+                _p(f"If you still want one stale lead, last reply, or rough draft turned into a finished follow-up email, the {entry_price_label()} link is here."),
                 _a(_entry_packet_label(), _entry_packet_link()),
-                _p("If you want to add or resend rough follow-up context first, use the notes form."),
-                _a("Send rough follow-up", _notes_url()),
+                _p("If you want to add or resend stale lead follow-up context first, use the notes form."),
+                _a("Send stale lead follow-up", _notes_url()),
                 _p("- Alan"),
             ]
             _send_conversion_email(
@@ -1015,7 +1015,7 @@ def run_checkout_intent_second_followup_sweep(hours: int = 24) -> dict[str, Any]
                 _p(f"If you still want the $1 rewrite, the {entry_price_label()} path is still the fastest way to get it finished."),
                 _a(_entry_packet_label(), _entry_packet_link()),
                 _p("If the follow-up draft is not ready yet, send a few rough bullets first and the next step stays simple."),
-                _a("Send rough follow-up", _notes_url()),
+                _a("Send stale lead follow-up", _notes_url()),
                 _p("- Alan"),
             ]
             _send_conversion_email(

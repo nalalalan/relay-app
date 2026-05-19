@@ -359,7 +359,7 @@ def import_source_records(
 
 
 def _build_initial_subject(prospect: BuyerAcquisitionProspect) -> str:
-    return "follow-up email cleanup"
+    return "stale lead follow-up"
 
 
 def _build_initial_body(prospect: BuyerAcquisitionProspect) -> str:
@@ -367,8 +367,8 @@ def _build_initial_body(prospect: BuyerAcquisitionProspect) -> str:
     greeting = f"Hi {first_name}," if first_name else "Hi,"
     return (
         f"{greeting}\n\n"
-        "If you have one quote, call, or lead that is stuck, reply with the last reply, rough draft, or a few bullets.\n\n"
-        "You can remove names or private details. I will reply with a subject line and one email you can send. No link click, upload, download, account, password, card form, or payment before preview. If you use it, I send the $1 Stripe link afterward.\n\n"
+        "If you have one stale lead, quote, or client thread that went quiet, reply with the last reply, rough draft, or a few bullets.\n\n"
+        "You can remove names or private details. I will reply with a subject line and one follow-up email. No link click, upload, download, account, password, card form, or payment before preview. If it helps, I send the $1 Stripe link afterward.\n\n"
         "- Alan"
     )
 
@@ -469,8 +469,8 @@ def classify_reply_text(reply_text: str) -> str:
 def _build_positive_reply_body(prospect: BuyerAcquisitionProspect) -> str:
     return (
         "Great.\n\n"
-        "Reply with the last reply, rough draft, or a few bullets. Remove names or private details if needed. I will send one email you can send first.\n\n"
-        f"If you use it, I will send the {entry_price_label()} Stripe link afterward.\n\n"
+        "Reply with the last reply, rough draft, or a few bullets. Remove names or private details if needed. I will send one follow-up email first.\n\n"
+        f"If it helps, I will send the {entry_price_label()} Stripe link afterward.\n\n"
         "No link click, upload, download, account, card, password, or payment before preview. The email comes back by email.\n\n"
         "- Alan"
     )
