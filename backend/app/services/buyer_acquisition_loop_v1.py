@@ -359,7 +359,7 @@ def import_source_records(
 
 
 def _build_initial_subject(prospect: BuyerAcquisitionProspect) -> str:
-    return "stale lead follow-up"
+    return "unanswered quote follow-up"
 
 
 def _build_initial_body(prospect: BuyerAcquisitionProspect) -> str:
@@ -367,7 +367,7 @@ def _build_initial_body(prospect: BuyerAcquisitionProspect) -> str:
     greeting = f"Hi {first_name}," if first_name else "Hi,"
     return (
         f"{greeting}\n\n"
-        "If you have one stale lead, quote, or client thread that went quiet, reply with the last reply, rough draft, or a few bullets.\n\n"
+        "If you have one unanswered quote or client thread that went quiet, reply with the last reply, rough draft, or a few bullets.\n\n"
         "You can remove names or private details. I will reply with a subject line and one follow-up email. No link click, upload, download, account, password, card form, or payment before preview. If it helps, I send the $1 Stripe link afterward.\n\n"
         "- Alan"
     )

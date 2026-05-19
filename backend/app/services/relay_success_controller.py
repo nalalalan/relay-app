@@ -743,8 +743,8 @@ def _reply_text_has_preview_first_path(reply_text: str) -> bool:
         or "reply with one rough" in text
         or "send one stuck lead" in text
         or "reply with one stuck" in text
-        or "send one stale lead" in text
-        or "reply with one stale lead" in text
+        or "send one unanswered quote" in text
+        or "reply with one unanswered quote" in text
     )
     return has_preview_or_payment_boundary and has_accepted_input_path
 
@@ -765,7 +765,7 @@ def _outbound_body_has_preview_first_path(body: str) -> bool:
         or "rough draft" in text
         or "few bullets" in text
         or "rough follow-up" in text
-        or "stale lead" in text
+        or "unanswered quote" in text
     )
     has_preview_or_payment_boundary = (
         "before any payment" in text
@@ -799,10 +799,10 @@ def _public_offer_text_has_preview_first_money_path(
         or "email the draft you would have sent" in page_lower
         or "email the last reply" in page_lower
         or "one stuck lead" in page_lower
-        or "one stale lead" in page_lower
+        or "one unanswered quote" in page_lower
         or "one stuck follow-up" in page_lower
         or "stuck lead" in page_lower
-        or "stale lead" in page_lower
+        or "unanswered quote" in page_lower
         or "stuck follow-up" in page_lower
         or "rough follow-up draft" in page_lower
         or "rough draft or a few bullets" in page_lower

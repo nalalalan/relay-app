@@ -84,7 +84,7 @@ def test_reply_autoclose_accepts_followup_rewrite_preview_path():
 def test_public_offer_accepts_current_followup_rewrite_preview_path():
     page_text = (
         '<main data-primary-money-path="free-email-preview-payment-after-fit">'
-        "Send one stale lead. I'll write the next email. "
+        "Send one unanswered quote. I'll write the follow-up. "
         "Reply with a last reply, rough draft, or a few bullets. "
         "No link click, upload, download, account, password, card form, or payment before preview. "
         "If it helps, I send the $1 Stripe link afterward."
@@ -96,7 +96,7 @@ def test_public_offer_accepts_current_followup_rewrite_preview_path():
 
 def test_outbound_preflight_accepts_current_email_first_copy():
     body = (
-        "Hi - if one stale lead, quote, or client thread went quiet, reply with the last reply, rough draft, or a few bullets.\n\n"
+        "Hi - if one unanswered quote or client thread went quiet, reply with the last reply, rough draft, or a few bullets.\n\n"
         "You can remove names or private details. I will reply with a subject line and one follow-up email. "
         "No link click, upload, download, account, password, card form, or payment before preview. "
         "If it helps, I send the $1 Stripe link afterward.\n\n"
