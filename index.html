@@ -1230,6 +1230,111 @@
       line-height: 1.35;
     }
 
+    .signal-panel {
+      display: grid;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    .signal-path {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 0;
+      padding: 12px 0 4px;
+      min-width: 0;
+    }
+
+    .signal-path::before {
+      content: "";
+      position: absolute;
+      top: 20px;
+      left: 8%;
+      right: 8%;
+      border-top: 2px solid var(--line);
+      z-index: 0;
+    }
+
+    .signal-node {
+      position: relative;
+      z-index: 1;
+      min-width: 0;
+      padding-right: 20px;
+      display: grid;
+      gap: 7px;
+      align-content: start;
+    }
+
+    .signal-dot {
+      width: 13px;
+      height: 13px;
+      border: 2px solid var(--muted);
+      border-radius: 999px;
+      background: var(--paper);
+      box-shadow: 0 0 0 5px var(--paper);
+    }
+
+    .signal-node.done .signal-dot {
+      border-color: var(--good);
+      background: var(--good);
+    }
+
+    .signal-node.wait .signal-dot {
+      border-color: var(--warn);
+      background: #fff9ed;
+    }
+
+    .signal-node.missing .signal-dot {
+      border-color: #aaa39a;
+    }
+
+    .signal-node span {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .055em;
+      text-transform: uppercase;
+    }
+
+    .signal-node b {
+      display: block;
+      color: var(--ink);
+      font-size: clamp(22px, 3vw, 34px);
+      font-weight: 930;
+      line-height: .95;
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+
+    .signal-node em {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-style: normal;
+      font-weight: 760;
+      line-height: 1.25;
+    }
+
+    .signal-read {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(220px, .45fr);
+      gap: 24px;
+      padding-top: 13px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 720;
+      line-height: 1.35;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .signal-read b {
+      color: var(--ink);
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
     .sample-clicks-chart {
       height: 190px;
       margin-top: 4px;
@@ -1379,6 +1484,20 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
+      .signal-path {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px 0;
+      }
+
+      .signal-path::before {
+        display: none;
+      }
+
+      .signal-read {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+      }
+
       .money-step:nth-child(3) {
         border-right: 0;
       }
@@ -1515,6 +1634,19 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
+      .signal-path {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px 0;
+      }
+
+      .signal-node {
+        padding-right: 12px;
+      }
+
+      .signal-node b {
+        font-size: 24px;
+      }
+
       .money-step {
         padding: 14px 0;
         border-right: 0 !important;
@@ -1577,6 +1709,10 @@
 
       .section-head .small {
         max-width: 50%;
+      }
+
+      .first-money-section .section-head .small {
+        display: none;
       }
 
       .essential-table,
@@ -1665,9 +1801,9 @@
       </div>
     </section>
 
-    <section class="first-money-section boring-section" aria-label="Relay money state">
+    <section class="first-money-section boring-section" aria-label="Relay movement signals">
       <div class="section-head">
-        <h2>Current</h2>
+        <h2>Signals</h2>
         <span id="firstMoneyTime" class="small">live ops</span>
       </div>
       <div id="firstMoneyPlan" class="first-money">Loading.</div>
@@ -1853,6 +1989,7 @@
         "sample_click",
         "showcase_sample_click",
         "note_intake_click",
+        "email_intent_click",
         "notes_started",
         "notes_100_chars",
         "note_intake_submit",
@@ -1866,6 +2003,7 @@
         sample_click: "sample",
         showcase_sample_click: "sample",
         note_intake_click: "notes",
+        email_intent_click: "email",
         notes_started: "started",
         note_intake_submit: "submitted",
         checkout_click: "checkout",
@@ -2744,139 +2882,81 @@
         );
       }
 
+      function signalStageHtml(label, value, note, state) {
+        return (
+          '<div class="signal-node ' + escapeHtml(state || "") + '">' +
+            '<i class="signal-dot" aria-hidden="true"></i>' +
+            '<span>' + escapeHtml(label) + '</span>' +
+            '<b>' + escapeHtml(value) + '</b>' +
+            '<em>' + escapeHtml(note) + '</em>' +
+          '</div>'
+        );
+      }
+
       function firstMoneyPlanHtml(evidence, ops, ledger) {
         var success = ((ops || {}).relay_success || {});
         var moneySystem = ((ops || {}).money_system || {});
-        var objective = moneySystem.revenue_objective || success.revenue_objective || {};
-        var ladder = moneySystem.revenue_ladder || {};
-        var closePath = moneySystem.close_path || {};
         var moneyObj = success.money || {};
         var health = success.money_proof_health || moneySystem.money_proof_health || {};
-        var mandate = success.money_proof_mandate || moneySystem.money_proof_mandate || {};
-        var launch = moneySystem.launch_readiness || {};
         var observation = success.active_reply_observation || {};
-        var publicOffer = success.public_offer_preflight || {};
-        var deliveryDetail = (((ops || {}).recent || {}).last_delivery_smoke_detail || {});
-        var loopRuntime = ((ops || {}).money_loop_runtime || {});
-        var relayPerformance = ((ops || {}).relay_performance || {});
-        var totals = ((evidence || {}).totals || {}).intent_event_counts || {};
-        var acquisition = ((evidence || {}).totals || {}).acquisition_event_counts || {};
         var outreach = success.outreach || {};
-        var progress = activeProgressLabel(success, moneySystem, ledgerData(latestLedger(ledger)));
+        var latestData = ledgerData(latestLedger(ledger));
+        var progress = activeProgressLabel(success, moneySystem, latestData);
         var parts = progressParts(progress);
-        var views = Number(totals.page_view || 0);
-        var sampleOpens = Number(totals.sample_click || 0) + Number(totals.showcase_sample_click || 0);
-        var totalCheckout = Number(totals.checkout_click || 0);
-        var totalLeads = Number(totals.lead_capture || 0);
-        var systemEvents = Object.keys(acquisition).reduce(function (sum, key) {
-          return sum + Number(acquisition[key] || 0);
-        }, 0);
-        var entryPrice = Number(
-          objective.entry_test_price_usd ||
-          objective.entry_price_usd ||
-          moneyObj.entry_test_price_usd ||
-          moneyObj.entry_price_usd ||
-          0
-        );
-        var payments = Number(moneyObj.payments || 0);
-        var gross = Number(moneyObj.gross_usd || 0);
-        var replies = Number(((success.outreach || {}).replies) || 0);
-        var currentCheckout = Number(closePath.checkout_clicks || 0);
+        var week = selectedCounts(evidence, 7);
+        var totals = ((evidence || {}).totals || {}).intent_event_counts || {};
+        var viewsWeek = Number(week.page_view || 0);
+        var sampleWeek = Number(week.sample_click || 0) + Number(week.showcase_sample_click || 0);
+        var emailWeek = Number(week.email_intent_click || 0);
+        var leadsTotal = Number(totals.lead_capture || 0);
+        var checkoutTotal = Number(totals.checkout_click || 0);
+        var payments = Number(moneyObj.payments || latestData.payments || 0);
+        var gross = Number(moneyObj.gross_usd || latestData.gross_usd || 0);
+        var replies = Number(outreach.replies || latestData.replies || 0);
         var paid = payments > 0 || gross > 0;
-        var checkoutReady = Boolean(ladder.entry_offer_ready || entryPrice > 0);
-        var productLive = checkoutReady && Number(acquisition.relay_public_offer_smoke_test || 0) > 0;
-        var checkoutLive = productLive && publicOffer.contains_checkout_action && publicOffer.contains_checkout_url && publicOffer.contains_price;
-        var emailFirstLive = productLive && publicOffer.contains_email_first_money_path === true && publicOffer.contains_payment_after_fit_copy === true && publicOffer.contains_money_path_copy === true;
-        var primaryMoneyPathLive = emailFirstLive || (checkoutLive && publicOffer.contains_primary_money_path === true);
-        var telemetryLive = views > 0 && systemEvents > 0;
         var sampleDone = parts && parts.target && parts.current >= parts.target;
-        var inspectionDone = sampleOpens > 0 || actionTotal(evidence, 365) > 0;
-        var fulfillmentReady = String(deliveryDetail.status || "").toLowerCase() === "ok" || String((success.payment_webhook_preflight || {}).status || "").toLowerCase() === "ok";
-        var buyerSignal = replies > 0 || currentCheckout > 0;
         var pendingObservation = Boolean(
           observation.pending ||
           observation.seconds_until_observe_until > 0 ||
-          health.state === "waiting_for_reply_observation" ||
-          ((moneySystem.money_decision_contract || {}).state === "observe_reply_window")
+          health.state === "waiting_for_reply_observation"
         );
         var activeVariant = outreach.active_experiment_variant || moneySystem.active_experiment_variant || "";
         var activeLane = humanLane(activeVariant);
-        var nextLane = nextLaneAfter(activeVariant);
-        var loopStatus = moneySystem.loop_status || loopRuntime.status || "unknown";
-        if (loopStatus === "starting" && loopRuntime.last_tick_at) loopStatus = "ok";
-        var lastTick = loopRuntime.last_tick_at ? localTime(loopRuntime.last_tick_at) : "-";
-        var lastResult = loopRuntime.last_result || {};
-        var refillStatus = sentence(String(lastResult.refill_status || "").replace(/_/g, " "), "");
-        var refillLabel = refillStatus && refillStatus.indexOf("degraded") >= 0 ? "needs recovery" : refillStatus;
-        var bottleneck = String(success.bottleneck || mandate.bottleneck || moneySystem.state || "").trim();
-        var activeRefill = bottleneck === "active_experiment_refill" || mandate.state === "refill_direct_buyer_leads" || moneySystem.state === "active_experiment_refill";
-        var activeDue = Number(launch.active_experiment_due_now || moneySystem.active_experiment_due_now || outreach.active_experiment_new_due_count || 0);
-        var expectedNext = Number(launch.expected_next_window_sends || moneySystem.expected_next_window_sends || outreach.expected_next_window_sends || 0);
-        var sendsToday = Number(outreach.sent_today || 0);
-        var weekSends = Number((((relayPerformance || {}).rolling_7_day || {}).sends) || outreach.sends || 0);
-        var sendFailures = Number(outreach.send_failures || 0);
-        var readinessReason = sentence(launch.readiness_reason || moneySystem.readiness_reason || "", "");
-
-        var gates = [
-          { label: money(entryPrice || 1) + " checkout configured", done: checkoutReady },
-          { label: "product route checked", done: productLive },
-          { label: "email-first offer live", done: emailFirstLive },
-          { label: "payment after acceptance", done: primaryMoneyPathLive },
-          { label: "telemetry recording", done: telemetryLive },
-          { label: progress + " sample sent", done: Boolean(sampleDone) },
-          { label: fmt(sampleOpens) + " sample opens", done: inspectionDone },
-          { label: "paid fulfillment checked", done: fulfillmentReady },
-          { label: "reply window protected", done: Boolean(sampleDone && (pendingObservation || buyerSignal || paid)) },
-          { label: activeLane + " -> " + nextLane + " selected", done: Boolean(sampleDone && !paid) },
-          { label: "real paid buyer", done: paid }
-        ];
-        var doneCount = gates.filter(function (gate) { return gate.done; }).length;
-        var percent = paid ? 100 : Math.round((doneCount / gates.length) * 100);
         var observeUntil = health.proof_deadline || observation.observe_until || "";
         var checkTime = observeUntil ? localTime(observeUntil) : "next logged check";
-        var missing = gates.filter(function (gate) { return !gate.done; });
-        var leftText = missing.length
-          ? missing.map(function (gate) { return gate.label; }).slice(0, 2).join(" / ")
-          : "none";
-        var nextMove = paid
-          ? "hold paid lane"
-          : (buyerSignal
-              ? "close buyer signal"
-              : (activeRefill
-                  ? "refill active leads"
-                  : (!sampleDone
-                  ? "finish sample"
-                  : (pendingObservation ? "wait until " + checkTime : "rotate " + activeLane + " -> " + nextLane))));
-        var remaining = Math.max(0, (parts && parts.target ? parts.target - parts.current : 0));
-        var nearestSignal = totalCheckout > 0
-          ? fmt(totalCheckout) + " checkout clicks"
-          : (totalLeads > 0
-              ? fmt(totalLeads) + " people left info"
-              : (sampleOpens > 0 ? fmt(sampleOpens) + " sample opens" : fmt(views) + " views"));
-        var nearestSignalNote = totalCheckout > 0
-          ? "0 paid yet"
-          : (totalLeads > 0 ? "0 paid yet" : "0 paid yet");
-        var nextDollar = paid
-          ? "done"
-          : "1 payment";
-        var nextDollarNote = paid
-          ? fmt(payments) + " payment"
-          : "required for first revenue";
-        var offerState = primaryMoneyPathLive ? "live" : (checkoutLive ? "live" : "needs repair");
-        var moneyLine = paid
-          ? "Paid checkout exists. Keep the paid path."
-          : (offerState === "needs repair"
-              ? "No revenue yet. The money path needs repair before money is possible."
-              : "No revenue yet. The lower-friction money path is live. First money requires one buyer to pay.");
+        var replyState = replies > 0 ? "done" : (pendingObservation ? "wait" : "missing");
+        var stageHtml = [
+          signalStageHtml("views", fmt(viewsWeek), "7 days", viewsWeek > 0 ? "done" : "missing"),
+          signalStageHtml("sample", fmt(sampleWeek), "opens", sampleWeek > 0 ? "done" : "missing"),
+          signalStageHtml("email", fmt(emailWeek), "intent click", emailWeek > 0 ? "done" : "missing"),
+          signalStageHtml("sent", progress, activeLane, sampleDone ? "done" : "wait"),
+          signalStageHtml("replies", fmt(replies), pendingObservation ? "watching" : "needed", replyState),
+          signalStageHtml("money", money(gross), fmt(payments) + " paid", paid ? "done" : "missing")
+        ].join("");
+        var leftTitle = paid
+          ? "First revenue recorded"
+          : (replies > 0 ? "Buyer reply logged" : "7-day movement");
+        var leftDetail = paid
+          ? "Keep the paid path stable."
+          : (replies > 0
+              ? "Next movement is one paid checkout."
+              : fmt(viewsWeek) + " views / " + fmt(sampleWeek) + " sample opens / " + fmt(emailWeek) + " email intent.");
+        var right = paid
+          ? "Protect the paid path."
+          : (pendingObservation
+              ? "Next check: " + checkTime + "."
+              : "Next: change one controlled variable.");
+        var concrete = "All-time: " + fmt(totals.page_view || 0) + " views, " +
+          fmt(Number(totals.sample_click || 0) + Number(totals.showcase_sample_click || 0)) + " sample opens, " +
+          fmt(leadsTotal) + " leads, " + fmt(checkoutTotal) + " checkout clicks, " + money(gross) + ".";
         return (
-          '<table class="money-ledger"><tbody>' +
-            moneyLedgerRow("revenue", money(gross), "real payments only") +
-            moneyLedgerRow("payments", fmt(payments), "Stripe payments") +
-            moneyLedgerRow("checkout", money(entryPrice || 1), offerState) +
-            moneyLedgerRow("checkout clicks", fmt(totalCheckout), paid ? fmt(payments) + " paid" : "0 paid") +
-            moneyLedgerRow("required", nextDollar, nextDollarNote) +
-          '</tbody></table>' +
-          '<p class="money-line">' + escapeHtml(moneyLine) + '</p>'
+          '<div class="signal-panel">' +
+            '<div class="signal-path" aria-label="Relay signals moving toward money">' + stageHtml + '</div>' +
+            '<div class="signal-read">' +
+              '<div><b>' + escapeHtml(leftTitle) + '</b><br>' + escapeHtml(leftDetail) + '<br>' + escapeHtml(concrete) + '</div>' +
+              '<div><b>' + escapeHtml(right) + '</b></div>' +
+            '</div>' +
+          '</div>'
         );
       }
 
@@ -3165,7 +3245,11 @@
         var summaryExpectedNext = Number(summaryLaunch.expected_next_window_sends || moneySystem.expected_next_window_sends || 0);
         var summaryState = String(moneySystem.state || "");
         var summaryTotals = (((evidence || {}).totals || {}).intent_event_counts || {});
+        var summaryWeek = selectedCounts(evidence, 7);
         var summaryCheckout = Number(summaryTotals.checkout_click || 0);
+        var summaryWeekViews = Number(summaryWeek.page_view || 0);
+        var summaryWeekSamples = Number(summaryWeek.sample_click || 0) + Number(summaryWeek.showcase_sample_click || 0);
+        var summaryWeekEmail = Number(summaryWeek.email_intent_click || 0);
         var summaryEntryPrice = Number((((success || {}).revenue_objective || {}).entry_test_price_usd) || ((moneySystem.revenue_objective || {}).entry_test_price_usd) || ((relayMoney || {}).entry_test_price_usd) || 1);
         var summaryPublicOffer = success.public_offer_preflight || {};
         var summaryProductLive = summaryEntryPrice > 0 && Number(launchSystem.relay_public_offer_smoke_test || 0) > 0;
@@ -3198,9 +3282,7 @@
         $("nextMoveHint").textContent = move.hint;
         $("summaryLine").textContent = Number(relayMoney.payments || 0) > 0 || Number(relayMoney.gross_usd || 0) > 0
           ? "Payment recorded."
-          : (summaryState === "active_experiment_refill"
-              ? "Revenue $0. Payments 0. Checkout " + (summaryFirstMoneyPathLive ? "live" : "needs repair") + ". " + fmt(summaryCheckout) + " checkout clicks."
-              : "No money yet. " + summaryProgress + "; " + move.value.toLowerCase() + ".");
+          : "Revenue $0. Last 7 days: " + fmt(summaryWeekViews) + " views, " + fmt(summaryWeekSamples) + " sample opens, " + fmt(summaryWeekEmail) + " email intent.";
         $("updatedAt").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
         $("rangeLabel").textContent = rangeName();
         $("trendRange").textContent = days === 1 ? "24h / local hours" : rangeName() + " / local dates";
