@@ -1738,7 +1738,7 @@ def _outbound_send_stalled(outreach: dict[str, Any]) -> bool:
         return False
     if int(outreach.get("cap_remaining") or 0) <= 0:
         return False
-    if int(outreach.get("due_now") or 0) <= 0:
+    if _sendable_due_for_active_goal(outreach) <= 0:
         return False
     return int(outreach.get("send_window_seconds_open") or 0) >= _send_window_stall_grace_seconds()
 
@@ -1750,7 +1750,7 @@ def _outbound_send_window_missed(outreach: dict[str, Any]) -> bool:
         return False
     if int(outreach.get("cap_remaining") or 0) <= 0:
         return False
-    due = int(outreach.get("active_experiment_new_due_count") or outreach.get("due_now") or 0)
+    due = _sendable_due_for_active_goal(outreach)
     return due > 0
 
 
@@ -1761,8 +1761,14 @@ def _outbound_send_window_underfilled(outreach: dict[str, Any]) -> bool:
         return False
     if int(outreach.get("cap_remaining") or 0) <= 0:
         return False
-    due = int(outreach.get("active_experiment_new_due_count") or outreach.get("due_now") or 0)
+    due = _sendable_due_for_active_goal(outreach)
     return due > 0
+
+
+def _sendable_due_for_active_goal(outreach: dict[str, Any]) -> int:
+    if bool(outreach.get("active_experiment_needs_sample")):
+        return int(outreach.get("active_experiment_new_due_count") or 0)
+    return int(outreach.get("due_now_count") or outreach.get("due_now") or 0)
 
 
 def _outbound_window_audit_at(outreach: dict[str, Any]) -> str:
@@ -1784,7 +1790,7 @@ def _outbound_window_audit_at(outreach: dict[str, Any]) -> str:
 def _outbound_window_execution_contract(outreach: dict[str, Any]) -> dict[str, Any]:
     active_sends = int(outreach.get("active_experiment_sample_sends") or outreach.get("active_experiment_sends") or 0)
     active_target = int(outreach.get("active_experiment_sample_target") or 0)
-    active_due = int(outreach.get("active_experiment_new_due_count") or outreach.get("due_now_count") or 0)
+    active_due = _sendable_due_for_active_goal(outreach)
     active_remaining = max(active_target - active_sends, 0) if active_target else 0
     cap_remaining = int(outreach.get("cap_remaining") or 0)
     daily_cap = int(outreach.get("daily_send_cap") or 0)

@@ -11,6 +11,8 @@ from app.api.routes.relay_intent import (
 from app.services.relay_success_controller import _reply_text_has_preview_first_path
 from app.services.relay_success_controller import _public_offer_text_has_preview_first_money_path
 from app.services.relay_success_controller import _outbound_body_has_preview_first_path
+from app.services.relay_success_controller import _outbound_send_window_missed
+from app.services.relay_success_controller import _outbound_window_execution_contract
 
 
 def test_completed_sample_waits_during_reply_observation_window():
@@ -119,3 +121,41 @@ def test_outbound_preflight_accepts_current_email_first_copy():
     )
 
     assert _outbound_body_has_preview_first_path(body)
+
+
+def test_active_sample_window_contract_does_not_count_old_followups_as_sample_capacity():
+    contract = _outbound_window_execution_contract(
+        {
+            "active_experiment_needs_sample": True,
+            "active_experiment_sample_sends": 14,
+            "active_experiment_sample_target": 20,
+            "active_experiment_new_due_count": 0,
+            "due_now_count": 85,
+            "cap_remaining": 10,
+            "daily_send_cap": 10,
+            "send_window_is_open": False,
+            "send_window_reason": "after_window",
+            "send_window_next_open_local": "2026-05-25T09:30:00-04:00",
+            "send_window_start_local": "2026-05-22T09:30:00-04:00",
+            "send_window_end_local": "2026-05-22T17:00:00-04:00",
+        }
+    )
+
+    assert contract["state"] == "blocked"
+    assert contract["expected_sends"] == 0
+    assert contract["success_criterion"] == "make queued active leads and send capacity available"
+
+
+def test_active_sample_window_miss_ignores_old_followups_when_no_active_due():
+    missed = _outbound_send_window_missed(
+        {
+            "active_experiment_needs_sample": True,
+            "active_experiment_new_due_count": 0,
+            "due_now": 85,
+            "sent_today": 0,
+            "cap_remaining": 10,
+            "send_window_reason": "after_window",
+        }
+    )
+
+    assert missed is False
