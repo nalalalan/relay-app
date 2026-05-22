@@ -5,6 +5,7 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
 from app.services.relay_money_optimizer_patch import _direct_fill_candidates_after_active_first
 from app.services.relay_money_optimizer_patch import _should_reserve_cap_for_missing_active_first_touch
+from app.services.relay_money_optimizer_patch import _active_sample_slot_plan
 
 
 def _candidate(external_id: str, variant: str):
@@ -73,3 +74,27 @@ def test_reserve_cap_when_active_sample_has_no_first_touch_candidates():
     assert _should_reserve_cap_for_missing_active_first_touch(1, 0, 0) is True
     assert _should_reserve_cap_for_missing_active_first_touch(1, 1, 0) is False
     assert _should_reserve_cap_for_missing_active_first_touch(0, 0, 0) is False
+
+
+def test_active_slot_plan_preserves_remaining_cap_for_missing_sample():
+    plan = _active_sample_slot_plan(6, 0, limit=10, remaining_cap=6)
+
+    assert plan["reserved_missing_active_first_touch_slots"] == 6
+    assert plan["fill_slots_after_active"] == 0
+    assert plan["active_sample_can_complete_now"] is False
+
+
+def test_active_slot_plan_fills_only_capacity_beyond_reserved_sample():
+    plan = _active_sample_slot_plan(6, 0, limit=10, remaining_cap=10)
+
+    assert plan["reserved_missing_active_first_touch_slots"] == 6
+    assert plan["fill_slots_after_active"] == 4
+    assert plan["active_sample_can_complete_now"] is False
+
+
+def test_active_slot_plan_allows_fill_after_sample_can_complete():
+    plan = _active_sample_slot_plan(6, 6, limit=10, remaining_cap=10)
+
+    assert plan["reserved_missing_active_first_touch_slots"] == 0
+    assert plan["fill_slots_after_active"] == 4
+    assert plan["active_sample_can_complete_now"] is True

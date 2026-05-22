@@ -725,6 +725,34 @@ def _direct_fill_candidates_after_active_first(
     ][:fill_slots]
 
 
+def _active_sample_slot_plan(
+    active_sample_needed: int,
+    active_sample_candidate_count: int,
+    *,
+    limit: int,
+    remaining_cap: int,
+) -> dict[str, int | bool]:
+    available_slots = max(min(max(limit, 0), max(remaining_cap, 0)), 0)
+    active_candidate_slots = min(
+        max(active_sample_candidate_count, 0),
+        max(active_sample_needed, 0),
+        available_slots,
+    )
+    missing_active_slots = max(active_sample_needed - active_candidate_slots, 0)
+    reservable_slots = max(available_slots - active_candidate_slots, 0)
+    reserved_missing_slots = min(missing_active_slots, reservable_slots)
+    fill_slots = max(
+        available_slots - active_candidate_slots - reserved_missing_slots,
+        0,
+    )
+    return {
+        "available_slots": available_slots,
+        "reserved_missing_active_first_touch_slots": reserved_missing_slots,
+        "fill_slots_after_active": fill_slots,
+        "active_sample_can_complete_now": active_candidate_slots >= active_sample_needed,
+    }
+
+
 def _should_reserve_cap_for_missing_active_first_touch(
     active_sample_needed: int,
     active_direct_first_touch_count: int,
@@ -1264,14 +1292,23 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
         money_fill_after_active_sample_count = 0
         reserved_missing_active_first_touch_slots = 0
         fill_remaining_after_active_sample = _fill_remaining_cap_after_active_sample()
+        remaining_cap = max(effective_daily_cap - outreach._daily_send_count(session), 0)
         reserve_cap_for_missing_active_first_touch = _should_reserve_cap_for_missing_active_first_touch(
             active_sample_needed,
             len(active_direct_first_touch),
             len(active_generic_first_touch),
         )
         if reserve_cap_for_missing_active_first_touch:
-            reserved_missing_active_first_touch_slots = min(active_sample_needed, limit)
-            fill_slots_after_active = max(limit - reserved_missing_active_first_touch_slots, 0)
+            slot_plan = _active_sample_slot_plan(
+                active_sample_needed,
+                0,
+                limit=limit,
+                remaining_cap=remaining_cap,
+            )
+            reserved_missing_active_first_touch_slots = int(
+                slot_plan["reserved_missing_active_first_touch_slots"]
+            )
+            fill_slots_after_active = int(slot_plan["fill_slots_after_active"])
             money_fill_candidates = (
                 _direct_fill_candidates_after_active_first(
                     direct_due,
@@ -1294,15 +1331,17 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
             generic_active_sample_fallback_count = len(generic_active_sample_fallback)
             active_sample_candidates = (active_direct_first_touch + generic_active_sample_fallback)[:active_sample_needed]
             active_sample_ids = {candidate[0].external_id for candidate in active_sample_candidates}
-            active_sample_can_complete_now = len(active_sample_candidates) >= active_sample_needed
-            reserved_missing_active_first_touch_slots = min(
-                max(active_sample_needed - len(active_sample_candidates), 0),
-                max(limit - len(active_sample_candidates), 0),
+            slot_plan = _active_sample_slot_plan(
+                active_sample_needed,
+                len(active_sample_candidates),
+                limit=limit,
+                remaining_cap=remaining_cap,
             )
-            fill_slots_after_active = max(
-                limit - len(active_sample_candidates) - reserved_missing_active_first_touch_slots,
-                0,
+            active_sample_can_complete_now = bool(slot_plan["active_sample_can_complete_now"])
+            reserved_missing_active_first_touch_slots = int(
+                slot_plan["reserved_missing_active_first_touch_slots"]
             )
+            fill_slots_after_active = int(slot_plan["fill_slots_after_active"])
             money_fill_candidates = (
                 _direct_fill_candidates_after_active_first(
                     direct_due,
@@ -1321,8 +1360,6 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
         else:
             active_sample_can_complete_now = False
             active_sample_reserved_only = False
-
-        remaining_cap = max(effective_daily_cap - outreach._daily_send_count(session), 0)
 
         for prospect, step, candidate_variant, is_active_experiment_new in candidates:
             if sent >= limit or remaining_cap <= 0:
