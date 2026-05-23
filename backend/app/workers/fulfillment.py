@@ -329,7 +329,7 @@ def run_generator() -> dict[str, int | str]:
             raise RuntimeError("OPENAI_API_KEY is missing")
 
         module = _load_module(GENERATE_SCRIPT, "legacy_generate_packets")
-        model = os.getenv("OPENAI_MODEL", "gpt-5.5")
+        model = os.getenv("OPENAI_MODEL", "gpt-5-mini")
         generated_count, failed_count = module.process_workbook(MASTER_PATH, model)
     else:
         model = "builtin_fallback"
