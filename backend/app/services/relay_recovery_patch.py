@@ -582,6 +582,30 @@ def _refill_created_send_capacity(result: Any) -> bool:
     return False
 
 
+def _apollo_fallback_refill_outcome(
+    fallback_result: dict[str, Any],
+    fallback_attempts: list[dict[str, Any]],
+) -> dict[str, str]:
+    fallback_payload = {
+        "fallback_result": fallback_result,
+        "fallback_attempts": fallback_attempts,
+    }
+    if fallback_attempts and _refill_created_send_capacity(fallback_payload):
+        return {
+            "status": "degraded_ok",
+            "reason": "apollo_refill_failed_apify_fallback_created_capacity",
+        }
+    if fallback_attempts:
+        return {
+            "status": "error",
+            "reason": "apollo_refill_failed_apify_fallback_no_capacity",
+        }
+    return {
+        "status": "error",
+        "reason": "apollo_refill_failed_apify_fallback_failed",
+    }
+
+
 def _status_label(value: Any) -> str:
     if not isinstance(value, dict):
         return str(value or "unknown")[:80]
@@ -1516,11 +1540,12 @@ async def _relay_money_loop_tick(
                         fallback_attempts.append(fallback_result)
                         continue
 
+                fallback_outcome = _apollo_fallback_refill_outcome(
+                    fallback_result,
+                    fallback_attempts,
+                )
                 refill_result = {
-                    "status": "degraded_ok" if fallback_attempts else "error",
-                    "reason": "apollo_refill_failed_apify_fallback_ran"
-                    if fallback_attempts
-                    else "apollo_refill_failed_apify_fallback_failed",
+                    **fallback_outcome,
                     "error": str(exc),
                     "q_keywords": query,
                     "attempts": refill_attempts,
