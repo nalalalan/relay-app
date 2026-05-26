@@ -1899,10 +1899,10 @@ def relay_success_snapshot(days: int = 7) -> dict[str, Any]:
         performance,
         active_target=int(outreach.get("active_experiment_sample_target") or _experiment_failure_sample()),
         active_sends=int(
-            active_signal.get("sample_sends")
-            or active_signal.get("sends")
-            or outreach.get("active_experiment_sample_sends")
+            outreach.get("active_experiment_sample_sends")
             or outreach.get("active_experiment_sends")
+            or active_signal.get("sample_sends")
+            or active_signal.get("sends")
             or 0
         ),
         active_replies=int(active_signal.get("replies") or 0),
@@ -2085,10 +2085,10 @@ def _bottleneck(snapshot: dict[str, Any]) -> str:
         or ""
     ).strip()
     active_sends = int(
-        active_signal.get("sample_sends")
-        or active_signal.get("sends")
-        or outreach.get("active_experiment_sample_sends")
+        outreach.get("active_experiment_sample_sends")
         or outreach.get("active_experiment_sends")
+        or active_signal.get("sample_sends")
+        or active_signal.get("sends")
         or 0
     )
     active_target = int(outreach.get("active_experiment_sample_target") or _experiment_failure_sample())

@@ -13,6 +13,7 @@ from app.services.relay_success_controller import _public_offer_text_has_preview
 from app.services.relay_success_controller import _outbound_body_has_preview_first_path
 from app.services.relay_success_controller import _outbound_send_window_missed
 from app.services.relay_success_controller import _outbound_window_execution_contract
+from app.services.relay_success_controller import _bottleneck
 
 
 def test_completed_sample_waits_during_reply_observation_window():
@@ -159,3 +160,53 @@ def test_active_sample_window_miss_ignores_old_followups_when_no_active_due():
     )
 
     assert missed is False
+
+
+def test_bottleneck_uses_outreach_sample_count_when_signal_lags():
+    snapshot = {
+        "critical_missing": [],
+        "money": {"payments": 0, "gross_usd": 0.0},
+        "intent": {"checkout_clicks": 0, "lead_count": 0, "page_views": 17},
+        "conversion": {
+            "paid_notes_fulfilled": 0,
+            "messy_notes_followups_due": 0,
+            "messy_notes_second_followups_due": 0,
+            "sample_followups_due": 0,
+            "sample_second_followups_due": 0,
+            "checkout_followups_due": 0,
+            "checkout_second_followups_due": 0,
+        },
+        "outreach": {
+            "active_experiment_sample_sends": 20,
+            "active_experiment_sends": 20,
+            "active_experiment_sample_target": 20,
+            "active_experiment_needs_sample": False,
+            "active_experiment_new_due_count": 0,
+            "replies": 0,
+            "auto_replies": 0,
+            "unhandled_replies": 0,
+            "send_failures_today": 0,
+            "sent_today": 0,
+            "due_now": 0,
+            "cap_remaining": 0,
+            "send_window_reason": "after_window",
+            "sends": 20,
+        },
+        "performance": {
+            "status": "ok",
+            "active_experiment_signal": {
+                "sample_sends": 18,
+                "sends": 18,
+                "replies": 0,
+                "payments": 0,
+            },
+            "active_experiment": {"experiment_variant": "paid_test_explicit"},
+        },
+        "active_reply_observation": {"pending": True},
+        "experiment_history": {
+            "zero_signal_rotation_count": 0,
+            "zero_signal_rotation_threshold": 2,
+        },
+    }
+
+    assert _bottleneck(snapshot) == "active_sample_reply_window"
