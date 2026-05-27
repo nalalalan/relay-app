@@ -161,7 +161,7 @@ def _parse_datetime(value: Any) -> datetime | None:
 
 
 def _experiment_start(plan: dict[str, Any], default: datetime) -> tuple[datetime, str]:
-    for key in ("created_at", "logged_at", "week_start", "week_start_date"):
+    for key in ("week_start", "week_start_date", "created_at", "logged_at"):
         parsed = _parse_datetime(plan.get(key))
         if parsed is not None:
             return parsed, key
