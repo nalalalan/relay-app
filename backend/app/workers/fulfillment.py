@@ -9,7 +9,7 @@ from typing import Any
 
 from openpyxl import Workbook, load_workbook
 
-from app.core.config import settings
+from app.core.config import relay_costs_paused, relay_paused_response, settings
 from app.integrations.resend_client import ResendClient
 from app.services.guardrails import ClientGateResult, clean_agency_name, validate_client_notes
 from app.services.text_cleanup import clean_packet_text
@@ -159,6 +159,9 @@ def _extract_client_fields(payload: dict[str, Any]) -> dict[str, str]:
 
 
 def _send_plaintext_fallback(to_email: str, subject: str, body: str) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("fulfillment_plaintext_fallback")
+
     html = "<br>".join(
         line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         for line in body.splitlines()
@@ -322,6 +325,9 @@ def _run_builtin_generator() -> tuple[int, int]:
 
 
 def run_generator() -> dict[str, int | str]:
+    if relay_costs_paused():
+        return {"generated_count": 0, "failed_count": 0, "model": "paused_by_owner_cost_control"}
+
     if GENERATE_SCRIPT.exists():
         if settings.openai_api_key:
             os.environ["OPENAI_API_KEY"] = settings.openai_api_key
@@ -344,6 +350,9 @@ def run_generator() -> dict[str, int | str]:
 
 
 def _send_resend_email(to_email: str, subject: str, packet: str) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("fulfillment_send_resend_email")
+
     from_email = settings.from_email_fulfillment
     cleaned_packet = clean_packet_text(packet)
 
@@ -473,6 +482,16 @@ def run_digest() -> dict[str, int]:
 
 def process_tally_submission(payload: dict[str, Any]) -> dict[str, Any]:
     submission_id = _stringify((payload.get("data") or {}).get("submissionId")) or _stringify(payload.get("submission_id"))
+    if relay_costs_paused():
+        response = relay_paused_response("process_tally_submission")
+        return {
+            **response,
+            "submission_id": submission_id,
+            "generation": relay_paused_response("process_tally_submission:generation"),
+            "sending": relay_paused_response("process_tally_submission:sending"),
+            "digest": {"status": "not_checked", "reason": "paused_no_paid_api_or_mailbox_poll"},
+        }
+
     print(f"[TALLY START] submission_id={submission_id or 'missing'}")
     client_fields = _extract_client_fields(payload)
     gate = validate_client_notes(client_fields.get("raw_notes", ""))

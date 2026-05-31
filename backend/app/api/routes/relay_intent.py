@@ -12,7 +12,14 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 
-from app.core.config import entry_checkout_url, entry_price_label, entry_price_usd, settings
+from app.core.config import (
+    entry_checkout_url,
+    entry_price_label,
+    entry_price_usd,
+    relay_costs_paused,
+    relay_paused_response,
+    settings,
+)
 from app.db.base import SessionLocal
 from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect
 from app.models.production_wiring import (
@@ -1090,6 +1097,9 @@ def _sample_email_html(to_email: str) -> str:
 
 
 def _send_sample_email(to_email: str) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("relay_intent_send_sample_email")
+
     if not settings.resend_api_key:
         return {"status": "skipped", "reason": "RESEND_API_KEY is not configured"}
 
@@ -1113,6 +1123,9 @@ def _send_sample_email(to_email: str) -> dict[str, Any]:
 
 
 def _send_messy_notes_email(payload: RelayIntentLeadIn, email: str, score: int) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("relay_intent_send_messy_notes_email")
+
     if not settings.resend_api_key:
         return {"status": "skipped", "reason": "RESEND_API_KEY is not configured"}
 
@@ -1186,6 +1199,9 @@ def _messy_notes_customer_email_html(to_email: str) -> str:
 
 
 def _send_messy_notes_customer_email(email: str) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("relay_intent_send_messy_notes_customer_email")
+
     if not settings.resend_api_key:
         return {"status": "skipped", "reason": "RESEND_API_KEY is not configured"}
 

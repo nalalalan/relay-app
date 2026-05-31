@@ -9,7 +9,7 @@ from typing import Any, Literal
 
 from sqlalchemy import select
 
-from app.core.config import settings
+from app.core.config import relay_costs_paused, relay_paused_response, settings
 from app.db.base import SessionLocal
 from app.integrations.resend_client import ResendClient
 from app.models.funnel import FunnelState, Lead
@@ -234,6 +234,9 @@ def _build_buyer_email(fields: dict[str, str]) -> tuple[str, str]:
 
 
 def _send_html_email(to_email: str, subject: str, html_body: str) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("buyer_pilot_send_html_email")
+
     client = ResendClient()
     return client.send_outbound_email(to_email=to_email, subject=subject, html=html_body)
 
@@ -272,6 +275,12 @@ def _upsert_lead(fields: dict[str, str]) -> dict[str, Any]:
 
 def process_buyer_pilot_submission(payload: dict[str, Any]) -> dict[str, Any]:
     submission_id = _stringify((payload.get("data") or {}).get("submissionId")) or _stringify(payload.get("submission_id"))
+    if relay_costs_paused():
+        return {
+            **relay_paused_response("process_buyer_pilot_submission"),
+            "submission_id": submission_id,
+        }
+
     fields = _normalize_buyer_payload(payload)
     email = fields.get("email", "").strip().lower()
     if not email:

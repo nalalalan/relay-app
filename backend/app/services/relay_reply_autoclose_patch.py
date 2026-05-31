@@ -10,7 +10,7 @@ from typing import Any
 
 from sqlalchemy import select
 
-from app.core.config import settings
+from app.core.config import relay_costs_paused, relay_paused_response, settings
 from app.db.base import SessionLocal
 from app.models.acquisition_supervisor import AcquisitionProspect
 from app.services.relay_money_optimizer_patch import optimized_auto_reply_text
@@ -22,6 +22,9 @@ _original_outreach_status = None
 
 def _send_direct_smtp(to_email: str, subject: str, plain_text: str, html_body: str) -> dict[str, Any]:
     import app.services.custom_outreach as outreach
+
+    if relay_costs_paused():
+        return relay_paused_response("reply_autoclose_smtp_send")
 
     mailboxes = outreach._smtp_mailboxes()
     if not mailboxes:
@@ -99,6 +102,9 @@ def _send_direct_smtp(to_email: str, subject: str, plain_text: str, html_body: s
 
 def optimized_poll_reply_mailbox(limit: int | None = None) -> dict[str, Any]:
     import app.services.custom_outreach as outreach
+
+    if relay_costs_paused():
+        return relay_paused_response("optimized_poll_reply_mailbox")
 
     limit = limit or settings.buyer_acq_reply_poll_limit
     processed = 0

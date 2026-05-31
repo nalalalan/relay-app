@@ -18,7 +18,14 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.config import entry_checkout_url, entry_offer_name, entry_price_label, settings
+from app.core.config import (
+    entry_checkout_url,
+    entry_offer_name,
+    entry_price_label,
+    relay_costs_paused,
+    relay_paused_response,
+    settings,
+)
 from app.db.base import SessionLocal
 from app.integrations.resend_client import ResendClient
 from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect
@@ -990,6 +997,9 @@ def _smtp_send(to_email: str, subject: str, plain_text: str, html_body: str) -> 
 
 
 def _outbound_send(to_email: str, subject: str, plain_text: str, html_body: str) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("custom_outreach_outbound_send")
+
     if _smtp_enabled():
         return _smtp_send(
             to_email=to_email,
@@ -1032,6 +1042,9 @@ def _total_send_count(session: Session) -> int:
 
 
 def send_due_sequence_messages(limit: int | None = None) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("custom_outreach_send_due_sequence_messages")
+
     experiment = _active_experiment_context()
     active_variant = str(experiment.get("experiment_variant") or "control_sample_ask")
     base_cap = max(int(settings.buyer_acq_daily_send_cap or 0), 1)
@@ -1157,6 +1170,9 @@ def send_due_sequence_messages(limit: int | None = None) -> dict[str, Any]:
 
 
 def poll_reply_mailbox(limit: int | None = None) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("custom_outreach_poll_reply_mailbox")
+
     limit = limit or settings.buyer_acq_reply_poll_limit
     processed = 0
     auto_replied = 0
@@ -1557,6 +1573,9 @@ def outreach_status() -> dict[str, Any]:
 
 
 def send_test_email(to_email: str) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("custom_outreach_send_test_email")
+
     try:
         return _outbound_send(
             to_email=to_email,
@@ -1573,6 +1592,14 @@ def send_test_email(to_email: str) -> dict[str, Any]:
 
 
 def run_custom_outreach_cycle() -> dict[str, Any]:
+    if relay_costs_paused():
+        return {
+            **relay_paused_response("custom_outreach_run_custom_outreach_cycle"),
+            "send_result": relay_paused_response("custom_outreach_run_custom_outreach_cycle:send"),
+            "reply_result": relay_paused_response("custom_outreach_run_custom_outreach_cycle:reply_poll"),
+            "status": {"status": "not_checked", "reason": "paused_no_paid_api_or_mailbox_poll"},
+        }
+
     send_result = send_due_sequence_messages()
     reply_result = poll_reply_mailbox()
     return {

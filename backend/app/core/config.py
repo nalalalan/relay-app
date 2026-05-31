@@ -73,6 +73,28 @@ class Settings(BaseSettings):
 settings = Settings()
 
 
+_FALSE_ENV_VALUES = {"0", "false", "no", "off", "disabled"}
+
+
+def relay_costs_paused() -> bool:
+    raw = os.getenv("AO_RELAY_COSTS_PAUSED", "").strip()
+    if not raw:
+        raw = os.getenv("AO_RELAY_MONEY_LOOP_PAUSED", "true").strip()
+    return raw.lower() not in _FALSE_ENV_VALUES
+
+
+def relay_paused_response(action: str) -> dict[str, object]:
+    return {
+        "status": "paused",
+        "reason": "paused_by_owner_cost_control",
+        "action": action,
+        "summary": (
+            "Relay paid/API automation is paused. Set AO_RELAY_COSTS_PAUSED=false "
+            "only when deliberately re-enabling outbound and provider calls."
+        ),
+    }
+
+
 def first_money_url_configured() -> bool:
     return bool(
         os.getenv("RELAY_FIRST_MONEY_CHECKOUT_URL", "").strip()

@@ -5,6 +5,7 @@ from datetime import datetime
 from fastapi import APIRouter, Body, Depends
 
 from app.api.admin_auth import require_relay_admin
+from app.core.config import relay_costs_paused, relay_paused_response
 from app.services.custom_outreach import (
     outreach_status,
     poll_reply_mailbox,
@@ -276,16 +277,22 @@ async def custom_outreach_status(_: None = Depends(require_relay_admin)) -> dict
 
 @router.post("/run")
 async def custom_outreach_run(_: None = Depends(require_relay_admin)) -> dict:
+    if relay_costs_paused():
+        return relay_paused_response("custom_outreach_run")
     return run_custom_outreach_cycle()
 
 
 @router.post("/send-due")
 async def custom_outreach_send_due(_: None = Depends(require_relay_admin)) -> dict:
+    if relay_costs_paused():
+        return relay_paused_response("custom_outreach_send_due")
     return send_due_sequence_messages()
 
 
 @router.post("/check-replies")
 async def custom_outreach_check_replies(_: None = Depends(require_relay_admin)) -> dict:
+    if relay_costs_paused():
+        return relay_paused_response("custom_outreach_check_replies")
     return poll_reply_mailbox()
 
 
@@ -294,6 +301,8 @@ async def custom_outreach_send_test(
     body: dict = Body(default={}),
     _: None = Depends(require_relay_admin),
 ) -> dict:
+    if relay_costs_paused():
+        return relay_paused_response("custom_outreach_send_test")
     to_email = body.get("to_email", "")
     return send_test_email(to_email)
 
@@ -308,6 +317,8 @@ async def relay_performance_weekly_review(
     body: dict = Body(default={}),
     _: None = Depends(require_relay_admin),
 ) -> dict:
+    if relay_costs_paused():
+        return relay_paused_response("relay_performance_weekly_review")
     return run_weekly_performance_review(
         force=bool(body.get("force", False)),
         fetch_research=bool(body.get("fetch_research", True)),

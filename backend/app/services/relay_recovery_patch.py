@@ -10,7 +10,14 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy import func, select
 
 from app.api.admin_auth import require_relay_admin
-from app.core.config import entry_checkout_url, entry_price_label, entry_price_usd, settings
+from app.core.config import (
+    entry_checkout_url,
+    entry_price_label,
+    entry_price_usd,
+    relay_costs_paused,
+    relay_paused_response,
+    settings,
+)
 from app.db.base import SessionLocal
 from app.integrations.apollo import ApolloClient
 from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect
@@ -75,6 +82,8 @@ _original_apollo_search = None
 _original_outreach_status = None
 _money_loop_task: asyncio.Task | None = None
 _money_loop_state: dict[str, Any] = {
+    "status": "disabled",
+    "paused": True,
     "enabled": False,
     "running": False,
     "last_tick_at": "",
@@ -141,6 +150,27 @@ def _timeout_refill_fields(source: str, timeout_seconds: float) -> dict[str, Any
         "error_type": "TimeoutError",
         "timeout_seconds": timeout_seconds,
         "source": source,
+    }
+
+
+def _paused_money_loop_result(action: str, **kwargs: Any) -> dict[str, Any]:
+    response = relay_paused_response(action)
+    return {
+        **response,
+        "refill_result": relay_paused_response(f"{action}:refill"),
+        "outreach_result": relay_paused_response(f"{action}:outreach"),
+        "post_refill_outreach_result": None,
+        "success_control": relay_paused_response(f"{action}:success_control"),
+        "success_control_after_outreach": relay_paused_response(f"{action}:success_control_after_outreach"),
+        "success_control_phase": "paused",
+        "sent_this_tick": 0,
+        "outreach_phase": "paused",
+        "force_refill": bool(kwargs.get("force_refill", False)),
+        "send_live": False,
+        "status_after": {
+            "status": "not_checked",
+            "reason": "paused_no_paid_api_or_mailbox_poll",
+        },
     }
 
 
@@ -1168,6 +1198,9 @@ def _patched_run_custom_outreach_cycle() -> dict[str, Any]:
 async def import_from_apollo_people_search(payload: Dict[str, Any]) -> Dict[str, Any]:
     import app.services.acquisition_supervisor as acq
 
+    if relay_costs_paused():
+        return relay_paused_response("apollo_people_search")
+
     client = ApolloClient()
     raw_apollo_payload = payload.get("apollo_payload")
     search_payload: Dict[str, Any] = dict(raw_apollo_payload) if isinstance(raw_apollo_payload, dict) else {}
@@ -1229,6 +1262,8 @@ async def import_from_apollo_people_search(payload: Dict[str, Any]) -> Dict[str,
 
 async def _run_original_apollo_search(payload: dict[str, Any]) -> dict[str, Any]:
     assert _original_apollo_search is not None
+    if relay_costs_paused():
+        return relay_paused_response("apollo_search")
 
     def run() -> dict[str, Any]:
         return asyncio.run(_original_apollo_search(payload))
@@ -1237,6 +1272,8 @@ async def _run_original_apollo_search(payload: dict[str, Any]) -> dict[str, Any]
 
 
 async def import_from_apollo_search(payload: Dict[str, Any]) -> Dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("apollo_search")
     source = str(payload.get("source") or os.getenv("ACQ_OPS_SOURCE", "apollo_people")).strip()
     if source == "apollo_people" and settings.apollo_api_key:
         return await import_from_apollo_people_search(payload)
@@ -1249,6 +1286,8 @@ def apollo_people_search(
     background_tasks: BackgroundTasks,
     _: None = Depends(require_relay_admin),
 ) -> dict:
+    if relay_costs_paused():
+        return relay_paused_response("apollo_people_search")
     background_tasks.add_task(_run_apollo_people_search, body)
     return {"status": "accepted"}
 
@@ -1262,7 +1301,15 @@ def _run_apollo_people_search(body: dict) -> None:
 
 @router.get("/money-loop-status")
 def money_loop_status(_: None = Depends(require_relay_admin)) -> dict:
-    return dict(_money_loop_state)
+    status = dict(_money_loop_state)
+    status["paused"] = relay_costs_paused()
+    if status["paused"]:
+        status["status"] = "paused"
+        status["enabled"] = False
+        status["running"] = False
+        status["last_error"] = "paused_by_owner_cost_control"
+        status["next_wake_reason"] = "paused_by_owner_cost_control"
+    return status
 
 
 @router.post("/money-kick")
@@ -1271,6 +1318,17 @@ async def money_kick(
     _: None = Depends(require_relay_admin),
 ) -> dict[str, Any]:
     body = body or {}
+    if relay_costs_paused():
+        result = _paused_money_loop_result("manual_money_kick", **body)
+        _money_loop_state["status"] = "paused"
+        _money_loop_state["paused"] = True
+        _money_loop_state["enabled"] = False
+        _money_loop_state["running"] = False
+        _money_loop_state["last_error"] = "paused_by_owner_cost_control"
+        _money_loop_state["last_manual_kick_at"] = datetime.now(timezone.utc).isoformat()
+        _money_loop_state["last_manual_result"] = result
+        _money_loop_state["next_wake_reason"] = "paused_by_owner_cost_control"
+        return result
     result = await _relay_money_loop_tick_with_timeout(
         force_refill=_body_bool(body, "force_refill", True),
         refill_query=str(body.get("q_keywords") or "").strip() or None,
@@ -1656,6 +1714,9 @@ def _money_loop_tick_timeout_seconds() -> float:
 
 
 async def _relay_money_loop_tick_with_timeout(**kwargs: Any) -> dict[str, Any]:
+    if relay_costs_paused():
+        return _paused_money_loop_result("money_loop_tick", **kwargs)
+
     timeout_seconds = _money_loop_tick_timeout_seconds()
     try:
         return await asyncio.wait_for(_relay_money_loop_tick(**kwargs), timeout=timeout_seconds)
@@ -1859,9 +1920,21 @@ async def _relay_money_loop() -> None:
     startup_delay = max(int(os.getenv("AO_RELAY_MONEY_LOOP_STARTUP_DELAY_SECONDS", "30") or 30), 5)
     await asyncio.sleep(startup_delay)
     while True:
+        if relay_costs_paused():
+            _money_loop_state["status"] = "paused"
+            _money_loop_state["paused"] = True
+            _money_loop_state["enabled"] = False
+            _money_loop_state["running"] = False
+            _money_loop_state["last_error"] = "paused_by_owner_cost_control"
+            _money_loop_state["next_sleep_seconds"] = None
+            _money_loop_state["next_wake_reason"] = "paused_by_owner_cost_control"
+            return
+
         sleep_seconds = interval
         wake_reason = "default_interval"
         try:
+            _money_loop_state["status"] = "running"
+            _money_loop_state["paused"] = False
             _money_loop_state["running"] = True
             _money_loop_state["enabled"] = True
             _money_loop_state["last_tick_at"] = datetime.now(timezone.utc).isoformat()
@@ -1888,8 +1961,19 @@ async def _relay_money_loop() -> None:
 
 def start_relay_money_loop() -> None:
     global _money_loop_task
-    enabled = os.getenv("AO_RELAY_MONEY_LOOP_ENABLED", "true").strip().lower() not in {"0", "false", "no"}
+    paused = relay_costs_paused()
+    enabled = (
+        os.getenv("AO_RELAY_MONEY_LOOP_ENABLED", "true").strip().lower() not in {"0", "false", "no"}
+        and not paused
+    )
+    _money_loop_state["status"] = "paused" if paused else ("enabled" if enabled else "disabled")
+    _money_loop_state["paused"] = paused
     _money_loop_state["enabled"] = enabled
+    if paused:
+        _money_loop_state["running"] = False
+        _money_loop_state["last_error"] = "paused_by_owner_cost_control"
+        _money_loop_state["next_sleep_seconds"] = None
+        _money_loop_state["next_wake_reason"] = "paused_by_owner_cost_control"
     if not enabled or (_money_loop_task is not None and not _money_loop_task.done()):
         return
     _money_loop_task = asyncio.create_task(_relay_money_loop())

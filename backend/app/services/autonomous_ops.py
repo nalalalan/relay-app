@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.config import entry_checkout_url, settings
+from app.core.config import entry_checkout_url, relay_costs_paused, relay_paused_response, settings
 from app.db.base import SessionLocal
 from app.integrations.resend_client import ResendClient
 from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect
@@ -289,6 +289,27 @@ async def run_autonomous_cycle(
     notify: bool = True,
 ) -> dict[str, Any]:
     started_at = datetime.utcnow().isoformat()
+    if relay_costs_paused():
+        response = relay_paused_response("autonomous_cycle")
+        finished_at = datetime.utcnow().isoformat()
+        return {
+            **response,
+            "query": force_query or "",
+            "search_result": relay_paused_response("autonomous_cycle:search"),
+            "enrich_count": 0,
+            "outreach_result": relay_paused_response("autonomous_cycle:outreach"),
+            "reminders_result": relay_paused_response("autonomous_cycle:intake_reminders"),
+            "upsell_result": relay_paused_response("autonomous_cycle:upsell"),
+            "success_control": relay_paused_response("autonomous_cycle:success_control"),
+            "outreach_digest": {"status": "not_checked", "reason": "paused_no_paid_api_or_mailbox_poll"},
+            "performance_review": relay_paused_response("autonomous_cycle:performance_review"),
+            "alerts_sent": [],
+            "errors": [],
+            "send_live": False,
+            "started_at": started_at,
+            "finished_at": finished_at,
+        }
+
     query = force_query or choose_query()
     effective_send_live = settings.acq_auto_send if send_live is None else bool(send_live)
     errors: list[str] = []

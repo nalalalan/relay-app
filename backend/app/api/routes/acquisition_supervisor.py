@@ -6,6 +6,7 @@ import os
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 
 from app.api.admin_auth import require_relay_admin
+from app.core.config import relay_costs_paused, relay_paused_response
 from app.services.acquisition_supervisor import (
     acquisition_digest,
     handle_intake_webhook,
@@ -34,6 +35,8 @@ def apollo_search(
     background_tasks: BackgroundTasks,
     _: None = Depends(require_relay_admin),
 ) -> dict:
+    if relay_costs_paused():
+        return relay_paused_response("acquisition_apollo_search")
     background_tasks.add_task(run_apollo_search, body)
     return {"status": "accepted"}
 
@@ -44,6 +47,8 @@ def apollo_people_search(
     background_tasks: BackgroundTasks,
     _: None = Depends(require_relay_admin),
 ) -> dict:
+    if relay_costs_paused():
+        return relay_paused_response("acquisition_apollo_people_search")
     background_tasks.add_task(run_apollo_people_search, body)
     return {"status": "accepted"}
 
@@ -54,6 +59,8 @@ def tick(
     background_tasks: BackgroundTasks,
     _: None = Depends(require_relay_admin),
 ) -> dict:
+    if relay_costs_paused():
+        return relay_paused_response("acquisition_tick")
     background_tasks.add_task(run_tick, body)
     return {"status": "accepted"}
 
@@ -87,6 +94,8 @@ async def supervisor_intake_webhook(request: Request) -> dict:
 
 
 def run_apollo_search(body: dict) -> None:
+    if relay_costs_paused():
+        return
     try:
         asyncio.run(import_from_apollo_search(body))
     except Exception as e:
@@ -94,6 +103,8 @@ def run_apollo_search(body: dict) -> None:
 
 
 def run_apollo_people_search(body: dict) -> None:
+    if relay_costs_paused():
+        return
     try:
         asyncio.run(import_from_apollo_people_search(body))
     except Exception as e:
@@ -101,6 +112,8 @@ def run_apollo_people_search(body: dict) -> None:
 
 
 def run_tick(body: dict) -> None:
+    if relay_costs_paused():
+        return
     try:
         send_live = body.get("send_live", True)
         asyncio.run(tick_supervisor(send_live=send_live))

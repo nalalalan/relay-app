@@ -13,7 +13,7 @@ from apify_client import ApifyClient
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.core.config import entry_checkout_url, entry_price_label, settings
+from app.core.config import entry_checkout_url, entry_price_label, relay_costs_paused, relay_paused_response, settings
 from app.db.base import SessionLocal
 from app.integrations.apollo import ApolloClient
 from app.integrations.smartlead import SmartleadClient
@@ -420,6 +420,9 @@ async def _extract_email_from_website(website: str) -> str:
 
 
 async def import_from_apollo_search(payload: Dict[str, Any]) -> Dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("acquisition_import_from_apollo_search")
+
     client = ApifyClient(settings.apify_api_token)
     q_keywords = str(payload.get("q_keywords") or "ppc agency founder").strip() or "ppc agency founder"
 
@@ -515,6 +518,9 @@ def _split_csv(value: str) -> list[str]:
 
 async def import_from_apollo_people_search(payload: Dict[str, Any]) -> Dict[str, Any]:
     """Import named decision-makers instead of storefront contact inboxes."""
+    if relay_costs_paused():
+        return relay_paused_response("acquisition_import_from_apollo_people_search")
+
     client = ApolloClient()
 
     raw_apollo_payload = payload.get("apollo_payload")
@@ -570,6 +576,9 @@ async def import_from_apollo_people_search(payload: Dict[str, Any]) -> Dict[str,
 
 
 async def enrich_unsent_prospects(limit: int = 10) -> int:
+    if relay_costs_paused():
+        return 0
+
     with _session() as session:
         stmt = (
             select(AcquisitionProspect)
@@ -631,7 +640,10 @@ def _build_smartlead_payload(prospect: AcquisitionProspect) -> Dict[str, Any]:
     }
 
 
-async def queue_best_prospects_to_smartlead(send_live: bool = False, limit: int = 25) -> Dict[str, int]:
+async def queue_best_prospects_to_smartlead(send_live: bool = False, limit: int = 25) -> Dict[str, Any]:
+    if relay_costs_paused():
+        return {"queued": 0, "sent_live": 0, "status": "paused", "reason": "paused_by_owner_cost_control"}
+
     with _session() as session:
         stmt = (
             select(AcquisitionProspect)
@@ -1081,6 +1093,20 @@ def handle_intake_webhook(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 async def tick_supervisor(send_live: bool = False) -> AcquisitionTickResult:
+    if relay_costs_paused():
+        return AcquisitionTickResult(
+            searched=0,
+            upserted=0,
+            enriched=0,
+            queued=0,
+            sent_live=0,
+            replied=0,
+            interested=0,
+            paid=0,
+            intake_received=0,
+            summary="paused_by_owner_cost_control",
+        )
+
     enriched = await enrich_unsent_prospects(limit=10)
     queue_result = await queue_best_prospects_to_smartlead(
         send_live=send_live or settings.acq_auto_send,

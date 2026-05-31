@@ -10,7 +10,13 @@ from typing import Any, Dict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import entry_checkout_url, entry_price_label, settings
+from app.core.config import (
+    entry_checkout_url,
+    entry_price_label,
+    relay_costs_paused,
+    relay_paused_response,
+    settings,
+)
 from app.db.base import SessionLocal
 from app.integrations.resend_client import ResendClient
 from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect
@@ -208,6 +214,9 @@ def _relay_notes_tally_payload(lead: RelayIntentLead, email: str) -> dict[str, A
 
 
 def _fulfill_paid_relay_notes(session: Session, prospect: AcquisitionProspect, email: str) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("post_purchase_fulfill_paid_relay_notes")
+
     if _event_exists(session, prospect.external_id, "autopilot_paid_relay_notes_fulfilled"):
         return {"status": "skipped", "summary": "relay notes already fulfilled"}
 
@@ -284,6 +293,9 @@ def _log_event(
 
 
 def _send_html_email(to_email: str, subject: str, blocks: list[str]) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("post_purchase_send_html_email")
+
     body = "<div style='font-family:Arial,Helvetica,sans-serif;font-size:16px;color:#1f1f1f;line-height:1.6;'>" + "".join(blocks) + "</div>"
     client = ResendClient()
     return client.send_email(
@@ -330,6 +342,9 @@ def _send_conversion_email(
 
 
 def send_paid_onboarding_for_email(email: str) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("send_paid_onboarding_for_email")
+
     email = (email or "").strip().lower()
     if not email:
         return {"status": "ignored", "summary": "missing email"}
@@ -373,6 +388,9 @@ def send_paid_onboarding_for_email(email: str) -> dict[str, Any]:
 
 
 def send_intake_ack_for_email(email: str) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("send_intake_ack_for_email")
+
     email = (email or "").strip().lower()
     if not email:
         return {"status": "ignored", "summary": "missing email"}
@@ -406,6 +424,9 @@ def send_intake_ack_for_email(email: str) -> dict[str, Any]:
 
 
 def run_paid_intake_reminder_sweep(hours: int = 12) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("run_paid_intake_reminder_sweep")
+
     cutoff = datetime.utcnow() - timedelta(hours=hours)
     sent_count = 0
     skipped = 0
@@ -479,6 +500,9 @@ def run_paid_intake_reminder_sweep(hours: int = 12) -> dict[str, Any]:
 
 
 def run_post_delivery_upsell_sweep(hours: int = 24) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("run_post_delivery_upsell_sweep")
+
     cutoff = datetime.utcnow() - timedelta(hours=hours)
     sent_count = 0
     skipped = 0
@@ -533,6 +557,9 @@ def run_post_delivery_upsell_sweep(hours: int = 24) -> dict[str, Any]:
 
 
 def run_messy_notes_checkout_followup_sweep(hours: int = 2) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("run_messy_notes_checkout_followup_sweep")
+
     cutoff = datetime.utcnow() - timedelta(hours=hours)
     sent_count = 0
     skipped = 0
@@ -599,6 +626,9 @@ def run_messy_notes_checkout_followup_sweep(hours: int = 2) -> dict[str, Any]:
 
 
 def run_messy_notes_second_followup_sweep(hours: int = 24) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("run_messy_notes_second_followup_sweep")
+
     cutoff = datetime.utcnow() - timedelta(hours=hours)
     sent_count = 0
     skipped = 0
@@ -682,6 +712,9 @@ def run_messy_notes_second_followup_sweep(hours: int = 24) -> dict[str, Any]:
 
 
 def run_sample_request_notes_followup_sweep(hours: int = 24) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("run_sample_request_notes_followup_sweep")
+
     cutoff = datetime.utcnow() - timedelta(hours=hours)
     sent_count = 0
     skipped = 0
@@ -756,6 +789,9 @@ def run_sample_request_notes_followup_sweep(hours: int = 24) -> dict[str, Any]:
 
 
 def run_sample_request_second_followup_sweep(hours: int = 72) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("run_sample_request_second_followup_sweep")
+
     cutoff = datetime.utcnow() - timedelta(hours=hours)
     sent_count = 0
     skipped = 0
@@ -858,6 +894,9 @@ def _latest_lead_for_session(session: Session, session_id: str) -> RelayIntentLe
 
 
 def run_checkout_intent_followup_sweep(hours: int = 1) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("run_checkout_intent_followup_sweep")
+
     cutoff = datetime.utcnow() - timedelta(hours=hours)
     sent_count = 0
     skipped = 0
@@ -960,6 +999,9 @@ def run_checkout_intent_followup_sweep(hours: int = 1) -> dict[str, Any]:
 
 
 def run_checkout_intent_second_followup_sweep(hours: int = 24) -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("run_checkout_intent_second_followup_sweep")
+
     cutoff = datetime.utcnow() - timedelta(hours=hours)
     sent_count = 0
     skipped = 0
@@ -1045,6 +1087,9 @@ def run_checkout_intent_second_followup_sweep(hours: int = 24) -> dict[str, Any]
 
 
 def run_inbound_conversion_sweep() -> dict[str, Any]:
+    if relay_costs_paused():
+        return relay_paused_response("run_inbound_conversion_sweep")
+
     messy_hours = int(os.getenv("RELAY_MESSY_NOTES_FOLLOWUP_HOURS", "2") or "2")
     messy_second_hours = int(os.getenv("RELAY_MESSY_NOTES_SECOND_FOLLOWUP_HOURS", "24") or "24")
     sample_hours = int(os.getenv("RELAY_SAMPLE_FOLLOWUP_HOURS", "24") or "24")

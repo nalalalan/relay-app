@@ -5,6 +5,7 @@ import asyncio
 from fastapi import APIRouter, BackgroundTasks, Body, Depends
 
 from app.api.admin_auth import require_relay_admin
+from app.core.config import relay_costs_paused, relay_paused_response
 from app.services.autonomous_ops import (
     daily_series,
     money_summary,
@@ -42,6 +43,8 @@ async def autonomous_success(_: None = Depends(require_relay_admin)) -> dict:
 
 @router.post("/success-tick")
 def autonomous_success_tick(_: None = Depends(require_relay_admin)) -> dict:
+    if relay_costs_paused():
+        return relay_paused_response("autonomous_success_tick")
     return run_relay_success_control_tick()
 
 
@@ -67,6 +70,8 @@ def autonomous_run(
     body: dict = Body(default={}),
     _: None = Depends(require_relay_admin),
 ) -> dict:
+    if relay_costs_paused():
+        return relay_paused_response("autonomous_run")
     force_query = body.get("q_keywords")
     send_live = _body_bool(body, "send_live", True)
     notify = _body_bool(body, "notify", True)
@@ -82,10 +87,14 @@ def autonomous_run(
 
 @router.post("/send-daily-summary")
 def trigger_daily_summary(_: None = Depends(require_relay_admin)) -> dict:
+    if relay_costs_paused():
+        return relay_paused_response("autonomous_send_daily_summary")
     return send_daily_money_summary()
 
 
 def _run_sync(force_query: str | None, send_live: bool, notify: bool) -> None:
+    if relay_costs_paused():
+        return
     try:
         asyncio.run(
             run_autonomous_cycle(

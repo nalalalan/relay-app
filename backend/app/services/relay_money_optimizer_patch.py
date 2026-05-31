@@ -9,7 +9,14 @@ from typing import Any, Callable
 
 from sqlalchemy import func, select
 
-from app.core.config import entry_checkout_url, entry_offer_name, entry_price_label, settings
+from app.core.config import (
+    entry_checkout_url,
+    entry_offer_name,
+    entry_price_label,
+    relay_costs_paused,
+    relay_paused_response,
+    settings,
+)
 from app.db.base import SessionLocal
 from app.integrations.apollo import ApolloClient
 from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect
@@ -1134,6 +1141,9 @@ def optimized_outreach_status() -> dict[str, Any]:
 def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, Any]:
     import app.services.custom_outreach as outreach
 
+    if relay_costs_paused():
+        return relay_paused_response("optimized_send_due_sequence_messages")
+
     active_experiment = _active_experiment()
     active_variant = str(active_experiment.get("experiment_variant") or "control_sample_ask")
     effective_daily_cap = _effective_daily_cap(active_experiment)
@@ -1474,6 +1484,17 @@ def optimized_send_due_sequence_messages(limit: int | None = None) -> dict[str, 
 def optimized_run_custom_outreach_cycle() -> dict[str, Any]:
     import app.services.custom_outreach as outreach
 
+    if relay_costs_paused():
+        return {
+            **relay_paused_response("optimized_run_custom_outreach_cycle"),
+            "send_result": relay_paused_response("optimized_run_custom_outreach_cycle:send"),
+            "reply_result": relay_paused_response("optimized_run_custom_outreach_cycle:reply_poll"),
+            "inbound_conversion_result": relay_paused_response(
+                "optimized_run_custom_outreach_cycle:inbound_conversion"
+            ),
+            "status": {"status": "not_checked", "reason": "paused_no_paid_api_or_mailbox_poll"},
+        }
+
     send_result = optimized_send_due_sequence_messages()
     reply_result = outreach.poll_reply_mailbox()
     try:
@@ -1528,6 +1549,9 @@ def optimized_auto_reply_text(reply_text: str) -> tuple[str, str | None]:
 
 def optimized_send_test_email(to_email: str) -> dict[str, Any]:
     import app.services.custom_outreach as outreach
+
+    if relay_costs_paused():
+        return relay_paused_response("optimized_send_test_email")
 
     try:
         if outreach._smtp_enabled():
