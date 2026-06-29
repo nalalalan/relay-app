@@ -1404,19 +1404,23 @@ def _paid_fulfillment_status(db) -> dict[str, Any]:
     by_type: dict[str, set[str]] = {}
     latest_onboarding: dict[str, datetime] = {}
     latest_reminder: dict[str, datetime] = {}
+    onboarding_access_code_ids: set[str] = set()
     for event in events:
         by_type.setdefault(event.event_type, set()).add(event.prospect_external_id)
         if event.event_type == "autopilot_paid_onboarding_sent":
             current = latest_onboarding.get(event.prospect_external_id)
             if current is None or event.created_at > current:
                 latest_onboarding[event.prospect_external_id] = event.created_at
+            payload = _safe_payload(event.payload_json)
+            if payload.get("access_code_included") is True:
+                onboarding_access_code_ids.add(event.prospect_external_id)
         if event.event_type == "autopilot_intake_reminder_sent":
             current = latest_reminder.get(event.prospect_external_id)
             if current is None or event.created_at > current:
                 latest_reminder[event.prospect_external_id] = event.created_at
 
     fulfilled_ids = by_type.get("autopilot_paid_relay_notes_fulfilled", set())
-    access_code_ids = by_type.get("autopilot_paid_intake_access_code_sent", set())
+    access_code_ids = by_type.get("autopilot_paid_intake_access_code_sent", set()) | onboarding_access_code_ids
     reminded_ids = by_type.get("autopilot_intake_reminder_sent", set())
     second_reminded_ids = by_type.get("autopilot_intake_second_reminder_sent", set())
     intake_received_count = sum(

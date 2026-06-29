@@ -119,6 +119,16 @@ def test_paid_lifecycle_includes_second_intake_reminder():
     assert "second_reminders_result" in ops_source
 
 
+def test_paid_status_counts_onboarding_access_codes():
+    import app.api.routes.relay_intent as relay_intent
+
+    source = Path(relay_intent.__file__).read_text(encoding="utf-8")
+
+    assert "onboarding_access_code_ids" in source
+    assert 'payload.get("access_code_included") is True' in source
+    assert "autopilot_paid_intake_access_code_sent\", set()) | onboarding_access_code_ids" in source
+
+
 def test_money_summary_classifies_current_entry_price(monkeypatch):
     monkeypatch.setenv("RELAY_FIRST_MONEY_PRICE_USD", "1")
 
