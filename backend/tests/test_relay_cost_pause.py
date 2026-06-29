@@ -6,7 +6,7 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
 from app.core.config import relay_costs_paused, relay_paid_fulfillment_allowed_when_paused
 from app.api.routes.relay_intent import _send_sample_email
-from app.services import autonomous_ops
+from app.services import autonomous_ops, relay_recovery_patch
 from app.services.autonomous_ops import run_autonomous_cycle
 from app.services.custom_outreach import poll_reply_mailbox, send_due_sequence_messages
 from app.services.post_purchase_autopilot import send_paid_onboarding_for_email
@@ -158,15 +158,50 @@ def test_money_loop_tick_returns_paused_without_work(monkeypatch):
     assert result["send_live"] is False
 
 
-def test_start_money_loop_does_not_start_when_paused(monkeypatch):
+def test_start_money_loop_runs_paid_lifecycle_when_paused(monkeypatch):
     monkeypatch.delenv("AO_RELAY_COSTS_PAUSED", raising=False)
     monkeypatch.delenv("AO_RELAY_MONEY_LOOP_PAUSED", raising=False)
 
-    start_relay_money_loop()
+    async def run() -> None:
+        await relay_recovery_patch.stop_relay_money_loop()
+        start_relay_money_loop()
 
-    assert _money_loop_state["status"] == "paused"
-    assert _money_loop_state["enabled"] is False
-    assert _money_loop_state["running"] is False
+        assert _money_loop_state["status"] == "paid_lifecycle_only"
+        assert _money_loop_state["enabled"] is False
+        assert _money_loop_state["running"] is False
+        assert _money_loop_state["next_wake_reason"] == "paid_lifecycle_cost_pause"
+        assert relay_recovery_patch._paid_lifecycle_task is not None
+        assert relay_recovery_patch._paid_lifecycle_task.done() is False
+        await relay_recovery_patch.stop_relay_money_loop()
+
+    asyncio.run(run())
+
+
+def test_paid_lifecycle_only_status_is_visible_in_runtime(monkeypatch):
+    import app.api.routes.relay_intent as relay_intent
+
+    previous = dict(relay_recovery_patch._money_loop_state)
+    try:
+        relay_recovery_patch._money_loop_state.update(
+            {
+                "status": "paid_lifecycle_only",
+                "enabled": False,
+                "running": False,
+                "last_error": "",
+                "next_sleep_seconds": 300,
+                "next_wake_reason": "paid_lifecycle_cost_pause",
+                "ticks": 1,
+            }
+        )
+
+        runtime = relay_intent._current_money_loop_runtime()
+
+        assert runtime["status"] == "paid_lifecycle_only"
+        assert runtime["summary"] == "owner_cost_pause_paid_lifecycle_only"
+        assert runtime["next_wake_reason"] == "paid_lifecycle_cost_pause"
+    finally:
+        relay_recovery_patch._money_loop_state.clear()
+        relay_recovery_patch._money_loop_state.update(previous)
 
 
 def test_autonomous_cycle_paused_without_provider_calls(monkeypatch):

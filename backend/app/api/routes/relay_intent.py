@@ -1715,10 +1715,14 @@ def _current_money_loop_runtime() -> dict[str, Any]:
     running = bool(state.get("running"))
     last_error = state.get("last_error") or ""
     ticks = int(state.get("ticks") or 0)
+    state_status = str(state.get("status") or "").strip()
 
     status = "ok"
     summary = "money_loop_ok"
-    if not enabled:
+    if state_status == "paid_lifecycle_only":
+        status = "paid_lifecycle_only"
+        summary = "owner_cost_pause_paid_lifecycle_only"
+    elif not enabled:
         status = "disabled"
         summary = "money_loop_disabled"
     elif last_error:

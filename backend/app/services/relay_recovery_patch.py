@@ -81,6 +81,7 @@ RECOVERY_STEP_TEMPLATES = [
 _original_apollo_search = None
 _original_outreach_status = None
 _money_loop_task: asyncio.Task | None = None
+_paid_lifecycle_task: asyncio.Task | None = None
 _money_loop_state: dict[str, Any] = {
     "status": "disabled",
     "paused": True,
@@ -1766,6 +1767,10 @@ def _money_loop_interval_seconds() -> int:
     return max(int(os.getenv("AO_RELAY_MONEY_LOOP_INTERVAL_SECONDS", "900") or 900), 120)
 
 
+def _paid_lifecycle_interval_seconds() -> int:
+    return max(int(os.getenv("AO_RELAY_PAID_LIFECYCLE_INTERVAL_SECONDS", "300") or 300), 60)
+
+
 def _money_loop_success_sleep(result: dict[str, Any] | None, default_interval: int) -> tuple[int, str] | None:
     if not isinstance(result, dict):
         return None
@@ -1959,36 +1964,80 @@ async def _relay_money_loop() -> None:
         await asyncio.sleep(sleep_seconds)
 
 
+async def _relay_paid_lifecycle_loop() -> None:
+    interval = _paid_lifecycle_interval_seconds()
+    startup_delay = max(int(os.getenv("AO_RELAY_MONEY_LOOP_STARTUP_DELAY_SECONDS", "30") or 30), 5)
+    await asyncio.sleep(startup_delay)
+    while relay_costs_paused():
+        _money_loop_state["status"] = "paid_lifecycle_only"
+        _money_loop_state["paused"] = True
+        _money_loop_state["enabled"] = False
+        _money_loop_state["running"] = True
+        _money_loop_state["last_tick_at"] = datetime.now(timezone.utc).isoformat()
+        try:
+            from app.services.autonomous_ops import run_paid_lifecycle_tick
+
+            result = run_paid_lifecycle_tick()
+            _money_loop_state["last_result"] = {
+                "status": "paid_lifecycle_only",
+                "paid_lifecycle": result,
+            }
+            errors = result.get("errors") if isinstance(result, dict) else None
+            _money_loop_state["last_error"] = "; ".join(errors) if errors else ""
+            _money_loop_state["ticks"] = int(_money_loop_state.get("ticks") or 0) + 1
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            _money_loop_state["last_error"] = f"paid_lifecycle_loop_error: {exc}"
+        finally:
+            _money_loop_state["running"] = False
+            _money_loop_state["next_sleep_seconds"] = interval
+            _money_loop_state["next_wake_reason"] = "paid_lifecycle_cost_pause"
+
+        await asyncio.sleep(interval)
+
+
 def start_relay_money_loop() -> None:
-    global _money_loop_task
+    global _money_loop_task, _paid_lifecycle_task
     paused = relay_costs_paused()
     enabled = (
         os.getenv("AO_RELAY_MONEY_LOOP_ENABLED", "true").strip().lower() not in {"0", "false", "no"}
         and not paused
     )
-    _money_loop_state["status"] = "paused" if paused else ("enabled" if enabled else "disabled")
+    _money_loop_state["status"] = "paid_lifecycle_only" if paused else ("enabled" if enabled else "disabled")
     _money_loop_state["paused"] = paused
     _money_loop_state["enabled"] = enabled
     if paused:
         _money_loop_state["running"] = False
         _money_loop_state["last_error"] = "paused_by_owner_cost_control"
-        _money_loop_state["next_sleep_seconds"] = None
-        _money_loop_state["next_wake_reason"] = "paused_by_owner_cost_control"
+        _money_loop_state["next_sleep_seconds"] = _paid_lifecycle_interval_seconds()
+        _money_loop_state["next_wake_reason"] = "paid_lifecycle_cost_pause"
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        if _paid_lifecycle_task is None or _paid_lifecycle_task.done():
+            _paid_lifecycle_task = loop.create_task(_relay_paid_lifecycle_loop())
+        return
     if not enabled or (_money_loop_task is not None and not _money_loop_task.done()):
         return
     _money_loop_task = asyncio.create_task(_relay_money_loop())
 
 
 async def stop_relay_money_loop() -> None:
-    global _money_loop_task
-    if _money_loop_task is None:
+    global _money_loop_task, _paid_lifecycle_task
+    tasks = [task for task in (_money_loop_task, _paid_lifecycle_task) if task is not None]
+    if not tasks:
         return
-    _money_loop_task.cancel()
-    try:
-        await _money_loop_task
-    except asyncio.CancelledError:
-        pass
+    for task in tasks:
+        task.cancel()
+    for task in tasks:
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
     _money_loop_task = None
+    _paid_lifecycle_task = None
 
 
 def apply_relay_recovery_patch() -> None:
