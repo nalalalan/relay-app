@@ -2,11 +2,13 @@ import asyncio
 import os
 from pathlib import Path
 from datetime import datetime, timezone
+from json import JSONDecodeError
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
 from app.core.config import relay_costs_paused, relay_paid_fulfillment_allowed_when_paused
 from app.api.routes.relay_intent import _send_sample_email
+from app.api.routes import client_gate
 from app.services import autonomous_ops, relay_recovery_patch
 from app.services.autonomous_ops import run_autonomous_cycle
 from app.services.custom_outreach import poll_reply_mailbox, send_due_sequence_messages
@@ -19,6 +21,17 @@ from app.services.relay_recovery_patch import (
     start_relay_money_loop,
 )
 from app.workers.fulfillment import process_tally_submission
+
+
+class _GateRequest:
+    def __init__(self, payload=None, *, bad_json: bool = False):
+        self.payload = payload
+        self.bad_json = bad_json
+
+    async def json(self):
+        if self.bad_json:
+            raise JSONDecodeError("bad json", "{", 1)
+        return self.payload
 
 
 def test_relay_costs_paused_by_default(monkeypatch):
@@ -65,6 +78,37 @@ def test_paid_intake_blocks_explain_missing_code_fallback(monkeypatch):
 
     assert included is False
     assert any("reply here" in block for block in blocks)
+
+
+def test_client_gate_invalid_code_returns_denied(monkeypatch):
+    monkeypatch.setenv("CLIENT_GATE_CODES", "paid-code")
+    monkeypatch.setenv("CLIENT_INTAKE_URL", "https://tally.so/r/example")
+    monkeypatch.delenv("CLIENT_GATE_CODES_JSON", raising=False)
+
+    result = asyncio.run(client_gate.redeem(_GateRequest({"access_code": "wrong-code"})))
+
+    assert result["status"] == "denied"
+    assert result["message"] == "invalid access code"
+    assert result["client_form_url"] == ""
+
+
+def test_client_gate_bad_json_returns_clean_error():
+    result = asyncio.run(client_gate.redeem(_GateRequest(bad_json=True)))
+
+    assert result["status"] == "error"
+    assert result["message"] == "invalid access request"
+    assert result["client_form_url"] == ""
+
+
+def test_client_gate_valid_code_returns_form_url(monkeypatch):
+    monkeypatch.setenv("CLIENT_GATE_CODES", "paid-code")
+    monkeypatch.setenv("CLIENT_INTAKE_URL", "https://tally.so/r/example")
+    monkeypatch.delenv("CLIENT_GATE_CODES_JSON", raising=False)
+
+    result = asyncio.run(client_gate.redeem(_GateRequest({"access_code": "paid-code"})))
+
+    assert result["status"] == "ok"
+    assert result["client_form_url"] == "https://tally.so/r/example"
 
 
 def test_fulfillment_reads_current_paid_intake_note_label():
