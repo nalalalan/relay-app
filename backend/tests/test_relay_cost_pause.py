@@ -94,7 +94,7 @@ def test_fulfillment_delivery_subject_matches_current_product():
 
 
 def test_paid_conversion_copy_has_no_duplicate_price_language():
-    source = Path(post_purchase_autopilot.__file__).read_text()
+    source = Path(post_purchase_autopilot.__file__).read_text(encoding="utf-8")
 
     assert "entry_price_label()} $1" not in source
     assert "$1 payment is {entry_price_label()}" not in source
@@ -102,11 +102,21 @@ def test_paid_conversion_copy_has_no_duplicate_price_language():
 
 
 def test_post_delivery_upsell_waits_for_fulfillment_event():
-    source = Path(post_purchase_autopilot.__file__).read_text()
+    source = Path(post_purchase_autopilot.__file__).read_text(encoding="utf-8")
     upsell_block = source[source.index("def run_post_delivery_upsell_sweep") : source.index("def run_messy_notes_checkout_followup_sweep")]
 
     assert 'AcquisitionEvent.event_type == "autopilot_paid_relay_notes_fulfilled"' in upsell_block
     assert 'AcquisitionEvent.event_type == "intake_received"' not in upsell_block
+
+
+def test_paid_lifecycle_includes_second_intake_reminder():
+    autopilot_source = Path(post_purchase_autopilot.__file__).read_text(encoding="utf-8")
+    ops_source = Path(autonomous_ops.__file__).read_text(encoding="utf-8")
+
+    assert "def run_paid_intake_second_reminder_sweep" in autopilot_source
+    assert "autopilot_intake_second_reminder_sent" in autopilot_source
+    assert "run_paid_intake_second_reminder_sweep" in ops_source
+    assert "second_reminders_result" in ops_source
 
 
 def test_money_summary_classifies_current_entry_price(monkeypatch):

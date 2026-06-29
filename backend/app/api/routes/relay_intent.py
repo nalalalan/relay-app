@@ -1391,6 +1391,7 @@ def _paid_fulfillment_status(db) -> dict[str, Any]:
                         "autopilot_paid_onboarding_sent",
                         "autopilot_paid_intake_access_code_sent",
                         "autopilot_intake_reminder_sent",
+                        "autopilot_intake_second_reminder_sent",
                         "autopilot_intake_ack_sent",
                         "autopilot_paid_relay_notes_fulfilled",
                     ]
@@ -1402,16 +1403,22 @@ def _paid_fulfillment_status(db) -> dict[str, Any]:
 
     by_type: dict[str, set[str]] = {}
     latest_onboarding: dict[str, datetime] = {}
+    latest_reminder: dict[str, datetime] = {}
     for event in events:
         by_type.setdefault(event.event_type, set()).add(event.prospect_external_id)
         if event.event_type == "autopilot_paid_onboarding_sent":
             current = latest_onboarding.get(event.prospect_external_id)
             if current is None or event.created_at > current:
                 latest_onboarding[event.prospect_external_id] = event.created_at
+        if event.event_type == "autopilot_intake_reminder_sent":
+            current = latest_reminder.get(event.prospect_external_id)
+            if current is None or event.created_at > current:
+                latest_reminder[event.prospect_external_id] = event.created_at
 
     fulfilled_ids = by_type.get("autopilot_paid_relay_notes_fulfilled", set())
     access_code_ids = by_type.get("autopilot_paid_intake_access_code_sent", set())
     reminded_ids = by_type.get("autopilot_intake_reminder_sent", set())
+    second_reminded_ids = by_type.get("autopilot_intake_second_reminder_sent", set())
     intake_received_count = sum(
         1 for prospect in paid_prospects if str(prospect.intake_status or "").strip().lower() == "received"
     )
@@ -1428,18 +1435,30 @@ def _paid_fulfillment_status(db) -> dict[str, Any]:
         reminder_hours = int(os.getenv("OPS_INTAKE_REMINDER_HOURS", "12") or "12")
     except ValueError:
         reminder_hours = 12
+    try:
+        second_reminder_hours = int(os.getenv("OPS_INTAKE_SECOND_REMINDER_HOURS", "24") or "24")
+    except ValueError:
+        second_reminder_hours = 24
     now = datetime.utcnow()
     reminder_due_times: list[datetime] = []
     reminder_due_count = 0
     for prospect in paid_prospects:
-        if prospect.external_id in fulfilled_ids or prospect.external_id in reminded_ids:
+        if prospect.external_id in fulfilled_ids:
             continue
         if str(prospect.intake_status or "").strip().lower() == "received":
             continue
-        onboarding_at = latest_onboarding.get(prospect.external_id)
-        if not onboarding_at:
+        if prospect.external_id not in reminded_ids:
+            onboarding_at = latest_onboarding.get(prospect.external_id)
+            if not onboarding_at:
+                continue
+            due_at = onboarding_at + timedelta(hours=reminder_hours)
+        elif prospect.external_id not in second_reminded_ids:
+            reminder_at = latest_reminder.get(prospect.external_id)
+            if not reminder_at:
+                continue
+            due_at = reminder_at + timedelta(hours=second_reminder_hours)
+        else:
             continue
-        due_at = onboarding_at + timedelta(hours=reminder_hours)
         reminder_due_times.append(due_at)
         if due_at <= now:
             reminder_due_count += 1
@@ -1471,11 +1490,13 @@ def _paid_fulfillment_status(db) -> dict[str, Any]:
         "onboarding_sent_count": len(by_type.get("autopilot_paid_onboarding_sent", set())),
         "access_code_sent_count": len(access_code_ids),
         "reminder_sent_count": len(reminded_ids),
+        "second_reminder_sent_count": len(second_reminded_ids),
         "reminder_due_count": reminder_due_count,
         "open_count": open_count,
         "awaiting_intake_count": awaiting_intake_count,
         "next_reminder_due_at": next_due,
         "reminder_hours": reminder_hours,
+        "second_reminder_hours": second_reminder_hours,
         "next_action": next_action,
     }
 

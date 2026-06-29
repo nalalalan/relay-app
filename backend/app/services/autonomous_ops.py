@@ -27,6 +27,7 @@ from app.services.custom_outreach import outreach_status, run_custom_outreach_cy
 from app.services.post_purchase_autopilot import (
     run_paid_intake_access_code_sweep,
     run_paid_intake_reminder_sweep,
+    run_paid_intake_second_reminder_sweep,
     run_post_delivery_upsell_sweep,
 )
 from app.services.relay_performance import (
@@ -48,6 +49,7 @@ class OpsCycleResult:
     outreach_result: Dict[str, Any]
     access_code_result: Dict[str, Any]
     reminders_result: Dict[str, Any]
+    second_reminders_result: Dict[str, Any]
     upsell_result: Dict[str, Any]
     outreach_digest: Dict[str, Any]
     alerts_sent: list[str]
@@ -129,6 +131,14 @@ def run_paid_lifecycle_tick() -> dict[str, Any]:
         errors.append(f"reminder_error: {exc}")
 
     try:
+        second_reminders_result = run_paid_intake_second_reminder_sweep(
+            hours=int(os.getenv("OPS_INTAKE_SECOND_REMINDER_HOURS", "24"))
+        )
+    except Exception as exc:
+        second_reminders_result = {"status": "error", "sent_count": 0, "error": str(exc)}
+        errors.append(f"second_reminder_error: {exc}")
+
+    try:
         upsell_result = run_post_delivery_upsell_sweep(
             hours=int(os.getenv("OPS_UPSELL_DELAY_HOURS", "24"))
         )
@@ -139,6 +149,7 @@ def run_paid_lifecycle_tick() -> dict[str, Any]:
     statuses = {
         str(access_code_result.get("status", "")).strip(),
         str(reminders_result.get("status", "")).strip(),
+        str(second_reminders_result.get("status", "")).strip(),
         str(upsell_result.get("status", "")).strip(),
     }
     if statuses == {"paused"}:
@@ -153,6 +164,7 @@ def run_paid_lifecycle_tick() -> dict[str, Any]:
         "summary": "paid lifecycle tick",
         "access_code_result": access_code_result,
         "reminders_result": reminders_result,
+        "second_reminders_result": second_reminders_result,
         "upsell_result": upsell_result,
         "errors": errors,
         "cost_pause": relay_costs_paused(),
@@ -313,6 +325,10 @@ def _important_changes(previous: dict[str, Any] | None, current: dict[str, Any])
     if reminder_sent > 0:
         changes.append(f"intake_reminders={reminder_sent}")
 
+    second_reminder_sent = int(current.get("second_reminders_result", {}).get("sent_count", 0))
+    if second_reminder_sent > 0:
+        changes.append(f"intake_second_reminders={second_reminder_sent}")
+
     access_codes_sent = int(current.get("access_code_result", {}).get("sent_count", 0))
     if access_codes_sent > 0:
         changes.append(f"intake_access_codes={access_codes_sent}")
@@ -362,6 +378,7 @@ async def run_autonomous_cycle(
             "outreach_result": relay_paused_response("autonomous_cycle:outreach"),
             "access_code_result": relay_paused_response("autonomous_cycle:intake_access_codes"),
             "reminders_result": relay_paused_response("autonomous_cycle:intake_reminders"),
+            "second_reminders_result": relay_paused_response("autonomous_cycle:intake_second_reminders"),
             "upsell_result": relay_paused_response("autonomous_cycle:upsell"),
             "success_control": relay_paused_response("autonomous_cycle:success_control"),
             "outreach_digest": {"status": "not_checked", "reason": "paused_no_paid_api_or_mailbox_poll"},
@@ -421,6 +438,14 @@ async def run_autonomous_cycle(
         errors.append(f"reminder_error: {exc}")
 
     try:
+        second_reminders_result = run_paid_intake_second_reminder_sweep(
+            hours=int(os.getenv("OPS_INTAKE_SECOND_REMINDER_HOURS", "24"))
+        )
+    except Exception as exc:
+        second_reminders_result = {"status": "error", "sent_count": 0, "error": str(exc)}
+        errors.append(f"second_reminder_error: {exc}")
+
+    try:
         upsell_result = run_post_delivery_upsell_sweep(
             hours=int(os.getenv("OPS_UPSELL_DELAY_HOURS", "24"))
         )
@@ -449,6 +474,7 @@ async def run_autonomous_cycle(
         "outreach_result": outreach_result,
         "access_code_result": access_code_result,
         "reminders_result": reminders_result,
+        "second_reminders_result": second_reminders_result,
         "upsell_result": upsell_result,
         "success_control": success_control,
         "outreach_digest": outreach_digest,

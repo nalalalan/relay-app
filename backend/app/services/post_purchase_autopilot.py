@@ -670,6 +670,77 @@ def run_paid_intake_reminder_sweep(hours: int = 12) -> dict[str, Any]:
     return {"status": "ok", "sent_count": sent_count, "skipped": skipped, "hours": hours}
 
 
+def run_paid_intake_second_reminder_sweep(hours: int = 24) -> dict[str, Any]:
+    paused = _paid_fulfillment_paused("run_paid_intake_second_reminder_sweep")
+    if paused:
+        return paused
+
+    cutoff = datetime.utcnow() - timedelta(hours=hours)
+    sent_count = 0
+    skipped = 0
+
+    with _session() as session:
+        first_reminders = session.execute(
+            select(AcquisitionEvent)
+            .where(AcquisitionEvent.event_type == "autopilot_intake_reminder_sent")
+            .where(AcquisitionEvent.created_at <= cutoff)
+            .order_by(AcquisitionEvent.created_at.asc())
+        ).scalars().all()
+
+        for event in first_reminders:
+            prospect = session.execute(
+                select(AcquisitionProspect).where(AcquisitionProspect.external_id == event.prospect_external_id)
+            ).scalar_one_or_none()
+            if prospect is None:
+                skipped += 1
+                continue
+            if not prospect.contact_email or _is_internal_email(prospect.contact_email):
+                skipped += 1
+                continue
+            if relay_costs_paused() and not _paid_for_email(session, prospect.contact_email):
+                skipped += 1
+                continue
+            if prospect.intake_status != "not_started":
+                skipped += 1
+                continue
+            if _event_exists(session, prospect.external_id, "autopilot_intake_second_reminder_sent"):
+                skipped += 1
+                continue
+
+            intake_url = _intake_url()
+            if not intake_url:
+                skipped += 1
+                continue
+
+            intake_blocks, access_code_included = _intake_access_blocks(intake_url)
+            subject = "Still need the call details"
+            blocks = [
+                _p("Checking once more - I still need the call details to write the follow-up email you paid for."),
+                *intake_blocks,
+                _p("If the page gets stuck, reply here with the website, target buyer, and call notes."),
+                _p("- Alan"),
+            ]
+            send_result = _send_html_email(prospect.contact_email, subject, blocks, allow_when_paused=True)
+            _log_event(
+                session,
+                "autopilot_intake_second_reminder_sent",
+                prospect.external_id,
+                "sent second intake reminder",
+                {
+                    "send_result": send_result,
+                    "source_event_id": event.id,
+                    "intake_url": intake_url,
+                    "access_code_included": access_code_included,
+                },
+            )
+            sent_count += 1
+            session.flush()
+
+        session.commit()
+
+    return {"status": "ok", "sent_count": sent_count, "skipped": skipped, "hours": hours}
+
+
 def run_post_delivery_upsell_sweep(hours: int = 24) -> dict[str, Any]:
     paused = _paid_fulfillment_paused("run_post_delivery_upsell_sweep")
     if paused:
