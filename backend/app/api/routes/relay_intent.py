@@ -30,6 +30,7 @@ from app.models.production_wiring import (
     ProductionTransition,
 )
 from app.models.relay_intent import RelayIntentEvent, RelayIntentLead
+from app.services.post_purchase_autopilot import paid_reminder_effective_send_at, paid_reminder_window_status
 from app.services.relay_research_journal import RELAY_RESEARCH_JOURNAL_EVENT
 
 
@@ -1443,7 +1444,8 @@ def _paid_fulfillment_status(db) -> dict[str, Any]:
         second_reminder_hours = int(os.getenv("OPS_INTAKE_SECOND_REMINDER_HOURS", "24") or "24")
     except ValueError:
         second_reminder_hours = 24
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
+    paid_reminder_window = paid_reminder_window_status(now)
     reminder_due_times: list[datetime] = []
     reminder_due_count = 0
     for prospect in paid_prospects:
@@ -1463,13 +1465,14 @@ def _paid_fulfillment_status(db) -> dict[str, Any]:
             due_at = reminder_at + timedelta(hours=second_reminder_hours)
         else:
             continue
+        due_at = paid_reminder_effective_send_at(due_at, now)
         reminder_due_times.append(due_at)
-        if due_at <= now:
+        if due_at <= now and paid_reminder_window["open"]:
             reminder_due_count += 1
 
     next_due = None
     if reminder_due_times:
-        next_due = min(reminder_due_times).replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z")
+        next_due = min(reminder_due_times).astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
     if fulfilled_count >= len(paid_prospects):
         state = "fulfilled"
         next_action = "Paid delivery complete; protect repeatability."
@@ -1501,6 +1504,7 @@ def _paid_fulfillment_status(db) -> dict[str, Any]:
         "next_reminder_due_at": next_due,
         "reminder_hours": reminder_hours,
         "second_reminder_hours": second_reminder_hours,
+        "paid_reminder_window": paid_reminder_window,
         "next_action": next_action,
     }
 

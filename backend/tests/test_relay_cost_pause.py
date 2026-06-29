@@ -1,6 +1,7 @@
 import asyncio
 import os
 from pathlib import Path
+from datetime import datetime, timezone
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
@@ -117,6 +118,32 @@ def test_paid_lifecycle_includes_second_intake_reminder():
     assert "autopilot_intake_second_reminder_sent" in autopilot_source
     assert "run_paid_intake_second_reminder_sweep" in ops_source
     assert "second_reminders_result" in ops_source
+
+
+def test_paid_reminder_due_time_moves_to_daytime_window(monkeypatch):
+    monkeypatch.setenv("RELAY_PAID_REMINDER_TIMEZONE", "America/New_York")
+    monkeypatch.setenv("RELAY_PAID_REMINDER_START_HOUR", "9")
+    monkeypatch.setenv("RELAY_PAID_REMINDER_END_HOUR", "19")
+
+    due_at = datetime(2026, 6, 30, 8, 57, 15)
+    now = datetime(2026, 6, 29, 9, 20, tzinfo=timezone.utc)
+
+    adjusted = post_purchase_autopilot.paid_reminder_effective_send_at(due_at, now)
+
+    assert adjusted.isoformat() == "2026-06-30T13:00:00+00:00"
+
+
+def test_paid_reminder_window_reports_next_daytime_start(monkeypatch):
+    monkeypatch.setenv("RELAY_PAID_REMINDER_TIMEZONE", "America/New_York")
+    monkeypatch.setenv("RELAY_PAID_REMINDER_START_HOUR", "9")
+    monkeypatch.setenv("RELAY_PAID_REMINDER_END_HOUR", "19")
+
+    status = post_purchase_autopilot.paid_reminder_window_status(
+        datetime(2026, 6, 29, 9, 10, tzinfo=timezone.utc)
+    )
+
+    assert status["open"] is False
+    assert status["next_send_window_at"] == "2026-06-29T13:00:00Z"
 
 
 def test_paid_status_counts_onboarding_access_codes():

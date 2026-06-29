@@ -4,8 +4,9 @@ import html
 import hashlib
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -392,6 +393,79 @@ def _a(label: str, url: str) -> str:
     )
 
 
+def _paid_reminder_timezone() -> ZoneInfo:
+    name = os.getenv("RELAY_PAID_REMINDER_TIMEZONE", "America/New_York").strip() or "America/New_York"
+    try:
+        return ZoneInfo(name)
+    except Exception:
+        return ZoneInfo("America/New_York")
+
+
+def _paid_reminder_window_hours() -> tuple[int, int]:
+    try:
+        start_hour = int(os.getenv("RELAY_PAID_REMINDER_START_HOUR", "9") or "9")
+        end_hour = int(os.getenv("RELAY_PAID_REMINDER_END_HOUR", "19") or "19")
+    except ValueError:
+        return 9, 19
+    if start_hour < 0 or start_hour > 23 or end_hour < 1 or end_hour > 24 or end_hour <= start_hour:
+        return 9, 19
+    return start_hour, end_hour
+
+
+def _as_utc_aware(value: datetime | None) -> datetime:
+    if value is None:
+        return datetime.now(timezone.utc)
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def paid_reminder_window_status(now: datetime | None = None) -> dict[str, Any]:
+    tz = _paid_reminder_timezone()
+    start_hour, end_hour = _paid_reminder_window_hours()
+    now_utc = _as_utc_aware(now)
+    local = now_utc.astimezone(tz)
+    local_start = local.replace(hour=start_hour, minute=0, second=0, microsecond=0)
+    local_end = local.replace(hour=end_hour, minute=0, second=0, microsecond=0)
+    is_open = local_start <= local < local_end
+    if local < local_start:
+        next_local = local_start
+    elif is_open:
+        next_local = local
+    else:
+        next_local = (local + timedelta(days=1)).replace(hour=start_hour, minute=0, second=0, microsecond=0)
+    return {
+        "open": is_open,
+        "timezone": str(tz),
+        "start_hour": start_hour,
+        "end_hour": end_hour,
+        "next_send_window_at": next_local.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+    }
+
+
+def paid_reminder_effective_send_at(due_at: datetime, now: datetime | None = None) -> datetime:
+    tz = _paid_reminder_timezone()
+    start_hour, end_hour = _paid_reminder_window_hours()
+    due_utc = _as_utc_aware(due_at)
+    due_local = due_utc.astimezone(tz)
+    local_start = due_local.replace(hour=start_hour, minute=0, second=0, microsecond=0)
+    local_end = due_local.replace(hour=end_hour, minute=0, second=0, microsecond=0)
+    if due_local < local_start:
+        adjusted_local = local_start
+    elif due_local >= local_end:
+        adjusted_local = (due_local + timedelta(days=1)).replace(hour=start_hour, minute=0, second=0, microsecond=0)
+    else:
+        adjusted_local = due_local
+
+    adjusted_utc = adjusted_local.astimezone(timezone.utc)
+    now_utc = _as_utc_aware(now)
+    if adjusted_utc <= now_utc and not paid_reminder_window_status(now_utc)["open"]:
+        return datetime.fromisoformat(
+            paid_reminder_window_status(now_utc)["next_send_window_at"].replace("Z", "+00:00")
+        )
+    return adjusted_utc
+
+
 def _send_conversion_email(
     *,
     to_email: str,
@@ -587,6 +661,17 @@ def run_paid_intake_reminder_sweep(hours: int = 12) -> dict[str, Any]:
     if paused:
         return paused
 
+    window = paid_reminder_window_status()
+    if not window["open"]:
+        return {
+            "status": "deferred",
+            "sent_count": 0,
+            "skipped": 0,
+            "hours": hours,
+            "reason": "outside_paid_reminder_window",
+            "next_send_window_at": window["next_send_window_at"],
+        }
+
     cutoff = datetime.utcnow() - timedelta(hours=hours)
     sent_count = 0
     skipped = 0
@@ -674,6 +759,17 @@ def run_paid_intake_second_reminder_sweep(hours: int = 24) -> dict[str, Any]:
     paused = _paid_fulfillment_paused("run_paid_intake_second_reminder_sweep")
     if paused:
         return paused
+
+    window = paid_reminder_window_status()
+    if not window["open"]:
+        return {
+            "status": "deferred",
+            "sent_count": 0,
+            "skipped": 0,
+            "hours": hours,
+            "reason": "outside_paid_reminder_window",
+            "next_send_window_at": window["next_send_window_at"],
+        }
 
     cutoff = datetime.utcnow() - timedelta(hours=hours)
     sent_count = 0
