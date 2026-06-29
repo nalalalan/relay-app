@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.config import entry_checkout_url, relay_costs_paused, relay_paused_response, settings
+from app.core.config import entry_checkout_url, entry_price_usd, relay_costs_paused, relay_paused_response, settings
 from app.db.base import SessionLocal
 from app.integrations.resend_client import ResendClient
 from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect
@@ -58,6 +58,15 @@ class OpsCycleResult:
 
 def _session() -> Session:
     return SessionLocal()
+
+
+def _internal_emails() -> set[str]:
+    configured = os.getenv("RELAY_INTERNAL_EMAILS", "pham.alann@gmail.com").split(",")
+    return {email.strip().lower() for email in configured if email.strip()}
+
+
+def _is_internal_email(email: str | None) -> bool:
+    return (email or "").strip().lower() in _internal_emails()
 
 
 def _queries() -> list[str]:
@@ -499,6 +508,20 @@ def ops_status() -> dict[str, Any]:
 
 
 
+def _one_packet_amount_cents() -> int:
+    return max(int(round(entry_price_usd() * 100)), 1)
+
+
+def _sale_bucket_for_amount(amount_total: int) -> str:
+    if amount_total in {_one_packet_amount_cents(), 4000}:
+        return "one_packet"
+    if amount_total == 15000:
+        return "five_pack"
+    if amount_total == 75000:
+        return "monthly"
+    return "unknown"
+
+
 def _money_summary_window(days: int) -> dict[str, Any]:
     cutoff = datetime.utcnow() - timedelta(days=days)
 
@@ -510,9 +533,25 @@ def _money_summary_window(days: int) -> dict[str, Any]:
             .order_by(AcquisitionEvent.created_at.desc())
         ).scalars().all()
 
+        paid_prospects = session.execute(
+            select(AcquisitionProspect)
+            .where(AcquisitionProspect.stripe_status == "paid")
+            .order_by(AcquisitionProspect.created_at.asc())
+        ).scalars().all()
+        external_paid_prospects = [
+            prospect for prospect in paid_prospects if not _is_internal_email(prospect.contact_email)
+        ]
+        waiting_on_intake = sum(
+            1
+            for prospect in external_paid_prospects
+            if str(prospect.intake_status or "").strip().lower() != "received"
+        )
+        intake_received = sum(
+            1
+            for prospect in external_paid_prospects
+            if str(prospect.intake_status or "").strip().lower() == "received"
+        )
         status_counts = acquisition_digest().get("status_counts", {})
-        waiting_on_intake = int(status_counts.get("paid", 0))
-        intake_received = int(status_counts.get("intake_received", 0))
         interested = int(status_counts.get("interested", 0))
 
     gross_cents = 0
@@ -533,7 +572,7 @@ def _money_summary_window(days: int) -> dict[str, Any]:
             or ""
         ).strip().lower()
 
-        if event_email == "pham.alann@gmail.com":
+        if _is_internal_email(event_email):
             continue
 
         filtered_events.append(event)
@@ -541,14 +580,7 @@ def _money_summary_window(days: int) -> dict[str, Any]:
         amount_total = int(payload.get("amount_total") or 0)
         gross_cents += amount_total
 
-        if amount_total == 4000:
-            sales["one_packet"] += 1
-        elif amount_total == 15000:
-            sales["five_pack"] += 1
-        elif amount_total == 75000:
-            sales["monthly"] += 1
-        else:
-            sales["unknown"] += 1
+        sales[_sale_bucket_for_amount(amount_total)] += 1
 
     return {
         "days": days,

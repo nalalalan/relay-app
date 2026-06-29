@@ -6,6 +6,7 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
 from app.core.config import relay_costs_paused, relay_paid_fulfillment_allowed_when_paused
 from app.api.routes.relay_intent import _send_sample_email
+from app.services import autonomous_ops
 from app.services.autonomous_ops import run_autonomous_cycle
 from app.services.custom_outreach import poll_reply_mailbox, send_due_sequence_messages
 from app.services.post_purchase_autopilot import send_paid_onboarding_for_email
@@ -106,6 +107,23 @@ def test_post_delivery_upsell_waits_for_fulfillment_event():
 
     assert 'AcquisitionEvent.event_type == "autopilot_paid_relay_notes_fulfilled"' in upsell_block
     assert 'AcquisitionEvent.event_type == "intake_received"' not in upsell_block
+
+
+def test_money_summary_classifies_current_entry_price(monkeypatch):
+    monkeypatch.setenv("RELAY_FIRST_MONEY_PRICE_USD", "1")
+
+    assert autonomous_ops._sale_bucket_for_amount(100) == "one_packet"
+    assert autonomous_ops._sale_bucket_for_amount(4000) == "one_packet"
+    assert autonomous_ops._sale_bucket_for_amount(15000) == "five_pack"
+    assert autonomous_ops._sale_bucket_for_amount(75000) == "monthly"
+    assert autonomous_ops._sale_bucket_for_amount(1234) == "unknown"
+
+
+def test_money_summary_uses_configured_internal_emails(monkeypatch):
+    monkeypatch.setenv("RELAY_INTERNAL_EMAILS", "alan@example.com,team@example.com")
+
+    assert autonomous_ops._is_internal_email("team@example.com") is True
+    assert autonomous_ops._is_internal_email("buyer@example.com") is False
 
 
 def test_money_loop_tick_returns_paused_without_work(monkeypatch):
