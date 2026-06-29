@@ -1442,7 +1442,9 @@ def _paid_fulfillment_status(db) -> dict[str, Any]:
         if due_at <= now:
             reminder_due_count += 1
 
-    next_due = min(reminder_due_times).isoformat() if reminder_due_times else None
+    next_due = None
+    if reminder_due_times:
+        next_due = min(reminder_due_times).replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z")
     if fulfilled_count >= len(paid_prospects):
         state = "fulfilled"
         next_action = "Paid delivery complete; protect repeatability."
