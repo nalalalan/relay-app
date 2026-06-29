@@ -1240,7 +1240,7 @@
     .signal-path {
       position: relative;
       display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-template-columns: repeat(8, minmax(0, 1fr));
       gap: 0;
       padding: 12px 0 4px;
       min-width: 0;
@@ -2899,6 +2899,7 @@
         var moneySystem = ((ops || {}).money_system || {});
         var moneyObj = success.money || {};
         var health = success.money_proof_health || moneySystem.money_proof_health || {};
+        var paidFulfillment = (ops || {}).paid_fulfillment || {};
         var observation = success.active_reply_observation || {};
         var outreach = success.outreach || {};
         var latestData = ledgerData(latestLedger(ledger));
@@ -2913,6 +2914,9 @@
         var checkoutTotal = Number(totals.checkout_click || 0);
         var payments = Number(moneyObj.payments || latestData.payments || 0);
         var gross = Number(moneyObj.gross_usd || latestData.gross_usd || 0);
+        var paidCount = Number(paidFulfillment.paid_count || payments || 0);
+        var intakeCount = Number(paidFulfillment.intake_received_count || 0);
+        var fulfilledCount = Number(paidFulfillment.fulfilled_count || 0);
         var replies = Number(outreach.replies || latestData.replies || 0);
         var paid = payments > 0 || gross > 0;
         var sampleDone = parts && parts.target && parts.current >= parts.target;
@@ -2932,18 +2936,21 @@
           signalStageHtml("email", fmt(emailWeek), "intent click", emailWeek > 0 ? "done" : "missing"),
           signalStageHtml("sent", progress, activeLane, sampleDone ? "done" : "wait"),
           signalStageHtml("replies", fmt(replies), pendingObservation ? "watching" : "needed", replyState),
-          signalStageHtml("money", money(gross), fmt(payments) + " paid", paid ? "done" : "missing")
+          signalStageHtml("money", money(gross), fmt(payments) + " paid", paid ? "done" : "missing"),
+          signalStageHtml("intake", fmt(intakeCount) + "/" + fmt(paidCount), "received", paidCount && intakeCount >= paidCount ? "done" : (paid ? "wait" : "missing")),
+          signalStageHtml("fulfill", fmt(fulfilledCount) + "/" + fmt(paidCount), paidFulfillment.state === "fulfilled" ? "delivered" : "open", paidCount && fulfilledCount >= paidCount ? "done" : (paid ? "wait" : "missing"))
         ].join("");
         var leftTitle = paid
-          ? "First revenue recorded"
+          ? (fulfilledCount >= paidCount && paidCount ? "Paid delivery complete" : "Paid fulfillment open")
           : (replies > 0 ? "Buyer reply logged" : "7-day movement");
         var leftDetail = paid
-          ? "Keep the paid path stable."
+          ? (paidFulfillment.next_action || "Wait for intake; reminders stay active.")
           : (replies > 0
               ? "Next movement is one paid checkout."
               : fmt(viewsWeek) + " views / " + fmt(sampleWeek) + " sample opens / " + fmt(emailWeek) + " email intent.");
+        var due = paidFulfillment.next_reminder_due_at ? localTime(paidFulfillment.next_reminder_due_at) : "";
         var right = paid
-          ? "Protect the paid path."
+          ? (due ? "Reminder due " + due + "." : "Paid lifecycle active.")
           : (pendingObservation
               ? "Next check: " + checkTime + "."
               : "Next: change one controlled variable.");
@@ -3282,7 +3289,7 @@
         $("nextMoveValue").textContent = move.value;
         $("nextMoveHint").textContent = move.hint;
         $("summaryLine").textContent = Number(relayMoney.payments || 0) > 0 || Number(relayMoney.gross_usd || 0) > 0
-          ? "Payment recorded."
+          ? "Paid fulfillment open."
           : "Revenue $0. Last 7 days: " + fmt(summaryWeekViews) + " views, " + fmt(summaryWeekSamples) + " sample opens, " + fmt(summaryWeekEmail) + " email intent.";
         $("updatedAt").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
         $("rangeLabel").textContent = rangeName();

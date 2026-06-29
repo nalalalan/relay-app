@@ -1356,6 +1356,122 @@ def _latest_acquisition_payload(db, *event_terms: str) -> dict[str, Any] | None:
     return _safe_payload(event.payload_json)
 
 
+def _paid_fulfillment_status(db) -> dict[str, Any]:
+    internal = _internal_emails()
+    paid_prospects = [
+        prospect
+        for prospect in db.query(AcquisitionProspect)
+        .filter(AcquisitionProspect.stripe_status == "paid")
+        .all()
+        if (prospect.contact_email or "").strip().lower() not in internal
+    ]
+    paid_external_ids = {prospect.external_id for prospect in paid_prospects if prospect.external_id}
+    if not paid_prospects:
+        return {
+            "state": "no_paid_buyer",
+            "paid_count": 0,
+            "intake_received_count": 0,
+            "fulfilled_count": 0,
+            "onboarding_sent_count": 0,
+            "reminder_sent_count": 0,
+            "open_count": 0,
+            "awaiting_intake_count": 0,
+            "next_reminder_due_at": None,
+            "next_action": "Wait for a real paid buyer.",
+        }
+
+    events: list[AcquisitionEvent] = []
+    if paid_external_ids:
+        events = (
+            db.query(AcquisitionEvent)
+            .filter(AcquisitionEvent.prospect_external_id.in_(paid_external_ids))
+            .filter(
+                AcquisitionEvent.event_type.in_(
+                    [
+                        "autopilot_paid_onboarding_sent",
+                        "autopilot_intake_reminder_sent",
+                        "autopilot_intake_ack_sent",
+                        "autopilot_paid_relay_notes_fulfilled",
+                    ]
+                )
+            )
+            .order_by(AcquisitionEvent.created_at.desc())
+            .all()
+        )
+
+    by_type: dict[str, set[str]] = {}
+    latest_onboarding: dict[str, datetime] = {}
+    for event in events:
+        by_type.setdefault(event.event_type, set()).add(event.prospect_external_id)
+        if event.event_type == "autopilot_paid_onboarding_sent":
+            current = latest_onboarding.get(event.prospect_external_id)
+            if current is None or event.created_at > current:
+                latest_onboarding[event.prospect_external_id] = event.created_at
+
+    fulfilled_ids = by_type.get("autopilot_paid_relay_notes_fulfilled", set())
+    reminded_ids = by_type.get("autopilot_intake_reminder_sent", set())
+    intake_received_count = sum(
+        1 for prospect in paid_prospects if str(prospect.intake_status or "").strip().lower() == "received"
+    )
+    fulfilled_count = len(fulfilled_ids)
+    open_count = max(len(paid_prospects) - fulfilled_count, 0)
+    awaiting_intake_count = sum(
+        1
+        for prospect in paid_prospects
+        if prospect.external_id not in fulfilled_ids
+        and str(prospect.intake_status or "").strip().lower() != "received"
+    )
+
+    try:
+        reminder_hours = int(os.getenv("OPS_INTAKE_REMINDER_HOURS", "12") or "12")
+    except ValueError:
+        reminder_hours = 12
+    now = datetime.utcnow()
+    reminder_due_times: list[datetime] = []
+    reminder_due_count = 0
+    for prospect in paid_prospects:
+        if prospect.external_id in fulfilled_ids or prospect.external_id in reminded_ids:
+            continue
+        if str(prospect.intake_status or "").strip().lower() == "received":
+            continue
+        onboarding_at = latest_onboarding.get(prospect.external_id)
+        if not onboarding_at:
+            continue
+        due_at = onboarding_at + timedelta(hours=reminder_hours)
+        reminder_due_times.append(due_at)
+        if due_at <= now:
+            reminder_due_count += 1
+
+    next_due = min(reminder_due_times).isoformat() if reminder_due_times else None
+    if fulfilled_count >= len(paid_prospects):
+        state = "fulfilled"
+        next_action = "Paid delivery complete; protect repeatability."
+    elif intake_received_count > fulfilled_count:
+        state = "intake_received"
+        next_action = "Generate and send the paid follow-up."
+    elif awaiting_intake_count > 0:
+        state = "waiting_for_intake"
+        next_action = "Wait for intake; send the reminder when due."
+    else:
+        state = "paid_fulfillment_open"
+        next_action = "Keep paid fulfillment active."
+
+    return {
+        "state": state,
+        "paid_count": len(paid_prospects),
+        "intake_received_count": intake_received_count,
+        "fulfilled_count": fulfilled_count,
+        "onboarding_sent_count": len(by_type.get("autopilot_paid_onboarding_sent", set())),
+        "reminder_sent_count": len(reminded_ids),
+        "reminder_due_count": reminder_due_count,
+        "open_count": open_count,
+        "awaiting_intake_count": awaiting_intake_count,
+        "next_reminder_due_at": next_due,
+        "reminder_hours": reminder_hours,
+        "next_action": next_action,
+    }
+
+
 def _compact_money_loop_payload(payload: dict[str, Any] | None) -> dict[str, Any] | None:
     if not payload:
         return None
@@ -2879,6 +2995,7 @@ def relay_ops_check(days: int = 14) -> dict[str, Any]:
             },
             "recent": recent,
             "money_loop_runtime": _current_money_loop_runtime(),
+            "paid_fulfillment": _paid_fulfillment_status(db),
         }
         try:
             from app.services.relay_performance import relay_performance_status
