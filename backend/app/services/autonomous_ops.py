@@ -101,6 +101,45 @@ def _send_html_email(subject: str, html: str) -> dict[str, Any]:
     return {"status": "sent", "result": result}
 
 
+def run_paid_lifecycle_tick() -> dict[str, Any]:
+    errors: list[str] = []
+    try:
+        reminders_result = run_paid_intake_reminder_sweep(
+            hours=int(os.getenv("OPS_INTAKE_REMINDER_HOURS", "12"))
+        )
+    except Exception as exc:
+        reminders_result = {"status": "error", "sent_count": 0, "error": str(exc)}
+        errors.append(f"reminder_error: {exc}")
+
+    try:
+        upsell_result = run_post_delivery_upsell_sweep(
+            hours=int(os.getenv("OPS_UPSELL_DELAY_HOURS", "24"))
+        )
+    except Exception as exc:
+        upsell_result = {"status": "error", "sent_count": 0, "error": str(exc)}
+        errors.append(f"upsell_error: {exc}")
+
+    statuses = {
+        str(reminders_result.get("status", "")).strip(),
+        str(upsell_result.get("status", "")).strip(),
+    }
+    if statuses == {"paused"}:
+        status = "paused"
+    elif errors:
+        status = "degraded_ok"
+    else:
+        status = "ok"
+
+    return {
+        "status": status,
+        "summary": "paid lifecycle tick",
+        "reminders_result": reminders_result,
+        "upsell_result": upsell_result,
+        "errors": errors,
+        "cost_pause": relay_costs_paused(),
+    }
+
+
 def _seed_sender_address() -> str:
     return os.getenv("COLD_SMTP_MAILBOX_1_ADDRESS", "").strip()
 

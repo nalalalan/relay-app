@@ -12,6 +12,7 @@ from app.services.autonomous_ops import (
     monthly_summary,
     ops_status,
     run_autonomous_cycle,
+    run_paid_lifecycle_tick,
     send_daily_money_summary,
 )
 from app.services.relay_success_controller import relay_success_status, run_relay_success_control_tick
@@ -44,7 +45,12 @@ async def autonomous_success(_: None = Depends(require_relay_admin)) -> dict:
 @router.post("/success-tick")
 def autonomous_success_tick(_: None = Depends(require_relay_admin)) -> dict:
     if relay_costs_paused():
-        return relay_paused_response("autonomous_success_tick")
+        return {
+            "status": "paid_lifecycle_only",
+            "summary": "cost pause active; ran paid-customer reminders and upsell only",
+            "pause": relay_paused_response("autonomous_success_tick"),
+            "paid_lifecycle": run_paid_lifecycle_tick(),
+        }
     return run_relay_success_control_tick()
 
 
@@ -71,7 +77,14 @@ def autonomous_run(
     _: None = Depends(require_relay_admin),
 ) -> dict:
     if relay_costs_paused():
-        return relay_paused_response("autonomous_run")
+        background_tasks.add_task(_run_paid_lifecycle_sync)
+        return {
+            "status": "accepted",
+            "summary": "cost pause active; paid lifecycle tick queued",
+            "pause": relay_paused_response("autonomous_run"),
+            "send_live": False,
+            "notify": False,
+        }
     force_query = body.get("q_keywords")
     send_live = _body_bool(body, "send_live", True)
     notify = _body_bool(body, "notify", True)
@@ -94,6 +107,7 @@ def trigger_daily_summary(_: None = Depends(require_relay_admin)) -> dict:
 
 def _run_sync(force_query: str | None, send_live: bool, notify: bool) -> None:
     if relay_costs_paused():
+        run_paid_lifecycle_tick()
         return
     try:
         asyncio.run(
@@ -105,3 +119,10 @@ def _run_sync(force_query: str | None, send_live: bool, notify: bool) -> None:
         )
     except Exception as exc:
         print("autonomous_run error:", exc)
+
+
+def _run_paid_lifecycle_sync() -> None:
+    try:
+        run_paid_lifecycle_tick()
+    except Exception as exc:
+        print("paid_lifecycle_run error:", exc)
