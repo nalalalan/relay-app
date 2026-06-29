@@ -680,14 +680,14 @@ def run_post_delivery_upsell_sweep(hours: int = 24) -> dict[str, Any]:
     skipped = 0
 
     with _session() as session:
-        intake_events = session.execute(
+        delivery_events = session.execute(
             select(AcquisitionEvent)
-            .where(AcquisitionEvent.event_type == "intake_received")
+            .where(AcquisitionEvent.event_type == "autopilot_paid_relay_notes_fulfilled")
             .where(AcquisitionEvent.created_at <= cutoff)
             .order_by(AcquisitionEvent.created_at.asc())
         ).scalars().all()
 
-        for event in intake_events:
+        for event in delivery_events:
             stmt = select(AcquisitionProspect).where(AcquisitionProspect.external_id == event.prospect_external_id)
             prospect = session.execute(stmt).scalar_one_or_none()
             if prospect is None:
@@ -708,21 +708,24 @@ def run_post_delivery_upsell_sweep(hours: int = 24) -> dict[str, Any]:
                 skipped += 1
                 continue
 
-            subject = "Want this for more calls?"
+            subject = "Want another follow-up email?"
+            monthly_url = _monthly_url()
             blocks = [
-                _p("If you want this for more calls, easiest move is just to use the next-step links below."),
-                _p(f"More follow-up emails: {_pack_url()}"),
-                _p(f"Monthly / site: {_monthly_url()}"),
-                _p("If you do want the same flow running automatically for future calls, that's the path."),
-                _p("- Alan"),
+                _p("If that helped, use the same paid link for the next stuck client email."),
+                _a(f"Buy another follow-up email ({entry_price_label()})", _pack_url()),
             ]
+            if monthly_url and monthly_url != settings.landing_page_url:
+                blocks.append(_a("Ask about monthly follow-up cleanup", monthly_url))
+            else:
+                blocks.append(_p("For more than one call, reply here and send the next rough draft."))
+            blocks.append(_p("- Alan"))
             send_result = _send_html_email(prospect.contact_email, subject, blocks, allow_when_paused=True)
             _log_event(
                 session,
                 "autopilot_upsell_sent",
                 prospect.external_id,
                 "sent upsell email",
-                {"send_result": send_result},
+                {"send_result": send_result, "source_event_id": event.id},
             )
             sent_count += 1
 
@@ -859,7 +862,7 @@ def run_messy_notes_second_followup_sweep(hours: int = 24) -> dict[str, Any]:
             external_id = f"relay-lead:{lead.id}"
             blocks = [
                 _p("Closing the loop on your follow-up email."),
-                _p(f"If you still want one stuck client email turned into a follow-up email, the {entry_price_label()} $1 cleanup is the next step."),
+                _p(f"If you still want one stuck client email turned into a follow-up email, the {entry_price_label()} cleanup is the next step."),
                 _a(_entry_packet_label(), _entry_packet_link()),
                 _p("No download, install, account, or password. If you want to add or replace the follow-up context first, send it here."),
                 _a("Send follow-up context", _notes_url()),
@@ -938,7 +941,7 @@ def run_sample_request_notes_followup_sweep(hours: int = 24) -> dict[str, Any]:
                 _p("You asked for the example output."),
                 _p("The real test is one stuck client email, last message, rough draft, or a few bullets."),
                 _a("Send follow-up context", _notes_url()),
-                _p(f"If you already know the follow-up helped, the $1 payment is {entry_price_label()} through Stripe."),
+                _p(f"If you already know the follow-up helped, pay {entry_price_label()} through Stripe."),
                 _a(_entry_packet_label(), _entry_packet_link()),
                 _p("- Alan"),
             ]
@@ -1034,7 +1037,7 @@ def run_sample_request_second_followup_sweep(hours: int = 72) -> dict[str, Any]:
                 _p("Checking once more after the example output."),
                 _p("The useful test is still one stuck client email, last message, or rough draft. Send the last reply and the next step stays simple."),
                 _a("Send stuck client email reply", _notes_url()),
-                _p(f"If you already know you want the paid follow-up email, the $1 rewrite is {entry_price_label()} through Stripe."),
+                _p(f"If you already know you want the paid follow-up email, the price is {entry_price_label()} through Stripe."),
                 _a(_entry_packet_label(), _entry_packet_link()),
                 _p("- Alan"),
             ]
@@ -1229,7 +1232,7 @@ def run_checkout_intent_second_followup_sweep(hours: int = 24) -> dict[str, Any]
             external_id = f"relay-session:{session_id}"
             blocks = [
                 _p("Closing the loop on the follow-up email."),
-                _p(f"If you still want the $1 rewrite, the {entry_price_label()} path is still the fastest way to get it finished."),
+                _p(f"If you still want the {entry_price_label()} rewrite, that path is still the fastest way to get it finished."),
                 _a(_entry_packet_label(), _entry_packet_link()),
                 _p("If the follow-up draft is not ready yet, send a few rough bullets first and the next step stays simple."),
                 _a("Send stuck client email reply", _notes_url()),

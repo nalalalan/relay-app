@@ -1,5 +1,6 @@
 import asyncio
 import os
+from pathlib import Path
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
@@ -89,6 +90,22 @@ def test_fulfillment_reads_current_paid_intake_note_label():
 def test_fulfillment_delivery_subject_matches_current_product():
     assert fulfillment._delivery_subject("Acme") == "Your follow-up email - Acme"
     assert fulfillment._delivery_subject("") == "Your follow-up email"
+
+
+def test_paid_conversion_copy_has_no_duplicate_price_language():
+    source = Path(post_purchase_autopilot.__file__).read_text()
+
+    assert "entry_price_label()} $1" not in source
+    assert "$1 payment is {entry_price_label()}" not in source
+    assert "$1 rewrite is {entry_price_label()}" not in source
+
+
+def test_post_delivery_upsell_waits_for_fulfillment_event():
+    source = Path(post_purchase_autopilot.__file__).read_text()
+    upsell_block = source[source.index("def run_post_delivery_upsell_sweep") : source.index("def run_messy_notes_checkout_followup_sweep")]
+
+    assert 'AcquisitionEvent.event_type == "autopilot_paid_relay_notes_fulfilled"' in upsell_block
+    assert 'AcquisitionEvent.event_type == "intake_received"' not in upsell_block
 
 
 def test_money_loop_tick_returns_paused_without_work(monkeypatch):
