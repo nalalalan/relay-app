@@ -50,9 +50,17 @@ FIELD_TO_HEADER = {
     "What should this focus on?": "focus",
     "Preferred tone for the follow-up email": "tone",
     "Paste your rough follow-up draft or bullets": "raw_notes",
+    "Paste your stuck client email, last reply, rough draft, or bullets": "raw_notes",
     "Paste your stuck lead, rough follow-up draft, or bullets": "raw_notes",
     "Paste your rough client call notes": "raw_notes",
 }
+
+RAW_NOTES_LABELS = [
+    "Paste your rough follow-up draft or bullets",
+    "Paste your stuck client email, last reply, rough draft, or bullets",
+    "Paste your stuck lead, rough follow-up draft, or bullets",
+    "Paste your rough client call notes",
+]
 
 
 def _stringify(value: Any) -> str:
@@ -158,12 +166,17 @@ def _extract_client_fields(payload: dict[str, Any]) -> dict[str, str]:
         "client_name": clean_agency_name(fields.get("Client or company name", "")),
         "focus": fields.get("What should this focus on?", "").strip(),
         "tone": fields.get("Preferred tone for the follow-up email", "").strip(),
-        "raw_notes": (
-            fields.get("Paste your rough follow-up draft or bullets", "")
-            or fields.get("Paste your stuck lead, rough follow-up draft, or bullets", "")
-        ).strip()
-        or fields.get("Paste your rough client call notes", "").strip(),
+        "raw_notes": next(
+            (fields.get(label, "").strip() for label in RAW_NOTES_LABELS if fields.get(label, "").strip()),
+            "",
+        ),
     }
+
+
+def _delivery_subject(client_name: str) -> str:
+    if client_name and client_name != "your agency":
+        return f"Your follow-up email - {client_name}"
+    return "Your follow-up email"
 
 
 def _safe_json(raw: str | None) -> dict[str, Any]:
@@ -485,7 +498,7 @@ def run_sender(submission_id: str | None = None, *, allow_when_paused: bool = Fa
         email = _stringify(ws.cell(row, col_email).value)
         client_name = clean_agency_name(_stringify(ws.cell(row, col_client_name).value))
         packet = _stringify(ws.cell(row, col_generated_packet).value)
-        subject = f"Your Post-Call Handoff Packet - {client_name}" if client_name and client_name != "your agency" else "Your Post-Call Handoff Packet"
+        subject = _delivery_subject(client_name)
 
         if not email:
             message = f"Missing email for submission_id={row_submission_id}"

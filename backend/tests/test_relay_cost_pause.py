@@ -9,6 +9,7 @@ from app.services.autonomous_ops import run_autonomous_cycle
 from app.services.custom_outreach import poll_reply_mailbox, send_due_sequence_messages
 from app.services.post_purchase_autopilot import send_paid_onboarding_for_email
 from app.services import post_purchase_autopilot
+from app.workers import fulfillment
 from app.services.relay_recovery_patch import (
     _relay_money_loop_tick_with_timeout,
     _money_loop_state,
@@ -61,6 +62,33 @@ def test_paid_intake_blocks_explain_missing_code_fallback(monkeypatch):
 
     assert included is False
     assert any("reply here" in block for block in blocks)
+
+
+def test_fulfillment_reads_current_paid_intake_note_label():
+    payload = {
+        "data": {
+            "fields": [
+                {"label": "Where should we send your follow-up email?", "value": "buyer@example.com"},
+                {"label": "Client or company name", "value": "Acme"},
+                {"label": "What should this focus on?", "value": "get the next step"},
+                {"label": "Preferred tone for the follow-up email", "value": "plain"},
+                {
+                    "label": "Paste your stuck client email, last reply, rough draft, or bullets",
+                    "value": "Client went quiet after the proposal call.",
+                },
+            ]
+        }
+    }
+
+    fields = fulfillment._extract_client_fields(payload)
+
+    assert fields["raw_notes"] == "Client went quiet after the proposal call."
+    assert fulfillment.FIELD_TO_HEADER["Paste your stuck client email, last reply, rough draft, or bullets"] == "raw_notes"
+
+
+def test_fulfillment_delivery_subject_matches_current_product():
+    assert fulfillment._delivery_subject("Acme") == "Your follow-up email - Acme"
+    assert fulfillment._delivery_subject("") == "Your follow-up email"
 
 
 def test_money_loop_tick_returns_paused_without_work(monkeypatch):
