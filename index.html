@@ -2971,7 +2971,11 @@
 
       function renderFirstMoney(evidence, ops, ledger) {
         var latest = latestLedger(ledger);
-        $("firstMoneyTime").textContent = latest ? localTime(latest.created_at) : "live ops";
+        var paidFulfillment = (ops || {}).paid_fulfillment || {};
+        var success = ((ops || {}).relay_success || {});
+        var moneyObj = success.money || {};
+        var hasPaidLifecycle = Number(paidFulfillment.paid_count || 0) > 0 || Number(moneyObj.payments || 0) > 0 || Number(moneyObj.gross_usd || 0) > 0;
+        $("firstMoneyTime").textContent = hasPaidLifecycle ? "live ops" : (latest ? localTime(latest.created_at) : "live ops");
         $("firstMoneyPlan").innerHTML = firstMoneyPlanHtml(evidence, ops, ledger);
       }
 
