@@ -53,6 +53,38 @@ def _intake_url() -> str:
     )
 
 
+def _client_gate_access_code() -> str:
+    raw_json = os.getenv("CLIENT_GATE_CODES_JSON", "").strip()
+    if raw_json:
+        try:
+            data = json.loads(raw_json)
+            if isinstance(data, list):
+                for item in data:
+                    if isinstance(item, dict):
+                        code = str(item.get("code", "")).strip()
+                        if code:
+                            return code
+        except json.JSONDecodeError:
+            pass
+
+    raw_codes = os.getenv("CLIENT_GATE_CODES", "").strip()
+    if not raw_codes:
+        return ""
+    return next((code.strip() for code in raw_codes.split(",") if code.strip()), "")
+
+
+def _intake_access_blocks(intake_url: str) -> tuple[list[str], bool]:
+    access_code = _client_gate_access_code()
+    blocks = [_p(f"Intake: {intake_url}")]
+    if access_code:
+        blocks.append(_p(f"Access code: {access_code}"))
+        blocks.append(_p("If the page asks for a code, paste that code and it will open the form."))
+    else:
+        blocks.append(_p("If the page asks for a code, reply here and I will send it."))
+    blocks.append(_p("If the form gets stuck, reply here with the website, target buyer, and call notes."))
+    return blocks, bool(access_code)
+
+
 def _notes_url() -> str:
     return settings.landing_page_url.rstrip("/") + "/#send-notes"
 
@@ -409,11 +441,12 @@ def send_paid_onboarding_for_email(email: str) -> dict[str, Any]:
             return {"status": "ignored", "summary": "missing intake url"}
 
         company = prospect.company_name or "your team"
+        intake_blocks, access_code_included = _intake_access_blocks(intake_url)
         subject = "You're in - send the call"
         blocks = [
             _p(f"Thanks - you're in for {company}."),
             _p("Next step is just sending the details for the first real call."),
-            _p(f"Intake: {intake_url}"),
+            *intake_blocks,
             _p("Once that comes through, the follow-up email gets written and sent back."),
             _p("- Alan"),
         ]
@@ -423,7 +456,12 @@ def send_paid_onboarding_for_email(email: str) -> dict[str, Any]:
             "autopilot_paid_onboarding_sent",
             prospect.external_id,
             "sent paid onboarding email",
-            {"email": email, "send_result": send_result},
+            {
+                "email": email,
+                "send_result": send_result,
+                "intake_url": intake_url,
+                "access_code_included": access_code_included,
+            },
         )
         session.commit()
         return {"status": "sent", "summary": "paid onboarding sent", "send_result": send_result}
@@ -466,6 +504,82 @@ def send_intake_ack_for_email(email: str) -> dict[str, Any]:
         )
         session.commit()
         return {"status": "sent", "summary": "intake ack sent", "send_result": send_result}
+
+
+def run_paid_intake_access_code_sweep() -> dict[str, Any]:
+    paused = _paid_fulfillment_paused("run_paid_intake_access_code_sweep")
+    if paused:
+        return paused
+
+    intake_url = _intake_url()
+    if not intake_url:
+        return {"status": "ignored", "summary": "missing intake url", "sent_count": 0, "skipped": 0}
+    if not _client_gate_access_code():
+        return {"status": "ignored", "summary": "missing access code", "sent_count": 0, "skipped": 0}
+
+    sent_count = 0
+    skipped = 0
+
+    with _session() as session:
+        paid_prospects = (
+            session.execute(
+                select(AcquisitionProspect)
+                .where(AcquisitionProspect.stripe_status == "paid")
+                .order_by(AcquisitionProspect.created_at.asc())
+            )
+            .scalars()
+            .all()
+        )
+        for prospect in paid_prospects:
+            if not prospect.contact_email or _is_internal_email(prospect.contact_email):
+                skipped += 1
+                continue
+            if prospect.intake_status != "not_started":
+                skipped += 1
+                continue
+            if _event_exists(session, prospect.external_id, "autopilot_paid_intake_access_code_sent"):
+                skipped += 1
+                continue
+
+            onboarding = _latest_event(session, prospect.external_id, "autopilot_paid_onboarding_sent")
+            onboarding_payload = _safe_json(onboarding.payload_json if onboarding else None)
+            if not onboarding:
+                skipped += 1
+                continue
+            if onboarding_payload.get("access_code_included") is True:
+                skipped += 1
+                continue
+
+            intake_blocks, access_code_included = _intake_access_blocks(intake_url)
+            if not access_code_included:
+                skipped += 1
+                continue
+
+            subject = "Access code for the intake"
+            blocks = [
+                _p("Quick correction - the intake page asks for an access code."),
+                *intake_blocks,
+                _p("Once that is in, the follow-up email gets written."),
+                _p("- Alan"),
+            ]
+            send_result = _send_html_email(prospect.contact_email, subject, blocks, allow_when_paused=True)
+            _log_event(
+                session,
+                "autopilot_paid_intake_access_code_sent",
+                prospect.external_id,
+                "sent paid intake access code",
+                {
+                    "send_result": send_result,
+                    "intake_url": intake_url,
+                    "access_code_included": True,
+                },
+            )
+            sent_count += 1
+            session.flush()
+
+        session.commit()
+
+    return {"status": "ok", "sent_count": sent_count, "skipped": skipped}
 
 
 def run_paid_intake_reminder_sweep(hours: int = 12) -> dict[str, Any]:
@@ -527,10 +641,11 @@ def run_paid_intake_reminder_sweep(hours: int = 12) -> dict[str, Any]:
                 skipped += 1
                 continue
 
+            intake_blocks, access_code_included = _intake_access_blocks(intake_url)
             subject = "Quick reminder - send the call details"
             blocks = [
                 _p("Quick reminder - I still need the call details to write the follow-up email."),
-                _p(f"Intake: {intake_url}"),
+                *intake_blocks,
                 _p("Once that is in, the follow-up email gets written."),
                 _p("- Alan"),
             ]
@@ -540,7 +655,11 @@ def run_paid_intake_reminder_sweep(hours: int = 12) -> dict[str, Any]:
                 "autopilot_intake_reminder_sent",
                 prospect.external_id,
                 "sent intake reminder",
-                {"send_result": send_result},
+                {
+                    "send_result": send_result,
+                    "intake_url": intake_url,
+                    "access_code_included": access_code_included,
+                },
             )
             sent_count += 1
             processed_prospects.add(prospect.external_id)

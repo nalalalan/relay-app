@@ -1389,6 +1389,7 @@ def _paid_fulfillment_status(db) -> dict[str, Any]:
                 AcquisitionEvent.event_type.in_(
                     [
                         "autopilot_paid_onboarding_sent",
+                        "autopilot_paid_intake_access_code_sent",
                         "autopilot_intake_reminder_sent",
                         "autopilot_intake_ack_sent",
                         "autopilot_paid_relay_notes_fulfilled",
@@ -1409,6 +1410,7 @@ def _paid_fulfillment_status(db) -> dict[str, Any]:
                 latest_onboarding[event.prospect_external_id] = event.created_at
 
     fulfilled_ids = by_type.get("autopilot_paid_relay_notes_fulfilled", set())
+    access_code_ids = by_type.get("autopilot_paid_intake_access_code_sent", set())
     reminded_ids = by_type.get("autopilot_intake_reminder_sent", set())
     intake_received_count = sum(
         1 for prospect in paid_prospects if str(prospect.intake_status or "").strip().lower() == "received"
@@ -1451,6 +1453,9 @@ def _paid_fulfillment_status(db) -> dict[str, Any]:
     elif intake_received_count > fulfilled_count:
         state = "intake_received"
         next_action = "Generate and send the paid follow-up."
+    elif awaiting_intake_count > 0 and len(access_code_ids) < len(paid_prospects):
+        state = "waiting_for_access_code"
+        next_action = "Send the intake access code to paid buyers."
     elif awaiting_intake_count > 0:
         state = "waiting_for_intake"
         next_action = "Wait for intake; send the reminder when due."
@@ -1464,6 +1469,7 @@ def _paid_fulfillment_status(db) -> dict[str, Any]:
         "intake_received_count": intake_received_count,
         "fulfilled_count": fulfilled_count,
         "onboarding_sent_count": len(by_type.get("autopilot_paid_onboarding_sent", set())),
+        "access_code_sent_count": len(access_code_ids),
         "reminder_sent_count": len(reminded_ids),
         "reminder_due_count": reminder_due_count,
         "open_count": open_count,

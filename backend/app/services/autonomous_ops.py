@@ -25,6 +25,7 @@ from app.services.acquisition_supervisor import (
 )
 from app.services.custom_outreach import outreach_status, run_custom_outreach_cycle
 from app.services.post_purchase_autopilot import (
+    run_paid_intake_access_code_sweep,
     run_paid_intake_reminder_sweep,
     run_post_delivery_upsell_sweep,
 )
@@ -45,6 +46,7 @@ class OpsCycleResult:
     search_result: Dict[str, Any]
     enrich_count: int
     outreach_result: Dict[str, Any]
+    access_code_result: Dict[str, Any]
     reminders_result: Dict[str, Any]
     upsell_result: Dict[str, Any]
     outreach_digest: Dict[str, Any]
@@ -104,6 +106,12 @@ def _send_html_email(subject: str, html: str) -> dict[str, Any]:
 def run_paid_lifecycle_tick() -> dict[str, Any]:
     errors: list[str] = []
     try:
+        access_code_result = run_paid_intake_access_code_sweep()
+    except Exception as exc:
+        access_code_result = {"status": "error", "sent_count": 0, "error": str(exc)}
+        errors.append(f"access_code_error: {exc}")
+
+    try:
         reminders_result = run_paid_intake_reminder_sweep(
             hours=int(os.getenv("OPS_INTAKE_REMINDER_HOURS", "12"))
         )
@@ -120,6 +128,7 @@ def run_paid_lifecycle_tick() -> dict[str, Any]:
         errors.append(f"upsell_error: {exc}")
 
     statuses = {
+        str(access_code_result.get("status", "")).strip(),
         str(reminders_result.get("status", "")).strip(),
         str(upsell_result.get("status", "")).strip(),
     }
@@ -133,6 +142,7 @@ def run_paid_lifecycle_tick() -> dict[str, Any]:
     return {
         "status": status,
         "summary": "paid lifecycle tick",
+        "access_code_result": access_code_result,
         "reminders_result": reminders_result,
         "upsell_result": upsell_result,
         "errors": errors,
@@ -294,6 +304,10 @@ def _important_changes(previous: dict[str, Any] | None, current: dict[str, Any])
     if reminder_sent > 0:
         changes.append(f"intake_reminders={reminder_sent}")
 
+    access_codes_sent = int(current.get("access_code_result", {}).get("sent_count", 0))
+    if access_codes_sent > 0:
+        changes.append(f"intake_access_codes={access_codes_sent}")
+
     upsell_sent = int(current.get("upsell_result", {}).get("sent_count", 0))
     if upsell_sent > 0:
         changes.append(f"upsells={upsell_sent}")
@@ -337,6 +351,7 @@ async def run_autonomous_cycle(
             "search_result": relay_paused_response("autonomous_cycle:search"),
             "enrich_count": 0,
             "outreach_result": relay_paused_response("autonomous_cycle:outreach"),
+            "access_code_result": relay_paused_response("autonomous_cycle:intake_access_codes"),
             "reminders_result": relay_paused_response("autonomous_cycle:intake_reminders"),
             "upsell_result": relay_paused_response("autonomous_cycle:upsell"),
             "success_control": relay_paused_response("autonomous_cycle:success_control"),
@@ -383,6 +398,12 @@ async def run_autonomous_cycle(
         errors.append(f"custom_outreach_error: {exc}")
 
     try:
+        access_code_result = run_paid_intake_access_code_sweep()
+    except Exception as exc:
+        access_code_result = {"status": "error", "sent_count": 0, "error": str(exc)}
+        errors.append(f"access_code_error: {exc}")
+
+    try:
         reminders_result = run_paid_intake_reminder_sweep(
             hours=int(os.getenv("OPS_INTAKE_REMINDER_HOURS", "12"))
         )
@@ -417,6 +438,7 @@ async def run_autonomous_cycle(
         "search_result": search_result,
         "enrich_count": enrich_count,
         "outreach_result": outreach_result,
+        "access_code_result": access_code_result,
         "reminders_result": reminders_result,
         "upsell_result": upsell_result,
         "success_control": success_control,
@@ -449,6 +471,7 @@ async def run_autonomous_cycle(
         "search_result": search_result,
         "enrich_count": enrich_count,
         "outreach_result": outreach_result,
+        "access_code_result": access_code_result,
         "reminders_result": reminders_result,
         "upsell_result": upsell_result,
         "success_control": success_control,

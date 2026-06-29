@@ -8,6 +8,7 @@ from app.api.routes.relay_intent import _send_sample_email
 from app.services.autonomous_ops import run_autonomous_cycle
 from app.services.custom_outreach import poll_reply_mailbox, send_due_sequence_messages
 from app.services.post_purchase_autopilot import send_paid_onboarding_for_email
+from app.services import post_purchase_autopilot
 from app.services.relay_recovery_patch import (
     _relay_money_loop_tick_with_timeout,
     _money_loop_state,
@@ -39,6 +40,27 @@ def test_paid_fulfillment_bypass_can_be_disabled(monkeypatch):
     monkeypatch.setenv("AO_RELAY_ALLOW_PAID_FULFILLMENT_WHEN_PAUSED", "false")
 
     assert relay_paid_fulfillment_allowed_when_paused() is False
+
+
+def test_paid_intake_blocks_include_access_code(monkeypatch):
+    monkeypatch.setenv("CLIENT_GATE_CODES", "paid-code,backup-code")
+    monkeypatch.delenv("CLIENT_GATE_CODES_JSON", raising=False)
+
+    blocks, included = post_purchase_autopilot._intake_access_blocks("https://relaybrief.com/client-intake.html")
+
+    assert included is True
+    assert any("Access code: paid-code" in block for block in blocks)
+    assert any("paste that code" in block for block in blocks)
+
+
+def test_paid_intake_blocks_explain_missing_code_fallback(monkeypatch):
+    monkeypatch.delenv("CLIENT_GATE_CODES", raising=False)
+    monkeypatch.delenv("CLIENT_GATE_CODES_JSON", raising=False)
+
+    blocks, included = post_purchase_autopilot._intake_access_blocks("https://relaybrief.com/client-intake.html")
+
+    assert included is False
+    assert any("reply here" in block for block in blocks)
 
 
 def test_money_loop_tick_returns_paused_without_work(monkeypatch):

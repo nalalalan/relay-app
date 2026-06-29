@@ -2917,6 +2917,7 @@
         var paidCount = Number(paidFulfillment.paid_count || payments || 0);
         var intakeCount = Number(paidFulfillment.intake_received_count || 0);
         var fulfilledCount = Number(paidFulfillment.fulfilled_count || 0);
+        var accessCodeCount = Number(paidFulfillment.access_code_sent_count || 0);
         var replies = Number(outreach.replies || latestData.replies || 0);
         var paid = payments > 0 || gross > 0;
         var sampleDone = parts && parts.target && parts.current >= parts.target;
@@ -2944,7 +2945,7 @@
           ? (fulfilledCount >= paidCount && paidCount ? "Paid delivery complete" : "Paid fulfillment open")
           : (replies > 0 ? "Buyer reply logged" : "7-day movement");
         var leftDetail = paid
-          ? (paidFulfillment.next_action || "Wait for intake; reminders stay active.")
+          ? ((accessCodeCount && paidCount ? fmt(accessCodeCount) + "/" + fmt(paidCount) + " access codes sent. " : "") + (paidFulfillment.next_action || "Wait for intake; reminders stay active."))
           : (replies > 0
               ? "Next movement is one paid checkout."
               : fmt(viewsWeek) + " views / " + fmt(sampleWeek) + " sample opens / " + fmt(emailWeek) + " email intent.");
