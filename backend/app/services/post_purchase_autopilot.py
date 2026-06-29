@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.config import (
     entry_checkout_url,
     entry_price_label,
+    relay_paid_fulfillment_allowed_when_paused,
     relay_costs_paused,
     relay_paused_response,
     settings,
@@ -34,6 +35,14 @@ def _internal_emails() -> set[str]:
 
 def _is_internal_email(email: str | None) -> bool:
     return (email or "").strip().lower() in _internal_emails()
+
+
+def _paid_fulfillment_paused(action: str, *, allow_when_paused: bool = True) -> dict[str, Any] | None:
+    if not relay_costs_paused():
+        return None
+    if allow_when_paused and relay_paid_fulfillment_allowed_when_paused():
+        return None
+    return relay_paused_response(action)
 
 
 def _intake_url() -> str:
@@ -112,6 +121,16 @@ def _paid_for_email(session: Session, email: str) -> bool:
         if email and email.lower() in blob:
             return True
     return False
+
+
+def paid_customer_can_fulfill_email(email: str) -> bool:
+    if not email or _is_internal_email(email):
+        return False
+    try:
+        with _session() as session:
+            return _paid_for_email(session, email)
+    except Exception:
+        return False
 
 
 def _ensure_paid_prospect(session: Session, email: str) -> AcquisitionProspect:
@@ -214,8 +233,9 @@ def _relay_notes_tally_payload(lead: RelayIntentLead, email: str) -> dict[str, A
 
 
 def _fulfill_paid_relay_notes(session: Session, prospect: AcquisitionProspect, email: str) -> dict[str, Any]:
-    if relay_costs_paused():
-        return relay_paused_response("post_purchase_fulfill_paid_relay_notes")
+    paused = _paid_fulfillment_paused("post_purchase_fulfill_paid_relay_notes")
+    if paused:
+        return paused
 
     if _event_exists(session, prospect.external_id, "autopilot_paid_relay_notes_fulfilled"):
         return {"status": "skipped", "summary": "relay notes already fulfilled"}
@@ -275,6 +295,17 @@ def _event_exists(session: Session, prospect_external_id: str, event_type: str) 
     return session.execute(stmt).scalar_one_or_none() is not None
 
 
+def _latest_event(session: Session, prospect_external_id: str, event_type: str) -> AcquisitionEvent | None:
+    stmt = (
+        select(AcquisitionEvent)
+        .where(AcquisitionEvent.prospect_external_id == prospect_external_id)
+        .where(AcquisitionEvent.event_type == event_type)
+        .order_by(AcquisitionEvent.created_at.desc())
+        .limit(1)
+    )
+    return session.execute(stmt).scalar_one_or_none()
+
+
 def _log_event(
     session: Session,
     event_type: str,
@@ -292,9 +323,19 @@ def _log_event(
     )
 
 
-def _send_html_email(to_email: str, subject: str, blocks: list[str]) -> dict[str, Any]:
-    if relay_costs_paused():
-        return relay_paused_response("post_purchase_send_html_email")
+def _send_html_email(
+    to_email: str,
+    subject: str,
+    blocks: list[str],
+    *,
+    allow_when_paused: bool = False,
+) -> dict[str, Any]:
+    paused = _paid_fulfillment_paused(
+        "post_purchase_send_html_email",
+        allow_when_paused=allow_when_paused,
+    )
+    if paused:
+        return paused
 
     body = "<div style='font-family:Arial,Helvetica,sans-serif;font-size:16px;color:#1f1f1f;line-height:1.6;'>" + "".join(blocks) + "</div>"
     client = ResendClient()
@@ -342,8 +383,9 @@ def _send_conversion_email(
 
 
 def send_paid_onboarding_for_email(email: str) -> dict[str, Any]:
-    if relay_costs_paused():
-        return relay_paused_response("send_paid_onboarding_for_email")
+    paused = _paid_fulfillment_paused("send_paid_onboarding_for_email")
+    if paused:
+        return paused
 
     email = (email or "").strip().lower()
     if not email:
@@ -375,7 +417,7 @@ def send_paid_onboarding_for_email(email: str) -> dict[str, Any]:
             _p("Once that comes through, the follow-up email gets written and sent back."),
             _p("- Alan"),
         ]
-        send_result = _send_html_email(email, subject, blocks)
+        send_result = _send_html_email(email, subject, blocks, allow_when_paused=True)
         _log_event(
             session,
             "autopilot_paid_onboarding_sent",
@@ -388,8 +430,9 @@ def send_paid_onboarding_for_email(email: str) -> dict[str, Any]:
 
 
 def send_intake_ack_for_email(email: str) -> dict[str, Any]:
-    if relay_costs_paused():
-        return relay_paused_response("send_intake_ack_for_email")
+    paused = _paid_fulfillment_paused("send_intake_ack_for_email")
+    if paused:
+        return paused
 
     email = (email or "").strip().lower()
     if not email:
@@ -401,6 +444,8 @@ def send_intake_ack_for_email(email: str) -> dict[str, Any]:
         prospect = _find_prospect_by_email(session, email)
         if prospect is None:
             return {"status": "ignored", "summary": "no matching prospect"}
+        if relay_costs_paused() and not _paid_for_email(session, email):
+            return relay_paused_response("send_intake_ack_for_email")
         if _event_exists(session, prospect.external_id, "autopilot_intake_ack_sent"):
             return {"status": "skipped", "summary": "already sent"}
 
@@ -411,7 +456,7 @@ def send_intake_ack_for_email(email: str) -> dict[str, Any]:
             _p("You'll get one follow-up email meant to get a yes, no, or next step."),
             _p("- Alan"),
         ]
-        send_result = _send_html_email(email, subject, blocks)
+        send_result = _send_html_email(email, subject, blocks, allow_when_paused=True)
         _log_event(
             session,
             "autopilot_intake_ack_sent",
@@ -424,8 +469,9 @@ def send_intake_ack_for_email(email: str) -> dict[str, Any]:
 
 
 def run_paid_intake_reminder_sweep(hours: int = 12) -> dict[str, Any]:
-    if relay_costs_paused():
-        return relay_paused_response("run_paid_intake_reminder_sweep")
+    paused = _paid_fulfillment_paused("run_paid_intake_reminder_sweep")
+    if paused:
+        return paused
 
     cutoff = datetime.utcnow() - timedelta(hours=hours)
     sent_count = 0
@@ -470,6 +516,12 @@ def run_paid_intake_reminder_sweep(hours: int = 12) -> dict[str, Any]:
                 skipped += 1
                 continue
 
+            onboarding = _latest_event(session, prospect.external_id, "autopilot_paid_onboarding_sent")
+            reminder_clock = onboarding.created_at if onboarding and onboarding.created_at else event.created_at
+            if reminder_clock and reminder_clock > cutoff:
+                skipped += 1
+                continue
+
             intake_url = _intake_url()
             if not intake_url or not prospect.contact_email:
                 skipped += 1
@@ -482,7 +534,7 @@ def run_paid_intake_reminder_sweep(hours: int = 12) -> dict[str, Any]:
                 _p("Once that is in, the follow-up email gets written."),
                 _p("- Alan"),
             ]
-            send_result = _send_html_email(prospect.contact_email, subject, blocks)
+            send_result = _send_html_email(prospect.contact_email, subject, blocks, allow_when_paused=True)
             _log_event(
                 session,
                 "autopilot_intake_reminder_sent",
@@ -500,8 +552,9 @@ def run_paid_intake_reminder_sweep(hours: int = 12) -> dict[str, Any]:
 
 
 def run_post_delivery_upsell_sweep(hours: int = 24) -> dict[str, Any]:
-    if relay_costs_paused():
-        return relay_paused_response("run_post_delivery_upsell_sweep")
+    paused = _paid_fulfillment_paused("run_post_delivery_upsell_sweep")
+    if paused:
+        return paused
 
     cutoff = datetime.utcnow() - timedelta(hours=hours)
     sent_count = 0
@@ -524,6 +577,9 @@ def run_post_delivery_upsell_sweep(hours: int = 24) -> dict[str, Any]:
             if _is_internal_email(prospect.contact_email):
                 skipped += 1
                 continue
+            if relay_costs_paused() and not _paid_for_email(session, prospect.contact_email):
+                skipped += 1
+                continue
 
             if _event_exists(session, prospect.external_id, "autopilot_upsell_sent"):
                 skipped += 1
@@ -541,7 +597,7 @@ def run_post_delivery_upsell_sweep(hours: int = 24) -> dict[str, Any]:
                 _p("If you do want the same flow running automatically for future calls, that's the path."),
                 _p("- Alan"),
             ]
-            send_result = _send_html_email(prospect.contact_email, subject, blocks)
+            send_result = _send_html_email(prospect.contact_email, subject, blocks, allow_when_paused=True)
             _log_event(
                 session,
                 "autopilot_upsell_sent",

@@ -3,7 +3,7 @@ import os
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
-from app.core.config import relay_costs_paused
+from app.core.config import relay_costs_paused, relay_paid_fulfillment_allowed_when_paused
 from app.api.routes.relay_intent import _send_sample_email
 from app.services.autonomous_ops import run_autonomous_cycle
 from app.services.custom_outreach import poll_reply_mailbox, send_due_sequence_messages
@@ -27,6 +27,18 @@ def test_relay_costs_pause_requires_explicit_false(monkeypatch):
     monkeypatch.setenv("AO_RELAY_COSTS_PAUSED", "false")
 
     assert relay_costs_paused() is False
+
+
+def test_paid_fulfillment_bypass_is_enabled_by_default(monkeypatch):
+    monkeypatch.delenv("AO_RELAY_ALLOW_PAID_FULFILLMENT_WHEN_PAUSED", raising=False)
+
+    assert relay_paid_fulfillment_allowed_when_paused() is True
+
+
+def test_paid_fulfillment_bypass_can_be_disabled(monkeypatch):
+    monkeypatch.setenv("AO_RELAY_ALLOW_PAID_FULFILLMENT_WHEN_PAUSED", "false")
+
+    assert relay_paid_fulfillment_allowed_when_paused() is False
 
 
 def test_money_loop_tick_returns_paused_without_work(monkeypatch):
@@ -67,6 +79,7 @@ def test_autonomous_cycle_paused_without_provider_calls(monkeypatch):
 def test_outbound_and_fulfillment_paths_return_paused(monkeypatch):
     monkeypatch.delenv("AO_RELAY_COSTS_PAUSED", raising=False)
     monkeypatch.delenv("AO_RELAY_MONEY_LOOP_PAUSED", raising=False)
+    monkeypatch.setenv("AO_RELAY_ALLOW_PAID_FULFILLMENT_WHEN_PAUSED", "false")
 
     assert send_due_sequence_messages()["status"] == "paused"
     assert poll_reply_mailbox()["status"] == "paused"

@@ -8,9 +8,17 @@ from pathlib import Path
 from typing import Any
 
 from openpyxl import Workbook, load_workbook
+from sqlalchemy import select
 
-from app.core.config import relay_costs_paused, relay_paused_response, settings
+from app.core.config import (
+    relay_costs_paused,
+    relay_paid_fulfillment_allowed_when_paused,
+    relay_paused_response,
+    settings,
+)
+from app.db.base import SessionLocal
 from app.integrations.resend_client import ResendClient
+from app.models.acquisition_supervisor import AcquisitionEvent, AcquisitionProspect
 from app.services.guardrails import ClientGateResult, clean_agency_name, validate_client_notes
 from app.services.text_cleanup import clean_packet_text
 
@@ -158,9 +166,66 @@ def _extract_client_fields(payload: dict[str, Any]) -> dict[str, str]:
     }
 
 
-def _send_plaintext_fallback(to_email: str, subject: str, body: str) -> dict[str, Any]:
-    if relay_costs_paused():
-        return relay_paused_response("fulfillment_plaintext_fallback")
+def _safe_json(raw: str | None) -> dict[str, Any]:
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        return {}
+
+
+def _paid_customer_fulfillment_allowed(email: str) -> bool:
+    email = (email or "").strip().lower()
+    if not email or not relay_paid_fulfillment_allowed_when_paused():
+        return False
+    try:
+        with SessionLocal() as session:
+            paid_prospect = session.execute(
+                select(AcquisitionProspect.id)
+                .where(AcquisitionProspect.contact_email == email)
+                .where(AcquisitionProspect.stripe_status == "paid")
+                .limit(1)
+            ).scalar_one_or_none()
+            if paid_prospect is not None:
+                return True
+
+            rows = session.execute(
+                select(AcquisitionEvent.payload_json)
+                .where(AcquisitionEvent.event_type == "stripe_paid")
+                .order_by(AcquisitionEvent.created_at.desc())
+                .limit(100)
+            ).scalars().all()
+            for raw in rows:
+                if email in json.dumps(_safe_json(raw), ensure_ascii=False).lower():
+                    return True
+    except Exception:
+        return False
+    return False
+
+
+def _paid_fulfillment_paused(action: str, *, allow_when_paused: bool = False) -> dict[str, Any] | None:
+    if not relay_costs_paused():
+        return None
+    if allow_when_paused and relay_paid_fulfillment_allowed_when_paused():
+        return None
+    return relay_paused_response(action)
+
+
+def _send_plaintext_fallback(
+    to_email: str,
+    subject: str,
+    body: str,
+    *,
+    allow_when_paused: bool = False,
+) -> dict[str, Any]:
+    paused = _paid_fulfillment_paused(
+        "fulfillment_plaintext_fallback",
+        allow_when_paused=allow_when_paused,
+    )
+    if paused:
+        return paused
 
     html = "<br>".join(
         line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
@@ -324,8 +389,8 @@ def _run_builtin_generator() -> tuple[int, int]:
     return generated_count, failed_count
 
 
-def run_generator() -> dict[str, int | str]:
-    if relay_costs_paused():
+def run_generator(*, allow_when_paused: bool = False) -> dict[str, int | str]:
+    if _paid_fulfillment_paused("fulfillment_generator", allow_when_paused=allow_when_paused):
         return {"generated_count": 0, "failed_count": 0, "model": "paused_by_owner_cost_control"}
 
     if GENERATE_SCRIPT.exists():
@@ -349,9 +414,19 @@ def run_generator() -> dict[str, int | str]:
     return result
 
 
-def _send_resend_email(to_email: str, subject: str, packet: str) -> dict[str, Any]:
-    if relay_costs_paused():
-        return relay_paused_response("fulfillment_send_resend_email")
+def _send_resend_email(
+    to_email: str,
+    subject: str,
+    packet: str,
+    *,
+    allow_when_paused: bool = False,
+) -> dict[str, Any]:
+    paused = _paid_fulfillment_paused(
+        "fulfillment_send_resend_email",
+        allow_when_paused=allow_when_paused,
+    )
+    if paused:
+        return paused
 
     from_email = settings.from_email_fulfillment
     cleaned_packet = clean_packet_text(packet)
@@ -374,7 +449,7 @@ def _send_resend_email(to_email: str, subject: str, packet: str) -> dict[str, An
     return response
 
 
-def run_sender(submission_id: str | None = None) -> dict[str, Any]:
+def run_sender(submission_id: str | None = None, *, allow_when_paused: bool = False) -> dict[str, Any]:
     wb = load_workbook(MASTER_PATH)
     ws = wb["Master Log"]
     headers = _header_map(ws)
@@ -430,7 +505,7 @@ def run_sender(submission_id: str | None = None) -> dict[str, Any]:
             continue
 
         try:
-            response = _send_resend_email(email, subject, packet)
+            response = _send_resend_email(email, subject, packet, allow_when_paused=allow_when_paused)
             ws.cell(row, col_status).value = "sent"
             ws.cell(row, col_sent_at).value = datetime.now(timezone.utc).isoformat()
             ws.cell(row, col_error_notes).value = ""
@@ -482,7 +557,9 @@ def run_digest() -> dict[str, int]:
 
 def process_tally_submission(payload: dict[str, Any]) -> dict[str, Any]:
     submission_id = _stringify((payload.get("data") or {}).get("submissionId")) or _stringify(payload.get("submission_id"))
-    if relay_costs_paused():
+    client_fields = _extract_client_fields(payload)
+    paid_fulfillment_allowed = _paid_customer_fulfillment_allowed(client_fields.get("email", ""))
+    if relay_costs_paused() and not paid_fulfillment_allowed:
         response = relay_paused_response("process_tally_submission")
         return {
             **response,
@@ -493,12 +570,16 @@ def process_tally_submission(payload: dict[str, Any]) -> dict[str, Any]:
         }
 
     print(f"[TALLY START] submission_id={submission_id or 'missing'}")
-    client_fields = _extract_client_fields(payload)
     gate = validate_client_notes(client_fields.get("raw_notes", ""))
 
     if gate.status != "ok":
         subject, body = _guardrail_email(client_fields, gate)
-        send_result = _send_plaintext_fallback(client_fields.get("email", ""), subject, body)
+        send_result = _send_plaintext_fallback(
+            client_fields.get("email", ""),
+            subject,
+            body,
+            allow_when_paused=paid_fulfillment_allowed,
+        )
         result = {
             "submission_id": submission_id,
             "generation": {"generated_count": 0, "failed_count": 0, "model": "guardrail"},
@@ -517,8 +598,8 @@ def process_tally_submission(payload: dict[str, Any]) -> dict[str, Any]:
         return result
 
     submission_id = run_importer(payload)
-    generation = run_generator()
-    sending = run_sender(submission_id=submission_id)
+    generation = run_generator(allow_when_paused=paid_fulfillment_allowed)
+    sending = run_sender(submission_id=submission_id, allow_when_paused=paid_fulfillment_allowed)
     digest = run_digest()
     result = {
         "submission_id": submission_id,

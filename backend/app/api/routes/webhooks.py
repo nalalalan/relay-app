@@ -11,6 +11,7 @@ from app.api.routes.acquisition_supervisor import (
 from app.core.config import relay_costs_paused, relay_paused_response
 from app.services.buyer_pilot import process_buyer_pilot_submission
 from app.services.post_purchase_autopilot import (
+    paid_customer_can_fulfill_email,
     send_intake_ack_for_email,
     send_paid_onboarding_for_email,
 )
@@ -67,9 +68,7 @@ async def stripe_webhook(request: Request, stripe_signature: str | None = Header
 
     autopilot = {}
     email = _stripe_email(payload)
-    if email and relay_costs_paused():
-        autopilot = relay_paused_response("stripe_paid_onboarding")
-    elif email:
+    if email:
         autopilot = send_paid_onboarding_for_email(email)
 
     return {
@@ -110,7 +109,8 @@ async def tally_webhook(request: Request, x_tally_signature: str | None = Header
         raise HTTPException(status_code=400, detail="empty payload")
 
     acquisition_result = await supervisor_intake_webhook(_FakeRequest(payload))
-    if relay_costs_paused():
+    email = _tally_email(payload)
+    if relay_costs_paused() and not paid_customer_can_fulfill_email(email):
         return {
             "provider": "tally",
             "flow": "client_fulfillment",
@@ -126,7 +126,6 @@ async def tally_webhook(request: Request, x_tally_signature: str | None = Header
         state_machine.apply_event(EventType.SENT)
 
     autopilot = {}
-    email = _tally_email(payload)
     if email and acquisition_result.get("status") == "processed":
         autopilot = send_intake_ack_for_email(email)
 

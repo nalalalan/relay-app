@@ -83,6 +83,11 @@ def relay_costs_paused() -> bool:
     return raw.lower() not in _FALSE_ENV_VALUES
 
 
+def relay_paid_fulfillment_allowed_when_paused() -> bool:
+    raw = os.getenv("AO_RELAY_ALLOW_PAID_FULFILLMENT_WHEN_PAUSED", "true").strip()
+    return raw.lower() not in _FALSE_ENV_VALUES
+
+
 def relay_paused_response(action: str) -> dict[str, object]:
     return {
         "status": "paused",
