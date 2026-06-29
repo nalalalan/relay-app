@@ -111,6 +111,100 @@ def test_client_gate_valid_code_returns_form_url(monkeypatch):
     assert result["client_form_url"] == "https://tally.so/r/example"
 
 
+def test_client_gate_submit_bad_json_returns_clean_error():
+    result = asyncio.run(client_gate.submit_paid_intake(_GateRequest(bad_json=True)))
+
+    assert result["status"] == "error"
+    assert result["message"] == "invalid access request"
+
+
+def test_client_gate_submit_requires_paid_email(monkeypatch):
+    monkeypatch.setenv("CLIENT_GATE_CODES", "paid-code")
+    monkeypatch.setenv("CLIENT_INTAKE_URL", "https://tally.so/r/example")
+    monkeypatch.delenv("CLIENT_GATE_CODES_JSON", raising=False)
+    monkeypatch.setattr(client_gate, "paid_customer_can_fulfill_email", lambda email: False)
+
+    result = asyncio.run(
+        client_gate.submit_paid_intake(
+            _GateRequest(
+                {
+                    "access_code": "paid-code",
+                    "email": "not-paid@example.com",
+                    "client_name": "Acme",
+                    "focus": "next step",
+                    "tone": "direct",
+                    "raw_notes": "Client went quiet after the proposal call.",
+                }
+            )
+        )
+    )
+
+    assert result["status"] == "denied"
+    assert result["message"] == "paid email not found for this intake"
+    assert result["pause_reason"] == "paused_by_owner_cost_control"
+
+
+def test_client_gate_submit_uses_current_paid_intake_payload(monkeypatch):
+    captured = {}
+
+    def fake_handle_intake(payload):
+        captured["intake"] = payload
+        return {"status": "processed", "summary": "prospect marked intake_received"}
+
+    def fake_process_tally(payload):
+        captured["fulfillment"] = payload
+        return {
+            "submission_id": "client-gate-test",
+            "generation": {"generated_count": 1},
+            "sending": {"sent_count": 1},
+            "digest": {"status": "checked"},
+        }
+
+    class _StateMachine:
+        def __init__(self):
+            self.events = []
+
+        def apply_event(self, event):
+            self.events.append(event)
+
+    machine = _StateMachine()
+    monkeypatch.setenv("CLIENT_GATE_CODES", "paid-code")
+    monkeypatch.setenv("CLIENT_INTAKE_URL", "https://tally.so/r/example")
+    monkeypatch.delenv("CLIENT_GATE_CODES_JSON", raising=False)
+    monkeypatch.setattr(client_gate, "paid_customer_can_fulfill_email", lambda email: True)
+    monkeypatch.setattr(client_gate, "handle_intake_webhook", fake_handle_intake)
+    monkeypatch.setattr(client_gate, "process_tally_submission", fake_process_tally)
+    monkeypatch.setattr(client_gate, "send_intake_ack_for_email", lambda email: {"status": "sent"})
+    monkeypatch.setattr(client_gate, "state_machine", machine)
+
+    result = asyncio.run(
+        client_gate.submit_paid_intake(
+            _GateRequest(
+                {
+                    "access_code": "paid-code",
+                    "email": "Buyer@Example.com",
+                    "client_name": "Acme",
+                    "focus": "get the next step",
+                    "tone": "direct",
+                    "raw_notes": "Client went quiet after the proposal call.",
+                }
+            )
+        )
+    )
+
+    fields = captured["fulfillment"]["data"]["fields"]
+    mapped = {field["label"]: field["value"] for field in fields}
+
+    assert result["status"] == "processed"
+    assert captured["intake"] == captured["fulfillment"]
+    assert mapped["Where should we send your follow-up email?"] == "buyer@example.com"
+    assert mapped["Client or company name"] == "Acme"
+    assert mapped["What should this focus on?"] == "get the next step"
+    assert mapped["Preferred tone for the follow-up email"] == "direct"
+    assert mapped["Paste your stuck client email, last reply, rough draft, or bullets"] == "Client went quiet after the proposal call."
+    assert len(machine.events) == 3
+
+
 def test_fulfillment_reads_current_paid_intake_note_label():
     payload = {
         "data": {
