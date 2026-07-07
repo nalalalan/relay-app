@@ -8,7 +8,7 @@ from html import escape
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 
@@ -17,6 +17,7 @@ from app.core.config import (
     entry_price_label,
     entry_price_usd,
     relay_costs_paused,
+    relay_inbound_contact_allowed_when_paused,
     relay_paused_response,
     settings,
 )
@@ -1124,7 +1125,7 @@ def _send_sample_email(to_email: str) -> dict[str, Any]:
 
 
 def _send_messy_notes_email(payload: RelayIntentLeadIn, email: str, score: int) -> dict[str, Any]:
-    if relay_costs_paused():
+    if relay_costs_paused() and not relay_inbound_contact_allowed_when_paused():
         return relay_paused_response("relay_intent_send_messy_notes_email")
 
     if not settings.resend_api_key:
@@ -1200,7 +1201,7 @@ def _messy_notes_customer_email_html(to_email: str) -> str:
 
 
 def _send_messy_notes_customer_email(email: str) -> dict[str, Any]:
-    if relay_costs_paused():
+    if relay_costs_paused() and not relay_inbound_contact_allowed_when_paused():
         return relay_paused_response("relay_intent_send_messy_notes_customer_email")
 
     if not settings.resend_api_key:
@@ -1900,7 +1901,7 @@ def record_relay_event(payload: RelayIntentEventIn, request: Request) -> dict[st
 
 
 @router.post("/lead")
-def record_relay_lead(payload: RelayIntentLeadIn, request: Request) -> dict[str, Any]:
+def record_relay_lead(payload: RelayIntentLeadIn, request: Request, response: Response) -> dict[str, Any]:
     sid = _session_id(payload.session_id)
     email = payload.email.strip().lower()
 
@@ -1966,6 +1967,10 @@ def record_relay_lead(payload: RelayIntentLeadIn, request: Request) -> dict[str,
             _send_messy_notes_customer_email(email)
             if "messy_notes" in source_lower
             else {"status": "skipped", "reason": "not a messy notes request"}
+        )
+        contact_email_sent = (
+            "messy_notes" not in source_lower
+            or (operator_email.get("status") == "sent" and customer_email.get("status") == "sent")
         )
         try:
             if acquisition_prospect.get("status") in {"created", "updated"}:
@@ -2036,11 +2041,15 @@ def record_relay_lead(payload: RelayIntentLeadIn, request: Request) -> dict[str,
         except Exception:
             db.rollback()
 
+        if not contact_email_sent:
+            response.status_code = 502
+
         return {
-            "ok": True,
+            "ok": contact_email_sent,
             "lead_id": lead.id,
             "session_id": sid,
             "score": score,
+            "contact_email_sent": contact_email_sent,
             "sample_email": sample_email,
             "operator_email": operator_email,
             "customer_email": customer_email,

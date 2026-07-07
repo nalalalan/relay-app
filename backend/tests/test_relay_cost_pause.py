@@ -6,8 +6,12 @@ from json import JSONDecodeError
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
-from app.core.config import relay_costs_paused, relay_paid_fulfillment_allowed_when_paused
-from app.api.routes.relay_intent import _send_sample_email
+from app.core.config import (
+    relay_costs_paused,
+    relay_inbound_contact_allowed_when_paused,
+    relay_paid_fulfillment_allowed_when_paused,
+)
+from app.api.routes.relay_intent import _send_messy_notes_customer_email, _send_sample_email
 from app.api.routes import client_gate
 from app.services import autonomous_ops, relay_recovery_patch
 from app.services.autonomous_ops import run_autonomous_cycle
@@ -57,6 +61,18 @@ def test_paid_fulfillment_bypass_can_be_disabled(monkeypatch):
     monkeypatch.setenv("AO_RELAY_ALLOW_PAID_FULFILLMENT_WHEN_PAUSED", "false")
 
     assert relay_paid_fulfillment_allowed_when_paused() is False
+
+
+def test_inbound_contact_bypass_is_enabled_by_default(monkeypatch):
+    monkeypatch.delenv("AO_RELAY_ALLOW_INBOUND_CONTACT_WHEN_PAUSED", raising=False)
+
+    assert relay_inbound_contact_allowed_when_paused() is True
+
+
+def test_inbound_contact_bypass_can_be_disabled(monkeypatch):
+    monkeypatch.setenv("AO_RELAY_ALLOW_INBOUND_CONTACT_WHEN_PAUSED", "false")
+
+    assert relay_inbound_contact_allowed_when_paused() is False
 
 
 def test_paid_intake_blocks_include_access_code(monkeypatch):
@@ -385,9 +401,20 @@ def test_outbound_and_fulfillment_paths_return_paused(monkeypatch):
     monkeypatch.delenv("AO_RELAY_COSTS_PAUSED", raising=False)
     monkeypatch.delenv("AO_RELAY_MONEY_LOOP_PAUSED", raising=False)
     monkeypatch.setenv("AO_RELAY_ALLOW_PAID_FULFILLMENT_WHEN_PAUSED", "false")
+    monkeypatch.setenv("AO_RELAY_ALLOW_INBOUND_CONTACT_WHEN_PAUSED", "false")
 
     assert send_due_sequence_messages()["status"] == "paused"
     assert poll_reply_mailbox()["status"] == "paused"
     assert send_paid_onboarding_for_email("buyer@example.com")["status"] == "paused"
     assert process_tally_submission({})["status"] == "paused"
     assert _send_sample_email("buyer@example.com")["status"] == "paused"
+    assert _send_messy_notes_customer_email("buyer@example.com")["status"] == "paused"
+
+
+def test_inbound_contact_email_allowed_under_cost_pause(monkeypatch):
+    monkeypatch.delenv("AO_RELAY_COSTS_PAUSED", raising=False)
+    monkeypatch.delenv("AO_RELAY_MONEY_LOOP_PAUSED", raising=False)
+    monkeypatch.delenv("AO_RELAY_ALLOW_INBOUND_CONTACT_WHEN_PAUSED", raising=False)
+    monkeypatch.setattr("app.api.routes.relay_intent.settings.resend_api_key", "")
+
+    assert _send_messy_notes_customer_email("buyer@example.com")["status"] == "skipped"
