@@ -102,6 +102,24 @@ def test_full_pause_blocks_mutating_http_routes(monkeypatch):
     assert response.json()["reason"] == "relay_fully_paused"
 
 
+def test_cost_pause_blocks_new_public_lead_records(monkeypatch):
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    monkeypatch.setenv("AO_RELAY_FULLY_PAUSED", "false")
+    monkeypatch.setenv("AO_RELAY_COSTS_PAUSED", "true")
+    monkeypatch.setenv("AO_RELAY_ALLOW_INBOUND_CONTACT_WHEN_PAUSED", "false")
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/relay/lead",
+            json={"email": "paused@example.test", "source": "paused_surface_check"},
+        )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["reason"] == "paused_by_owner_cost_control"
+
+
 def test_paid_fulfillment_bypass_is_enabled_by_default(monkeypatch):
     monkeypatch.delenv("AO_RELAY_ALLOW_PAID_FULFILLMENT_WHEN_PAUSED", raising=False)
 

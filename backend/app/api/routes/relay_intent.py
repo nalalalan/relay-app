@@ -1902,6 +1902,9 @@ def record_relay_event(payload: RelayIntentEventIn, request: Request) -> dict[st
 
 @router.post("/lead")
 def record_relay_lead(payload: RelayIntentLeadIn, request: Request, response: Response) -> dict[str, Any]:
+    if relay_costs_paused() and not relay_inbound_contact_allowed_when_paused():
+        raise HTTPException(status_code=503, detail=relay_paused_response("record_relay_lead"))
+
     sid = _session_id(payload.session_id)
     email = payload.email.strip().lower()
 
