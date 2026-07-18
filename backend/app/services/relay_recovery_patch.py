@@ -14,6 +14,7 @@ from app.core.config import (
     entry_checkout_url,
     entry_price_label,
     entry_price_usd,
+    relay_fully_paused,
     relay_costs_paused,
     relay_paused_response,
     settings,
@@ -1999,6 +2000,15 @@ async def _relay_paid_lifecycle_loop() -> None:
 
 def start_relay_money_loop() -> None:
     global _money_loop_task, _paid_lifecycle_task
+    if relay_fully_paused():
+        _money_loop_state["status"] = "fully_paused"
+        _money_loop_state["paused"] = True
+        _money_loop_state["enabled"] = False
+        _money_loop_state["running"] = False
+        _money_loop_state["last_error"] = "relay_fully_paused"
+        _money_loop_state["next_sleep_seconds"] = 0
+        _money_loop_state["next_wake_reason"] = "manual_owner_restart_only"
+        return
     paused = relay_costs_paused()
     enabled = (
         os.getenv("AO_RELAY_MONEY_LOOP_ENABLED", "true").strip().lower() not in {"0", "false", "no"}

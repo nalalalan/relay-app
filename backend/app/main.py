@@ -4,6 +4,7 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.routes.acquisition_supervisor import router as acquisition_supervisor_router
 from app.api.routes.client_gate import router as client_gate_router
@@ -37,6 +38,7 @@ from app.services.relay_recovery_patch import (
 )
 from app.services.relay_money_optimizer_patch import apply_relay_money_optimizer_patch
 from app.services.relay_reply_autoclose_patch import apply_relay_reply_autoclose_patch
+from app.core.config import relay_fully_paused, relay_paused_response
 
 
 apply_relay_recovery_patch()
@@ -70,7 +72,8 @@ def _cors_origins() -> list[str]:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
-    start_relay_money_loop()
+    if not relay_fully_paused():
+        start_relay_money_loop()
     try:
         yield
     finally:
@@ -78,6 +81,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="ao-relay-backend", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def full_pause_guard(request, call_next):
+    if relay_fully_paused() and request.method.upper() not in {"GET", "HEAD", "OPTIONS"}:
+        return JSONResponse(status_code=503, content=relay_paused_response(f"{request.method} {request.url.path}"))
+    return await call_next(request)
 
 app.add_middleware(
     CORSMiddleware,

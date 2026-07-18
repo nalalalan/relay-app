@@ -58,9 +58,9 @@ class Settings(BaseSettings):
     acq_excluded_keywords: str = "saas,software,transcription,call recording,note taking"
 
     packet_offer_name: str = "RelayBrief follow-up email"
-    packet_checkout_url: str = "https://buy.stripe.com/bJe28t7Sa7DLgec29A2Nq08"
+    packet_checkout_url: str = ""
     first_money_offer_name: str = "RelayBrief $1 follow-up email"
-    first_money_checkout_url: str = "https://buy.stripe.com/bJe28t7Sa7DLgec29A2Nq08"
+    first_money_checkout_url: str = ""
     first_money_price_usd: float = 1.0
     minimum_weekly_target_usd: float = 1.0
     packet_5_pack_url: str = ""
@@ -76,7 +76,14 @@ settings = Settings()
 _FALSE_ENV_VALUES = {"0", "false", "no", "off", "disabled"}
 
 
+def relay_fully_paused() -> bool:
+    raw = os.getenv("AO_RELAY_FULLY_PAUSED", "true").strip()
+    return raw.lower() not in _FALSE_ENV_VALUES
+
+
 def relay_costs_paused() -> bool:
+    if relay_fully_paused():
+        return True
     raw = os.getenv("AO_RELAY_COSTS_PAUSED", "").strip()
     if not raw:
         raw = os.getenv("AO_RELAY_MONEY_LOOP_PAUSED", "true").strip()
@@ -84,28 +91,37 @@ def relay_costs_paused() -> bool:
 
 
 def relay_paid_fulfillment_allowed_when_paused() -> bool:
+    if relay_fully_paused():
+        return False
     raw = os.getenv("AO_RELAY_ALLOW_PAID_FULFILLMENT_WHEN_PAUSED", "true").strip()
     return raw.lower() not in _FALSE_ENV_VALUES
 
 
 def relay_inbound_contact_allowed_when_paused() -> bool:
+    if relay_fully_paused():
+        return False
     raw = os.getenv("AO_RELAY_ALLOW_INBOUND_CONTACT_WHEN_PAUSED", "true").strip()
     return raw.lower() not in _FALSE_ENV_VALUES
 
 
 def relay_paused_response(action: str) -> dict[str, object]:
+    fully_paused = relay_fully_paused()
     return {
         "status": "paused",
-        "reason": "paused_by_owner_cost_control",
+        "reason": "relay_fully_paused" if fully_paused else "paused_by_owner_cost_control",
         "action": action,
         "summary": (
-            "Relay paid/API automation is paused. Set AO_RELAY_COSTS_PAUSED=false "
+            "Relay is fully paused. No purchase, intake, fulfillment, outbound, or provider work is running."
+            if fully_paused
+            else "Relay paid/API automation is paused. Set AO_RELAY_COSTS_PAUSED=false "
             "only when deliberately re-enabling outbound and provider calls."
         ),
     }
 
 
 def first_money_url_configured() -> bool:
+    if relay_fully_paused():
+        return False
     return bool(
         os.getenv("RELAY_FIRST_MONEY_CHECKOUT_URL", "").strip()
         or os.getenv("FIRST_MONEY_CHECKOUT_URL", "").strip()
@@ -114,6 +130,8 @@ def first_money_url_configured() -> bool:
 
 
 def entry_checkout_url() -> str:
+    if relay_fully_paused():
+        return ""
     return (
         os.getenv("RELAY_FIRST_MONEY_CHECKOUT_URL", "").strip()
         or os.getenv("FIRST_MONEY_CHECKOUT_URL", "").strip()

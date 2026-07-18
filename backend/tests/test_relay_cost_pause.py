@@ -5,9 +5,12 @@ from datetime import datetime, timezone
 from json import JSONDecodeError
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+os.environ.setdefault("AO_RELAY_FULLY_PAUSED", "false")
 
 from app.core.config import (
+    entry_checkout_url,
     relay_costs_paused,
+    relay_fully_paused,
     relay_inbound_contact_allowed_when_paused,
     relay_paid_fulfillment_allowed_when_paused,
 )
@@ -49,6 +52,54 @@ def test_relay_costs_pause_requires_explicit_false(monkeypatch):
     monkeypatch.setenv("AO_RELAY_COSTS_PAUSED", "false")
 
     assert relay_costs_paused() is False
+
+
+def test_full_pause_is_explicit_and_closes_purchase_and_bypass_paths(monkeypatch):
+    monkeypatch.setenv("AO_RELAY_FULLY_PAUSED", "true")
+    monkeypatch.setenv("AO_RELAY_ALLOW_PAID_FULFILLMENT_WHEN_PAUSED", "true")
+    monkeypatch.setenv("AO_RELAY_ALLOW_INBOUND_CONTACT_WHEN_PAUSED", "true")
+
+    assert relay_fully_paused() is True
+    assert entry_checkout_url() == ""
+    assert relay_paid_fulfillment_allowed_when_paused() is False
+    assert relay_inbound_contact_allowed_when_paused() is False
+
+
+def test_full_pause_forces_cost_pause_even_if_cost_flag_is_false(monkeypatch):
+    monkeypatch.setenv("AO_RELAY_FULLY_PAUSED", "true")
+    monkeypatch.setenv("AO_RELAY_COSTS_PAUSED", "false")
+
+    assert relay_costs_paused() is True
+
+
+def test_full_pause_starts_no_background_task(monkeypatch):
+    monkeypatch.setenv("AO_RELAY_FULLY_PAUSED", "true")
+
+    async def run() -> None:
+        await relay_recovery_patch.stop_relay_money_loop()
+        start_relay_money_loop()
+
+        assert _money_loop_state["status"] == "fully_paused"
+        assert _money_loop_state["enabled"] is False
+        assert _money_loop_state["running"] is False
+        assert _money_loop_state["next_wake_reason"] == "manual_owner_restart_only"
+        assert relay_recovery_patch._paid_lifecycle_task is None
+        assert relay_recovery_patch._money_loop_task is None
+
+    asyncio.run(run())
+
+
+def test_full_pause_blocks_mutating_http_routes(monkeypatch):
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    monkeypatch.setenv("AO_RELAY_FULLY_PAUSED", "true")
+
+    with TestClient(app) as client:
+        response = client.post("/api/relay/event", json={"event_type": "page_view"})
+
+    assert response.status_code == 503
+    assert response.json()["reason"] == "relay_fully_paused"
 
 
 def test_paid_fulfillment_bypass_is_enabled_by_default(monkeypatch):
@@ -312,6 +363,7 @@ def test_paid_status_counts_onboarding_access_codes():
 
 def test_money_summary_classifies_current_entry_price(monkeypatch):
     monkeypatch.setenv("RELAY_FIRST_MONEY_PRICE_USD", "1")
+    monkeypatch.setenv("RELAY_FIRST_MONEY_CHECKOUT_URL", "https://example.test/relay-checkout")
 
     assert autonomous_ops._sale_bucket_for_amount(100) == "one_packet"
     assert autonomous_ops._sale_bucket_for_amount(4000) == "one_packet"
